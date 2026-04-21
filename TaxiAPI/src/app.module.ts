@@ -8,6 +8,7 @@ import { RedisModule } from './redis/redis.module';
 import { PhoneVerificationModule } from './phone-verification/phone-verification.module';
 import { RegistrationModule } from './registration/registration.module';
 import { GatewayModule } from './gateway/gateway.module';
+import { GpsModule } from './gps/gps.module';
 import {
   User,
   Company,
@@ -54,6 +55,7 @@ import {
     PhoneVerificationModule,
     RegistrationModule,
     GatewayModule,
+    GpsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

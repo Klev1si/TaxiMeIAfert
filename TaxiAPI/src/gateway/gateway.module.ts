@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
+import { GpsModule } from '../gps/gps.module.js';
 import { EventsGateway } from './events.gateway.js';
 import { GatewayService } from './gateway.service.js';
 import { WsAuthGuard } from './ws-auth.guard.js';
@@ -13,8 +14,8 @@ import { WsAuthGuard } from './ws-auth.guard.js';
 @Module({
   imports: [
     ConfigModule,
-    // JwtModule with no default secret — verify calls pass secret explicitly
     JwtModule.register({}),
+    GpsModule,
   ],
   providers: [EventsGateway, GatewayService, WsAuthGuard],
   exports: [GatewayService, WsAuthGuard],
