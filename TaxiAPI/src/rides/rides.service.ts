@@ -10,13 +10,14 @@ import { In, Repository } from 'typeorm';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.module.js';
 import { Client, Driver, Ride, User } from '../entities/index.js';
-import { RideStatus } from '../common/enums/index.js';
+import { RideStatus, UserRole } from '../common/enums/index.js';
 import { GpsService } from '../gps/gps.service.js';
 import { GatewayService } from '../gateway/gateway.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { NearestDriverDto } from './dto/nearest-driver.dto.js';
 import { RequestRideDto } from './dto/request-ride.dto.js';
 import { RideResponseDto } from './dto/ride-response.dto.js';
+import { CancelRideDto } from './dto/cancel-ride.dto.js';
 
 /** Seconds a driver has to respond before their pending slot expires */
 const PENDING_TTL_SECONDS = 60;
@@ -267,6 +268,120 @@ export class RidesService {
       `Ride ${rideId} declined by ${driver.id}, re-dispatched to ${candidates[0].driverId}`,
     );
     return { message: 'Ride passed to next available driver' };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Step 20: POST /rides/:id/cancel  (CLIENT or DRIVER)
+  // ─────────────────────────────────────────────────────────────────────────────
+  async cancelRide(
+    userId: string,
+    userRole: UserRole,
+    rideId: string,
+    dto: CancelRideDto,
+  ): Promise<RideResponseDto> {
+    const ride = await this.rideRepo.findOne({ where: { id: rideId } });
+    if (!ride) throw new NotFoundException('Ride not found');
+
+    // ── Determine who is cancelling and validate permissions ─────────────────
+    if (userRole === UserRole.CLIENT) {
+      // Resolve the client record
+      const client = await this.clientRepo.findOne({ where: { userId } });
+      if (!client) throw new NotFoundException('Client profile not found');
+      if (ride.clientId !== client.id) {
+        throw new ForbiddenException('This is not your ride');
+      }
+
+      const cancellableStatuses: RideStatus[] = [
+        RideStatus.REQUESTED,
+        RideStatus.ACCEPTED,
+        RideStatus.DRIVING_TO_PICKUP,
+      ];
+      if (!cancellableStatuses.includes(ride.status)) {
+        throw new ForbiddenException(
+          `Client cannot cancel a ride with status '${ride.status}'`,
+        );
+      }
+    } else if (userRole === UserRole.DRIVER) {
+      const driver = await this.driverRepo.findOne({ where: { userId } });
+      if (!driver) throw new NotFoundException('Driver profile not found');
+      if (ride.driverId !== driver.id) {
+        throw new ForbiddenException('You are not the driver for this ride');
+      }
+
+      const cancellableStatuses: RideStatus[] = [
+        RideStatus.ACCEPTED,
+        RideStatus.DRIVING_TO_PICKUP,
+      ];
+      if (!cancellableStatuses.includes(ride.status)) {
+        throw new ForbiddenException(
+          `Driver cannot cancel a ride with status '${ride.status}'`,
+        );
+      }
+    } else {
+      throw new ForbiddenException('Only clients and drivers can cancel rides');
+    }
+
+    // ── Persist cancellation ──────────────────────────────────────────────────
+    ride.status = RideStatus.CANCELLED;
+    ride.cancelledAt = new Date();
+    ride.cancelledBy = userRole;
+    ride.cancelReason = dto.reason ?? null;
+    const saved = await this.rideRepo.save(ride);
+
+    // Clean up any pending/declined Redis keys (ride may have been in request phase)
+    await this.redis.del(`ride:${rideId}:pending`, `ride:${rideId}:declined`);
+
+    // ── Notify the other party ────────────────────────────────────────────────
+    if (userRole === UserRole.CLIENT) {
+      // Notify the assigned driver (if any)
+      if (ride.driverId) {
+        const driver = await this.driverRepo.findOne({
+          where: { id: ride.driverId },
+          select: ['userId', 'firstName'],
+        });
+        if (driver) {
+          this.gatewayService.emitToUser(driver.userId, 'ride_cancelled', {
+            rideId,
+            cancelledBy: 'client',
+            reason: ride.cancelReason,
+          });
+          const driverUser = await this.userRepo.findOne({
+            where: { id: driver.userId },
+            select: ['fcmToken'],
+          });
+          await this.notificationsService.sendToToken(driverUser?.fcmToken, {
+            title: 'Ride cancelled by client',
+            body: ride.cancelReason
+              ? `Reason: ${ride.cancelReason}`
+              : 'The client cancelled the ride.',
+            data: { rideId, event: 'ride_cancelled' },
+          });
+        }
+      }
+    } else {
+      // Notify the client
+      const clientUser = await this.getClientUser(ride.clientId);
+      if (clientUser) {
+        this.gatewayService.emitToUser(clientUser.id, 'ride_cancelled', {
+          rideId,
+          cancelledBy: 'driver',
+          reason: ride.cancelReason,
+        });
+        await this.notificationsService.sendToToken(clientUser.fcmToken, {
+          title: 'Ride cancelled by driver',
+          body: ride.cancelReason
+            ? `Reason: ${ride.cancelReason}`
+            : 'Your driver cancelled the ride.',
+          data: { rideId, event: 'ride_cancelled' },
+        });
+      }
+    }
+
+    this.logger.log(
+      `Ride ${rideId} cancelled by ${userRole} (userId: ${userId})` +
+        (ride.cancelReason ? ` — reason: ${ride.cancelReason}` : ''),
+    );
+    return this.toDto(saved);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -551,6 +666,8 @@ export class RidesService {
       startedAt: ride.startedAt,
       completedAt: ride.completedAt,
       cancelledAt: ride.cancelledAt,
+      cancelledBy: ride.cancelledBy,
+      cancelReason: ride.cancelReason,
     };
   }
 }

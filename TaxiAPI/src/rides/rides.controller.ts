@@ -16,6 +16,7 @@ import { NearestDriversQueryDto } from './dto/nearest-drivers-query.dto.js';
 import { NearestDriverDto } from './dto/nearest-driver.dto.js';
 import { RequestRideDto } from './dto/request-ride.dto.js';
 import { RideResponseDto } from './dto/ride-response.dto.js';
+import { CancelRideDto } from './dto/cancel-ride.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
@@ -145,5 +146,25 @@ export class RidesController {
     @Param('id', ParseUUIDPipe) rideId: string,
   ): Promise<RideResponseDto> {
     return this.ridesService.completeRide(req.user.id, rideId);
+  }
+
+  // ── POST /rides/:id/cancel ─────────────────────────────────────────────────
+  /**
+   * Cancel a ride.
+   *
+   * Clients may cancel when status is: requested, accepted, driving_to_pickup.
+   * Drivers may cancel when status is: accepted, driving_to_pickup.
+   *
+   * The other party is notified via WebSocket + FCM.
+   */
+  @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.CLIENT, UserRole.DRIVER)
+  cancelRide(
+    @Request() req: { user: { id: string; role: UserRole } },
+    @Param('id', ParseUUIDPipe) rideId: string,
+    @Body() dto: CancelRideDto,
+  ): Promise<RideResponseDto> {
+    return this.ridesService.cancelRide(req.user.id, req.user.role, rideId, dto);
   }
 }
