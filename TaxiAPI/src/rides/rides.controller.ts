@@ -86,4 +86,64 @@ export class RidesController {
   ): Promise<{ message: string }> {
     return this.ridesService.declineRide(req.user.id, rideId);
   }
+
+  // ── POST /rides/:id/en-route ───────────────────────────────────────────────
+  /**
+   * Driver confirms they are driving toward the pickup location.
+   * Status: accepted → driving_to_pickup
+   */
+  @Post(':id/en-route')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.DRIVER)
+  markEnRoute(
+    @Request() req: { user: { id: string } },
+    @Param('id', ParseUUIDPipe) rideId: string,
+  ): Promise<RideResponseDto> {
+    return this.ridesService.markEnRoute(req.user.id, rideId);
+  }
+
+  // ── POST /rides/:id/arrived ────────────────────────────────────────────────
+  /**
+   * Driver has arrived at the pickup location.
+   * Records pickupArrivedAt timestamp and notifies the client.
+   */
+  @Post(':id/arrived')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.DRIVER)
+  markArrived(
+    @Request() req: { user: { id: string } },
+    @Param('id', ParseUUIDPipe) rideId: string,
+  ): Promise<RideResponseDto> {
+    return this.ridesService.markArrived(req.user.id, rideId);
+  }
+
+  // ── POST /rides/:id/start ──────────────────────────────────────────────────
+  /**
+   * Driver has picked up the client — trip begins.
+   * Status: accepted/driving_to_pickup → in_progress
+   */
+  @Post(':id/start')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.DRIVER)
+  startRide(
+    @Request() req: { user: { id: string } },
+    @Param('id', ParseUUIDPipe) rideId: string,
+  ): Promise<RideResponseDto> {
+    return this.ridesService.startRide(req.user.id, rideId);
+  }
+
+  // ── POST /rides/:id/complete ───────────────────────────────────────────────
+  /**
+   * Driver has dropped off the client — trip ends.
+   * Status: in_progress → completed
+   */
+  @Post(':id/complete')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.DRIVER)
+  completeRide(
+    @Request() req: { user: { id: string } },
+    @Param('id', ParseUUIDPipe) rideId: string,
+  ): Promise<RideResponseDto> {
+    return this.ridesService.completeRide(req.user.id, rideId);
+  }
 }

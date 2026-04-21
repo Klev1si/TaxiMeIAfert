@@ -12,4 +12,8 @@ export class RideResponseDto {
   dropoffAddress: string | null;
   createdAt: Date;
   acceptedAt: Date | null;
+  pickupArrivedAt: Date | null;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  cancelledAt: Date | null;
 }

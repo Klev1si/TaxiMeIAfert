@@ -270,6 +270,145 @@ export class RidesService {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Step 19: POST /rides/:id/en-route  (DRIVER only)
+  // ─────────────────────────────────────────────────────────────────────────────
+  async markEnRoute(driverUserId: string, rideId: string): Promise<RideResponseDto> {
+    const { driver, ride } = await this.resolveDriverRide(driverUserId, rideId);
+
+    if (ride.status !== RideStatus.ACCEPTED) {
+      throw new ForbiddenException(
+        `Cannot mark en-route from status '${ride.status}' (expected: accepted)`,
+      );
+    }
+
+    ride.status = RideStatus.DRIVING_TO_PICKUP;
+    const saved = await this.rideRepo.save(ride);
+
+    const clientUser = await this.getClientUser(ride.clientId);
+    if (clientUser) {
+      this.gatewayService.emitToUser(clientUser.id, 'driver_en_route', {
+        rideId,
+        driverName: `${driver.firstName} ${driver.lastName}`,
+      });
+      await this.notificationsService.sendToToken(clientUser.fcmToken, {
+        title: 'Driver is on the way',
+        body: `${driver.firstName} is heading to your pickup location.`,
+        data: { rideId, event: 'driver_en_route' },
+      });
+    }
+
+    this.logger.log(`Ride ${rideId} — driver ${driver.id} en route`);
+    return this.toDto(saved);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Step 19: POST /rides/:id/arrived  (DRIVER only)
+  // ─────────────────────────────────────────────────────────────────────────────
+  async markArrived(driverUserId: string, rideId: string): Promise<RideResponseDto> {
+    const { driver, ride } = await this.resolveDriverRide(driverUserId, rideId);
+
+    if (
+      ride.status !== RideStatus.ACCEPTED &&
+      ride.status !== RideStatus.DRIVING_TO_PICKUP
+    ) {
+      throw new ForbiddenException(
+        `Cannot mark arrived from status '${ride.status}'`,
+      );
+    }
+
+    ride.pickupArrivedAt = new Date();
+    const saved = await this.rideRepo.save(ride);
+
+    const clientUser = await this.getClientUser(ride.clientId);
+    if (clientUser) {
+      this.gatewayService.emitToUser(clientUser.id, 'driver_arrived', {
+        rideId,
+        driverName: `${driver.firstName} ${driver.lastName}`,
+        vehiclePlate: driver.vehiclePlate,
+      });
+      await this.notificationsService.sendToToken(clientUser.fcmToken, {
+        title: 'Driver has arrived!',
+        body: `${driver.firstName} is waiting for you at the pickup location.`,
+        data: { rideId, event: 'driver_arrived' },
+      });
+    }
+
+    this.logger.log(`Ride ${rideId} — driver ${driver.id} arrived at pickup`);
+    return this.toDto(saved);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Step 19: POST /rides/:id/start  (DRIVER only)
+  // ─────────────────────────────────────────────────────────────────────────────
+  async startRide(driverUserId: string, rideId: string): Promise<RideResponseDto> {
+    const { driver, ride } = await this.resolveDriverRide(driverUserId, rideId);
+
+    const allowedStatuses: RideStatus[] = [
+      RideStatus.ACCEPTED,
+      RideStatus.DRIVING_TO_PICKUP,
+    ];
+    if (!allowedStatuses.includes(ride.status)) {
+      throw new ForbiddenException(
+        `Cannot start ride from status '${ride.status}'`,
+      );
+    }
+
+    ride.status = RideStatus.IN_PROGRESS;
+    ride.startedAt = new Date();
+    const saved = await this.rideRepo.save(ride);
+
+    const clientUser = await this.getClientUser(ride.clientId);
+    if (clientUser) {
+      this.gatewayService.emitToUser(clientUser.id, 'ride_started', { rideId });
+      await this.notificationsService.sendToToken(clientUser.fcmToken, {
+        title: 'Your ride has started',
+        body: 'Enjoy your trip!',
+        data: { rideId, event: 'ride_started' },
+      });
+    }
+
+    this.logger.log(`Ride ${rideId} started by driver ${driver.id}`);
+    return this.toDto(saved);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Step 19: POST /rides/:id/complete  (DRIVER only)
+  // ─────────────────────────────────────────────────────────────────────────────
+  async completeRide(driverUserId: string, rideId: string): Promise<RideResponseDto> {
+    const { driver, ride } = await this.resolveDriverRide(driverUserId, rideId);
+
+    if (ride.status !== RideStatus.IN_PROGRESS) {
+      throw new ForbiddenException(
+        `Cannot complete ride from status '${ride.status}' (expected: in_progress)`,
+      );
+    }
+
+    ride.status = RideStatus.COMPLETED;
+    ride.completedAt = new Date();
+    const saved = await this.rideRepo.save(ride);
+
+    // Increment totalRides on both driver and client (fire-and-forget)
+    void this.driverRepo.increment({ id: driver.id }, 'totalRides', 1);
+    void this.clientRepo.increment({ id: ride.clientId }, 'totalRides', 1);
+
+    const clientUser = await this.getClientUser(ride.clientId);
+    if (clientUser) {
+      this.gatewayService.emitToUser(clientUser.id, 'ride_completed', {
+        rideId,
+        completedAt: saved.completedAt,
+      });
+      await this.notificationsService.sendToToken(clientUser.fcmToken, {
+        title: 'Ride completed',
+        body: 'You have arrived! Please rate your driver.',
+        data: { rideId, event: 'ride_completed' },
+      });
+    }
+
+    this.logger.log(`Ride ${rideId} completed by driver ${driver.id}`);
+    return this.toDto(saved);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Private helpers
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -369,6 +508,29 @@ export class RidesService {
     });
   }
 
+  /**
+   * Load and validate both the driver (by userId) and the ride (by id),
+   * ensuring the ride's driverId matches this driver.
+   * Used by all Step 19 lifecycle endpoints.
+   */
+  private async resolveDriverRide(
+    driverUserId: string,
+    rideId: string,
+  ): Promise<{ driver: Driver; ride: Ride }> {
+    const driver = await this.driverRepo.findOne({ where: { userId: driverUserId } });
+    if (!driver) throw new NotFoundException('Driver profile not found');
+
+    const ride = await this.rideRepo.findOne({ where: { id: rideId } });
+    if (!ride) throw new NotFoundException('Ride not found');
+
+    // Ensure this driver owns the ride
+    if (ride.driverId !== driver.id) {
+      throw new ForbiddenException('You are not the driver for this ride');
+    }
+
+    return { driver, ride };
+  }
+
   /** Map a Ride entity to the public DTO */
   private toDto(ride: Ride): RideResponseDto {
     return {
@@ -385,6 +547,10 @@ export class RidesService {
       dropoffAddress: ride.dropoffAddress,
       createdAt: ride.createdAt,
       acceptedAt: ride.acceptedAt,
+      pickupArrivedAt: ride.pickupArrivedAt,
+      startedAt: ride.startedAt,
+      completedAt: ride.completedAt,
+      cancelledAt: ride.cancelledAt,
     };
   }
 }
