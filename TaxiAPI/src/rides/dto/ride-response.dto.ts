@@ -18,4 +18,5 @@ export class RideResponseDto {
   cancelledAt: Date | null;
   cancelledBy: string | null;
   cancelReason: string | null;
+  paymentStatus: string;
 }

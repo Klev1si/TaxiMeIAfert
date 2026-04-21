@@ -10,7 +10,7 @@ import { In, Repository } from 'typeorm';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.module.js';
 import { Client, Driver, Ride, User } from '../entities/index.js';
-import { RideStatus, UserRole } from '../common/enums/index.js';
+import { PaymentStatus, RideStatus, UserRole } from '../common/enums/index.js';
 import { GpsService } from '../gps/gps.service.js';
 import { GatewayService } from '../gateway/gateway.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
@@ -524,6 +524,49 @@ export class RidesService {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Step 21: POST /rides/:id/pay-cash  (DRIVER only)
+  // ─────────────────────────────────────────────────────────────────────────────
+  /**
+   * Driver confirms that the client paid in cash.
+   * The ride must be completed. Sets paymentStatus → paid.
+   * Stripe / card payments will be wired up in a future step.
+   */
+  async confirmCashPayment(driverUserId: string, rideId: string): Promise<RideResponseDto> {
+    const { driver, ride } = await this.resolveDriverRide(driverUserId, rideId);
+
+    if (ride.status !== RideStatus.COMPLETED) {
+      throw new ForbiddenException(
+        `Cash payment can only be confirmed on a completed ride (current: ${ride.status})`,
+      );
+    }
+
+    if (ride.paymentStatus === PaymentStatus.PAID) {
+      throw new ForbiddenException('Payment is already marked as paid');
+    }
+
+    ride.paymentStatus = PaymentStatus.PAID;
+    const saved = await this.rideRepo.save(ride);
+
+    // Notify client
+    const clientUser = await this.getClientUser(ride.clientId);
+    if (clientUser) {
+      this.gatewayService.emitToUser(clientUser.id, 'payment_confirmed', {
+        rideId,
+        paymentMethod: 'cash',
+        paymentStatus: PaymentStatus.PAID,
+      });
+      await this.notificationsService.sendToToken(clientUser.fcmToken, {
+        title: 'Payment confirmed',
+        body: 'Cash payment received. Thank you for riding with us!',
+        data: { rideId, event: 'payment_confirmed' },
+      });
+    }
+
+    this.logger.log(`Ride ${rideId} — cash payment confirmed by driver ${driver.id}`);
+    return this.toDto(saved);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Private helpers
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -668,6 +711,7 @@ export class RidesService {
       cancelledAt: ride.cancelledAt,
       cancelledBy: ride.cancelledBy,
       cancelReason: ride.cancelReason,
+      paymentStatus: ride.paymentStatus,
     };
   }
 }

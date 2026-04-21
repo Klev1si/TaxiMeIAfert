@@ -148,6 +148,22 @@ export class RidesController {
     return this.ridesService.completeRide(req.user.id, rideId);
   }
 
+  // ── POST /rides/:id/pay-cash ───────────────────────────────────────────────
+  /**
+   * Driver confirms cash payment received after ride completion.
+   * Sets paymentStatus → paid and notifies the client.
+   * (Stripe / card payments will be added in a future step.)
+   */
+  @Post(':id/pay-cash')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.DRIVER)
+  confirmCashPayment(
+    @Request() req: { user: { id: string } },
+    @Param('id', ParseUUIDPipe) rideId: string,
+  ): Promise<RideResponseDto> {
+    return this.ridesService.confirmCashPayment(req.user.id, rideId);
+  }
+
   // ── POST /rides/:id/cancel ─────────────────────────────────────────────────
   /**
    * Cancel a ride.
