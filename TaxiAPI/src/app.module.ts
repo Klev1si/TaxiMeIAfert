@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
 import {
   User,
   Company,
@@ -31,25 +32,20 @@ import {
         username: config.get<string>('DB_USERNAME', 'taxiapp'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME', 'taxiapp_db'),
-        // Entities registered explicitly — no glob needed
         entities: [
-          User,
-          Company,
-          Driver,
-          Client,
-          SubscriptionPlan,
-          CompanySubscription,
-          Tariff,
-          Ride,
-          Expense,
+          User, Company, Driver, Client,
+          SubscriptionPlan, CompanySubscription,
+          Tariff, Ride, Expense,
         ],
-        // Never use synchronize in production — we use migrations
         synchronize: false,
         logging: config.get<string>('DB_LOGGING') === 'true',
         migrations: [__dirname + '/database/migrations/*.js'],
         migrationsRun: false,
       }),
     }),
+
+    // Feature modules
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
