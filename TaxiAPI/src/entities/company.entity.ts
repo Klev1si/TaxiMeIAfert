@@ -19,28 +19,28 @@ export class Company {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'user_id' })
+  @Column({ type: 'varchar', name: 'user_id' })
   userId: string;
 
-  @Column({ length: 150 })
+  @Column({ type: 'varchar', length: 150 })
   name: string;
 
-  @Column({ name: 'logo_url', nullable: true, length: 500 })
+  @Column({ type: 'varchar', name: 'logo_url', nullable: true, length: 500 })
   logoUrl: string | null;
 
-  @Column({ nullable: true, length: 300 })
+  @Column({ type: 'varchar', nullable: true, length: 300 })
   address: string | null;
 
-  @Column({ nullable: true, length: 100 })
+  @Column({ type: 'varchar', nullable: true, length: 100 })
   city: string | null;
 
   @Column({ name: 'is_approved', default: false })
   isApproved: boolean;
 
-  @Column({ name: 'approved_at', type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamptz', name: 'approved_at', nullable: true })
   approvedAt: Date | null;
 
-  @Column({ name: 'stripe_customer_id', nullable: true, length: 100 })
+  @Column({ type: 'varchar', name: 'stripe_customer_id', nullable: true, length: 100 })
   stripeCustomerId: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

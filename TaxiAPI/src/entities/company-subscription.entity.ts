@@ -16,25 +16,25 @@ export class CompanySubscription {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'company_id' })
+  @Column({ type: 'varchar', name: 'company_id' })
   companyId: string;
 
-  @Column({ name: 'plan_id' })
+  @Column({ type: 'varchar', name: 'plan_id' })
   planId: string;
 
-  @Column({ name: 'stripe_subscription_id', nullable: true, unique: true, length: 100 })
+  @Column({ type: 'varchar', name: 'stripe_subscription_id', nullable: true, unique: true, length: 100 })
   stripeSubscriptionId: string | null;
 
   @Column({ type: 'enum', enum: SubscriptionStatus, default: SubscriptionStatus.TRIALING })
   status: SubscriptionStatus;
 
-  @Column({ name: 'current_period_start', type: 'timestamptz' })
+  @Column({ type: 'timestamptz', name: 'current_period_start' })
   currentPeriodStart: Date;
 
-  @Column({ name: 'current_period_end', type: 'timestamptz' })
+  @Column({ type: 'timestamptz', name: 'current_period_end' })
   currentPeriodEnd: Date;
 
-  @Column({ name: 'cancelled_at', type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamptz', name: 'cancelled_at', nullable: true })
   cancelledAt: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

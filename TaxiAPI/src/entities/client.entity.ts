@@ -16,16 +16,16 @@ export class Client {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'user_id' })
+  @Column({ type: 'varchar', name: 'user_id' })
   userId: string;
 
-  @Column({ name: 'first_name', length: 80 })
+  @Column({ type: 'varchar', name: 'first_name', length: 80 })
   firstName: string;
 
-  @Column({ name: 'last_name', length: 80 })
+  @Column({ type: 'varchar', name: 'last_name', length: 80 })
   lastName: string;
 
-  @Column({ name: 'photo_url', nullable: true, length: 500 })
+  @Column({ type: 'varchar', name: 'photo_url', nullable: true, length: 500 })
   photoUrl: string | null;
 
   @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
@@ -34,7 +34,7 @@ export class Client {
   @Column({ name: 'total_rides', default: 0 })
   totalRides: number;
 
-  @Column({ name: 'stripe_customer_id', nullable: true, length: 100 })
+  @Column({ type: 'varchar', name: 'stripe_customer_id', nullable: true, length: 100 })
   stripeCustomerId: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

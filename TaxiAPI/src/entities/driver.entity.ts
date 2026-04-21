@@ -19,38 +19,38 @@ export class Driver {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'user_id' })
+  @Column({ type: 'varchar', name: 'user_id' })
   userId: string;
 
-  @Column({ name: 'company_id', nullable: true })
+  @Column({ type: 'varchar', name: 'company_id', nullable: true })
   companyId: string | null;
 
-  @Column({ name: 'first_name', length: 80 })
+  @Column({ type: 'varchar', name: 'first_name', length: 80 })
   firstName: string;
 
-  @Column({ name: 'last_name', length: 80 })
+  @Column({ type: 'varchar', name: 'last_name', length: 80 })
   lastName: string;
 
-  @Column({ name: 'photo_url', nullable: true, length: 500 })
+  @Column({ type: 'varchar', name: 'photo_url', nullable: true, length: 500 })
   photoUrl: string | null;
 
-  @Column({ name: 'license_number', length: 50 })
+  @Column({ type: 'varchar', name: 'license_number', length: 50 })
   licenseNumber: string;
 
   // Vehicle
-  @Column({ name: 'vehicle_make', length: 60 })
+  @Column({ type: 'varchar', name: 'vehicle_make', length: 60 })
   vehicleMake: string;
 
-  @Column({ name: 'vehicle_model', length: 60 })
+  @Column({ type: 'varchar', name: 'vehicle_model', length: 60 })
   vehicleModel: string;
 
-  @Column({ name: 'vehicle_year', type: 'smallint' })
+  @Column({ type: 'smallint', name: 'vehicle_year' })
   vehicleYear: number;
 
-  @Column({ name: 'vehicle_plate', length: 20 })
+  @Column({ type: 'varchar', name: 'vehicle_plate', length: 20 })
   vehiclePlate: string;
 
-  @Column({ name: 'vehicle_color', nullable: true, length: 40 })
+  @Column({ type: 'varchar', name: 'vehicle_color', nullable: true, length: 40 })
   vehicleColor: string | null;
 
   // Status
@@ -60,14 +60,14 @@ export class Driver {
   @Column({ name: 'is_online', default: false })
   isOnline: boolean;
 
-  // Live location (persisted — Redis handles real-time GEO queries)
-  @Column({ name: 'current_lat', type: 'decimal', precision: 9, scale: 6, nullable: true })
+  // Live location
+  @Column({ type: 'decimal', name: 'current_lat', precision: 9, scale: 6, nullable: true })
   currentLat: number | null;
 
-  @Column({ name: 'current_lng', type: 'decimal', precision: 9, scale: 6, nullable: true })
+  @Column({ type: 'decimal', name: 'current_lng', precision: 9, scale: 6, nullable: true })
   currentLng: number | null;
 
-  @Column({ name: 'last_location_at', type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamptz', name: 'last_location_at', nullable: true })
   lastLocationAt: Date | null;
 
   // Stats

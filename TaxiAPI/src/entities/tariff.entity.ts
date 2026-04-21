@@ -16,31 +16,31 @@ export class Tariff {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'company_id' })
+  @Column({ type: 'varchar', name: 'company_id' })
   companyId: string;
 
-  @Column({ length: 80 })
+  @Column({ type: 'varchar', length: 80 })
   name: string;
 
-  @Column({ name: 'base_fare', type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'decimal', name: 'base_fare', precision: 10, scale: 2 })
   baseFare: number;
 
-  @Column({ name: 'per_km_rate', type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'decimal', name: 'per_km_rate', precision: 10, scale: 2 })
   perKmRate: number;
 
-  @Column({ name: 'per_minute_rate', type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'decimal', name: 'per_minute_rate', precision: 10, scale: 2 })
   perMinuteRate: number;
 
-  @Column({ name: 'minimum_fare', type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'decimal', name: 'minimum_fare', precision: 10, scale: 2 })
   minimumFare: number;
 
   @Column({ name: 'is_night_tariff', default: false })
   isNightTariff: boolean;
 
-  @Column({ name: 'night_start_hour', type: 'smallint', nullable: true })
+  @Column({ type: 'smallint', name: 'night_start_hour', nullable: true })
   nightStartHour: number | null;
 
-  @Column({ name: 'night_end_hour', type: 'smallint', nullable: true })
+  @Column({ type: 'smallint', name: 'night_end_hour', nullable: true })
   nightEndHour: number | null;
 
   @Column({ name: 'is_active', default: true })

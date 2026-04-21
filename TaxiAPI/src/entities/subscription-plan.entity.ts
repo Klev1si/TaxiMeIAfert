@@ -13,19 +13,19 @@ export class SubscriptionPlan {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ length: 80 })
+  @Column({ type: 'varchar', length: 80 })
   name: string;
 
-  @Column({ name: 'price_monthly', type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'decimal', name: 'price_monthly', precision: 10, scale: 2 })
   priceMonthly: number;
 
-  @Column({ name: 'max_drivers' })
+  @Column({ type: 'int', name: 'max_drivers' })
   maxDrivers: number;
 
   @Column({ type: 'jsonb', default: '[]' })
   features: string[];
 
-  @Column({ name: 'stripe_price_id', nullable: true, length: 100 })
+  @Column({ type: 'varchar', name: 'stripe_price_id', nullable: true, length: 100 })
   stripePriceId: string | null;
 
   @Column({ name: 'is_active', default: true })

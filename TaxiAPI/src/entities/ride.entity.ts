@@ -17,109 +17,104 @@ export class Ride {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'client_id' })
+  @Column({ type: 'varchar', name: 'client_id' })
   clientId: string;
 
-  @Column({ name: 'driver_id', nullable: true })
+  @Column({ type: 'varchar', name: 'driver_id', nullable: true })
   driverId: string | null;
 
-  @Column({ name: 'company_id', nullable: true })
+  @Column({ type: 'varchar', name: 'company_id', nullable: true })
   companyId: string | null;
 
-  @Column({ name: 'tariff_id', nullable: true })
+  @Column({ type: 'varchar', name: 'tariff_id', nullable: true })
   tariffId: string | null;
 
   @Column({ type: 'enum', enum: RideStatus, default: RideStatus.REQUESTED })
   status: RideStatus;
 
   // Pickup
-  @Column({ name: 'pickup_lat', type: 'decimal', precision: 9, scale: 6 })
+  @Column({ type: 'decimal', name: 'pickup_lat', precision: 9, scale: 6 })
   pickupLat: number;
 
-  @Column({ name: 'pickup_lng', type: 'decimal', precision: 9, scale: 6 })
+  @Column({ type: 'decimal', name: 'pickup_lng', precision: 9, scale: 6 })
   pickupLng: number;
 
-  @Column({ name: 'pickup_address', nullable: true, length: 300 })
+  @Column({ type: 'varchar', name: 'pickup_address', nullable: true, length: 300 })
   pickupAddress: string | null;
 
   // Dropoff
-  @Column({ name: 'dropoff_lat', type: 'decimal', precision: 9, scale: 6, nullable: true })
+  @Column({ type: 'decimal', name: 'dropoff_lat', precision: 9, scale: 6, nullable: true })
   dropoffLat: number | null;
 
-  @Column({ name: 'dropoff_lng', type: 'decimal', precision: 9, scale: 6, nullable: true })
+  @Column({ type: 'decimal', name: 'dropoff_lng', precision: 9, scale: 6, nullable: true })
   dropoffLng: number | null;
 
-  @Column({ name: 'dropoff_address', nullable: true, length: 300 })
+  @Column({ type: 'varchar', name: 'dropoff_address', nullable: true, length: 300 })
   dropoffAddress: string | null;
 
   // Fare breakdown
-  @Column({ name: 'distance_km', type: 'decimal', precision: 8, scale: 3, nullable: true })
+  @Column({ type: 'decimal', name: 'distance_km', precision: 8, scale: 3, nullable: true })
   distanceKm: number | null;
 
-  @Column({ name: 'duration_minutes', type: 'decimal', precision: 8, scale: 2, nullable: true })
+  @Column({ type: 'decimal', name: 'duration_minutes', precision: 8, scale: 2, nullable: true })
   durationMinutes: number | null;
 
-  @Column({ name: 'base_fare', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({ type: 'decimal', name: 'base_fare', precision: 10, scale: 2, nullable: true })
   baseFare: number | null;
 
-  @Column({ name: 'distance_fare', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({ type: 'decimal', name: 'distance_fare', precision: 10, scale: 2, nullable: true })
   distanceFare: number | null;
 
-  @Column({ name: 'time_fare', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({ type: 'decimal', name: 'time_fare', precision: 10, scale: 2, nullable: true })
   timeFare: number | null;
 
-  @Column({ name: 'total_fare', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({ type: 'decimal', name: 'total_fare', precision: 10, scale: 2, nullable: true })
   totalFare: number | null;
 
   // Payment
-  @Column({
-    name: 'payment_status',
-    type: 'enum',
-    enum: PaymentStatus,
-    default: PaymentStatus.PENDING,
-  })
+  @Column({ type: 'enum', enum: PaymentStatus, name: 'payment_status', default: PaymentStatus.PENDING })
   paymentStatus: PaymentStatus;
 
-  @Column({ name: 'stripe_payment_intent_id', nullable: true, length: 100 })
+  @Column({ type: 'varchar', name: 'stripe_payment_intent_id', nullable: true, length: 100 })
   stripePaymentIntentId: string | null;
 
   // Ratings
-  @Column({ name: 'client_rating', type: 'smallint', nullable: true })
+  @Column({ type: 'smallint', name: 'client_rating', nullable: true })
   clientRating: number | null;
 
-  @Column({ name: 'driver_rating', type: 'smallint', nullable: true })
+  @Column({ type: 'smallint', name: 'driver_rating', nullable: true })
   driverRating: number | null;
 
-  @Column({ name: 'client_review', nullable: true, length: 500 })
+  @Column({ type: 'varchar', name: 'client_review', nullable: true, length: 500 })
   clientReview: string | null;
 
-  @Column({ name: 'driver_review', nullable: true, length: 500 })
+  @Column({ type: 'varchar', name: 'driver_review', nullable: true, length: 500 })
   driverReview: string | null;
 
   // Cancellation
-  @Column({ name: 'cancel_reason', nullable: true, length: 300 })
+  @Column({ type: 'varchar', name: 'cancel_reason', nullable: true, length: 300 })
   cancelReason: string | null;
 
-  @Column({ name: 'cancelled_by', type: 'enum', enum: UserRole, nullable: true })
+  @Column({ type: 'enum', enum: UserRole, name: 'cancelled_by', nullable: true })
   cancelledBy: UserRole | null;
 
   // Timestamps
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @Column({ name: 'accepted_at', type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamptz', name: 'accepted_at', nullable: true })
   acceptedAt: Date | null;
 
-  @Column({ name: 'pickup_arrived_at', type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamptz', name: 'pickup_arrived_at', nullable: true })
   pickupArrivedAt: Date | null;
 
-  @Column({ name: 'started_at', type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamptz', name: 'started_at', nullable: true })
   startedAt: Date | null;
 
-  @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamptz', name: 'completed_at', nullable: true })
   completedAt: Date | null;
 
-  @Column({ name: 'cancelled_at', type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamptz', name: 'cancelled_at', nullable: true })
   cancelledAt: Date | null;
 
   // Relations

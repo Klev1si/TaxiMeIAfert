@@ -16,13 +16,13 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true, length: 20 })
+  @Column({ type: 'varchar', unique: true, length: 20 })
   phone: string;
 
-  @Column({ unique: true, nullable: true, length: 255 })
+  @Column({ type: 'varchar', unique: true, nullable: true, length: 255 })
   email: string | null;
 
-  @Column({ name: 'password_hash', length: 255 })
+  @Column({ type: 'varchar', name: 'password_hash', length: 255 })
   passwordHash: string;
 
   @Column({ type: 'enum', enum: UserRole })
@@ -34,10 +34,10 @@ export class User {
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 
-  @Column({ name: 'refresh_token', nullable: true, length: 500 })
+  @Column({ type: 'varchar', name: 'refresh_token', nullable: true, length: 500 })
   refreshToken: string | null;
 
-  @Column({ name: 'fcm_token', nullable: true, length: 500 })
+  @Column({ type: 'varchar', name: 'fcm_token', nullable: true, length: 500 })
   fcmToken: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
