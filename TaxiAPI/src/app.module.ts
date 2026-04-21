@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
 import { PhoneVerificationModule } from './phone-verification/phone-verification.module';
 import { RegistrationModule } from './registration/registration.module';
+import { GatewayModule } from './gateway/gateway.module';
 import {
   User,
   Company,
@@ -52,6 +53,7 @@ import {
     AuthModule,
     PhoneVerificationModule,
     RegistrationModule,
+    GatewayModule,
   ],
   controllers: [AppController],
   providers: [AppService],

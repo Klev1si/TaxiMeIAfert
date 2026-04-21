@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -13,6 +14,9 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  // Socket.io adapter
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   // CORS — allow dashboard and mobile dev servers
   app.enableCors({
