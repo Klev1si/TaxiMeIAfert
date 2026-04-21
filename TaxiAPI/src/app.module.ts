@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { RedisModule } from './redis/redis.module';
+import { PhoneVerificationModule } from './phone-verification/phone-verification.module';
 import {
   User,
   Company,
@@ -45,7 +47,9 @@ import {
     }),
 
     // Feature modules
+    RedisModule,
     AuthModule,
+    PhoneVerificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
