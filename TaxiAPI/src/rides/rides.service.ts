@@ -18,6 +18,7 @@ import { NearestDriverDto } from './dto/nearest-driver.dto.js';
 import { RequestRideDto } from './dto/request-ride.dto.js';
 import { RideResponseDto } from './dto/ride-response.dto.js';
 import { CancelRideDto } from './dto/cancel-ride.dto.js';
+import { RateRideDto } from './dto/rate-ride.dto.js';
 
 /** Seconds a driver has to respond before their pending slot expires */
 const PENDING_TTL_SECONDS = 60;
@@ -567,6 +568,120 @@ export class RidesService {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Step 22: POST /rides/:id/rate  (CLIENT or DRIVER)
+  // ─────────────────────────────────────────────────────────────────────────────
+  async rateRide(
+    userId: string,
+    userRole: UserRole,
+    rideId: string,
+    dto: RateRideDto,
+  ): Promise<RideResponseDto> {
+    const ride = await this.rideRepo.findOne({ where: { id: rideId } });
+    if (!ride) throw new NotFoundException('Ride not found');
+
+    if (ride.status !== RideStatus.COMPLETED) {
+      throw new ForbiddenException('Ratings can only be submitted for completed rides');
+    }
+
+    if (userRole === UserRole.CLIENT) {
+      // Resolve client
+      const client = await this.clientRepo.findOne({ where: { userId } });
+      if (!client) throw new NotFoundException('Client profile not found');
+      if (ride.clientId !== client.id) {
+        throw new ForbiddenException('This is not your ride');
+      }
+      if (ride.clientRating !== null) {
+        throw new ForbiddenException('You have already rated this ride');
+      }
+
+      // Persist rating on ride
+      ride.clientRating = dto.rating;
+      ride.clientReview = dto.review ?? null;
+      await this.rideRepo.save(ride);
+
+      // Recalculate driver's average rating from all rated rides
+      if (ride.driverId) {
+        const avgRow = await this.rideRepo
+          .createQueryBuilder('r')
+          .select('AVG(r.client_rating)', 'avg')
+          .where('r.driver_id = :driverId AND r.client_rating IS NOT NULL', {
+            driverId: ride.driverId,
+          })
+          .getRawOne<{ avg: string | null }>();
+        const avg = avgRow?.avg ?? null;
+        const avgNum = avg !== null ? Math.round(parseFloat(avg) * 100) / 100 : null;
+        if (avgNum !== null) {
+          await this.driverRepo.update({ id: ride.driverId }, { rating: avgNum });
+        }
+
+        // Notify the driver
+        const driver = await this.driverRepo.findOne({
+          where: { id: ride.driverId },
+          select: ['userId'],
+        });
+        if (driver) {
+          this.gatewayService.emitToUser(driver.userId, 'ride_rated', {
+            rideId,
+            ratedBy: 'client',
+            rating: dto.rating,
+            newAvgRating: avgNum,
+          });
+        }
+      }
+    } else if (userRole === UserRole.DRIVER) {
+      // Resolve driver
+      const driver = await this.driverRepo.findOne({ where: { userId } });
+      if (!driver) throw new NotFoundException('Driver profile not found');
+      if (ride.driverId !== driver.id) {
+        throw new ForbiddenException('You are not the driver for this ride');
+      }
+      if (ride.driverRating !== null) {
+        throw new ForbiddenException('You have already rated this ride');
+      }
+
+      // Persist rating on ride
+      ride.driverRating = dto.rating;
+      ride.driverReview = dto.review ?? null;
+      await this.rideRepo.save(ride);
+
+      // Recalculate client's average rating
+      const clientAvgRow = await this.rideRepo
+        .createQueryBuilder('r')
+        .select('AVG(r.driver_rating)', 'avg')
+        .where('r.client_id = :clientId AND r.driver_rating IS NOT NULL', {
+          clientId: ride.clientId,
+        })
+        .getRawOne<{ avg: string | null }>();
+      const clientAvg = clientAvgRow?.avg ?? null;
+      const clientAvgNum =
+        clientAvg !== null ? Math.round(parseFloat(clientAvg) * 100) / 100 : null;
+      if (clientAvgNum !== null) {
+        await this.clientRepo.update({ id: ride.clientId }, { rating: clientAvgNum });
+      }
+
+      // Notify the client
+      const clientUser = await this.getClientUser(ride.clientId);
+      if (clientUser) {
+        this.gatewayService.emitToUser(clientUser.id, 'ride_rated', {
+          rideId,
+          ratedBy: 'driver',
+          rating: dto.rating,
+        });
+      }
+    } else {
+      throw new ForbiddenException('Only clients and drivers can submit ratings');
+    }
+
+    this.logger.log(
+      `Ride ${rideId} rated ${dto.rating}★ by ${userRole} (userId: ${userId})`,
+    );
+
+    // Re-fetch to return the latest state
+    const updated = await this.rideRepo.findOne({ where: { id: rideId } });
+    return this.toDto(updated!);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Private helpers
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -712,6 +827,10 @@ export class RidesService {
       cancelledBy: ride.cancelledBy,
       cancelReason: ride.cancelReason,
       paymentStatus: ride.paymentStatus,
+      clientRating: ride.clientRating,
+      clientReview: ride.clientReview,
+      driverRating: ride.driverRating,
+      driverReview: ride.driverReview,
     };
   }
 }

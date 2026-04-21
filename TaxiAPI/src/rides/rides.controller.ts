@@ -17,6 +17,7 @@ import { NearestDriverDto } from './dto/nearest-driver.dto.js';
 import { RequestRideDto } from './dto/request-ride.dto.js';
 import { RideResponseDto } from './dto/ride-response.dto.js';
 import { CancelRideDto } from './dto/cancel-ride.dto.js';
+import { RateRideDto } from './dto/rate-ride.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
@@ -182,5 +183,24 @@ export class RidesController {
     @Body() dto: CancelRideDto,
   ): Promise<RideResponseDto> {
     return this.ridesService.cancelRide(req.user.id, req.user.role, rideId, dto);
+  }
+
+  // ── POST /rides/:id/rate ───────────────────────────────────────────────────
+  /**
+   * Submit a star rating (1–5) with optional review for a completed ride.
+   *
+   * Client rates the driver  → updates driver.rating average.
+   * Driver rates the client  → updates client.rating average.
+   * Each side may rate only once per ride.
+   */
+  @Post(':id/rate')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.CLIENT, UserRole.DRIVER)
+  rateRide(
+    @Request() req: { user: { id: string; role: UserRole } },
+    @Param('id', ParseUUIDPipe) rideId: string,
+    @Body() dto: RateRideDto,
+  ): Promise<RideResponseDto> {
+    return this.ridesService.rateRide(req.user.id, req.user.role, rideId, dto);
   }
 }
