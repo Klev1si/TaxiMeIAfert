@@ -9,6 +9,7 @@ import { PhoneVerificationModule } from './phone-verification/phone-verification
 import { RegistrationModule } from './registration/registration.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { GpsModule } from './gps/gps.module';
+import { RidesModule } from './rides/rides.module';
 import {
   User,
   Company,
@@ -56,6 +57,7 @@ import {
     RegistrationModule,
     GatewayModule,
     GpsModule,
+    RidesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -81,6 +81,44 @@ export class GpsService {
     };
   }
 
+  // ── GEOSEARCH — find online drivers within radius ─────────────────────────
+  async findNearestDrivers(
+    lat: number,
+    lng: number,
+    radiusKm: number,
+    limit: number,
+  ): Promise<Array<{ driverId: string; distanceKm: number; lat: number; lng: number }>> {
+    /**
+     * GEOSEARCH drivers:geo FROMLONLAT <lng> <lat>
+     *   BYRADIUS <radius> km ASC COUNT <limit>
+     *   WITHDIST WITHCOORD
+     *
+     * Returns: [ [member, distStr, [lngStr, latStr]], ... ]
+     */
+    const raw = (await this.redis.call(
+      'GEOSEARCH',
+      DRIVERS_GEO_KEY,
+      'FROMLONLAT',
+      String(lng),
+      String(lat),
+      'BYRADIUS',
+      String(radiusKm),
+      'km',
+      'ASC',
+      'COUNT',
+      String(limit),
+      'WITHDIST',
+      'WITHCOORD',
+    )) as Array<[string, string, [string, string]]>;
+
+    return raw.map(([driverId, distStr, [dLngStr, dLatStr]]) => ({
+      driverId,
+      distanceKm: parseFloat(parseFloat(distStr).toFixed(3)),
+      lat: parseFloat(dLatStr),
+      lng: parseFloat(dLngStr),
+    }));
+  }
+
   // ── Lookup driver record for a user (used during socket connect) ──────────
   async getDriverByUserId(
     userId: string,
