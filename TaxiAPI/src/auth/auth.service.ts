@@ -58,8 +58,8 @@ export class AuthService {
     return bcrypt.hash(password, this.BCRYPT_ROUNDS);
   }
 
-  // ── Private helpers ────────────────────────────────────────────────────────
-  private async issueTokens(user: User): Promise<AuthTokensDto> {
+  // ── Token generation — also called by RegistrationService ─────────────────
+  async issueTokens(user: User): Promise<AuthTokensDto> {
     const payload: JwtPayload = {
       sub: user.id,
       phone: user.phone,

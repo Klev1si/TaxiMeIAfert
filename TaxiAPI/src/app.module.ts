@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
 import { PhoneVerificationModule } from './phone-verification/phone-verification.module';
+import { RegistrationModule } from './registration/registration.module';
 import {
   User,
   Company,
@@ -50,6 +51,7 @@ import {
     RedisModule,
     AuthModule,
     PhoneVerificationModule,
+    RegistrationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
