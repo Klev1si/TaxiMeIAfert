@@ -166,6 +166,16 @@ export class EventsGateway
     @MessageBody() body: { lat: number; lng: number },
     @ConnectedSocket() client: AuthenticatedSocket,
   ): Promise<void> {
+    // Guard against the race condition where gps_update arrives before
+    // handleConnection's async DB lookup has finished populating driverId.
+    if (!client.data.driverId) {
+      const rec = await this.gpsService.getDriverByUserId(client.data.userId);
+      if (rec) {
+        client.data.driverId = rec.id;
+        client.data.companyId = rec.companyId;
+      }
+    }
+
     const { driverId, companyId } = client.data;
 
     if (!driverId) {
