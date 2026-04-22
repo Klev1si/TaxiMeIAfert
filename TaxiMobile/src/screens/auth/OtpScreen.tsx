@@ -67,11 +67,8 @@ export default function OtpScreen({ navigation, route }: Props) {
     }
     setLoading(true);
     try {
-      const { data } = await authApi.verifyOtp(phone, code);
-      if (!data.verified) {
-        Alert.alert('Invalid code', 'The code you entered is incorrect. Please try again.');
-        return;
-      }
+      // Backend returns 204 No Content on success; throws on wrong code
+      await authApi.verifyOtp(phone, code);
       if (mode === 'register') {
         if (role === 'driver') {
           navigation.navigate('RegisterDriver', { phone });

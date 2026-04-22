@@ -28,13 +28,13 @@ export interface RegisterDriverPayload {
 }
 
 export const authApi = {
-  /** Send OTP to phone number */
+  /** Send OTP to phone number — returns 204 No Content */
   sendOtp: (phone: string) =>
-    apiClient.post<{ message: string }>('/auth/send-otp', { phone }),
+    apiClient.post<void>('/auth/send-otp', { phone }),
 
-  /** Verify OTP — returns verified=true */
+  /** Verify OTP — returns 204 No Content on success, throws on failure */
   verifyOtp: (phone: string, code: string) =>
-    apiClient.post<{ verified: boolean }>('/auth/verify-otp', { phone, code }),
+    apiClient.post<void>('/auth/verify-otp', { phone, code }),
 
   /** Login with phone + password */
   login: (payload: LoginPayload) =>
