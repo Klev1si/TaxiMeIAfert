@@ -66,11 +66,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       const { data } = await authApi.login({ phone, password });
-      const { accessToken, refreshToken, user: rawUser } = data;
+      const { accessToken, refreshToken } = data;
+      // Backend returns tokens only — decode user info from the JWT payload
+      const payload = parseJwtPayload(accessToken);
+      if (!payload) {
+        throw new Error('Invalid token received from server');
+      }
       const user: AuthUser = {
-        id: rawUser.id,
-        phone: rawUser.phone,
-        role: rawUser.role as AuthUser['role'],
+        id: payload.sub,
+        phone: payload.phone,
+        role: payload.role as AuthUser['role'],
       };
       await get().setTokens(accessToken, refreshToken);
       set({ user });

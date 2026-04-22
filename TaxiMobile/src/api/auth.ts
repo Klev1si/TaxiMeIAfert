@@ -36,12 +36,9 @@ export const authApi = {
   verifyOtp: (phone: string, code: string) =>
     apiClient.post<void>('/auth/verify-otp', { phone, code }),
 
-  /** Login with phone + password */
+  /** Login with phone + password — returns tokens only (user decoded from JWT) */
   login: (payload: LoginPayload) =>
-    apiClient.post<AuthTokens & { user: { id: string; phone: string; role: string } }>(
-      '/auth/login',
-      payload,
-    ),
+    apiClient.post<AuthTokens & { expiresIn: number }>('/auth/login', payload),
 
   /** Register a new client account */
   registerClient: (payload: RegisterClientPayload) =>
