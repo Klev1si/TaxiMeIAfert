@@ -22,6 +22,8 @@ export const Sizes = {
   fontXxl: 28,
   fontDisplay: 36,
 
+  screenPadding: 20,
+
   // Components
   buttonHeight: 52,
   inputHeight: 52,

@@ -45,7 +45,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // Decode the JWT payload to restore user info
         const payload = parseJwtPayload(accessToken);
         const user: AuthUser | null = payload
-          ? { id: payload.sub, phone: payload.phone, role: payload.role }
+          ? { id: payload.sub, phone: payload.phone, role: payload.role as AuthUser['role'] }
           : null;
 
         set({ accessToken, refreshToken, user });
@@ -104,6 +104,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 }));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+// React Native 0.71+ exposes atob globally — declare for TypeScript
+declare function atob(input: string): string;
+
 function parseJwtPayload(
   token: string,
 ): { sub: string; phone: string; role: string } | null {
@@ -112,7 +115,7 @@ function parseJwtPayload(
     const json = decodeURIComponent(
       atob(base64)
         .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .map((c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
         .join(''),
     );
     return JSON.parse(json);
