@@ -211,6 +211,25 @@ export class EventsGateway
     }
   }
 
+  /**
+   * driver_offline — driver signals they are no longer accepting rides.
+   * Removes them from the Redis geo index without disconnecting the socket.
+   */
+  @UseGuards(WsAuthGuard)
+  @Roles(UserRole.DRIVER)
+  @SubscribeMessage('driver_offline')
+  async handleDriverOffline(
+    @ConnectedSocket() client: AuthenticatedSocket,
+  ): Promise<void> {
+    const { driverId } = client.data;
+    if (driverId) {
+      await this.gpsService.removeFromGeo(driverId);
+      await client.leave('drivers:online');
+      this.logger.log(`Driver ${driverId} went offline (manual)`);
+    }
+    client.emit('offline_ack');
+  }
+
   // ── Private helpers ────────────────────────────────────────────────────────
 
   private extractAndVerifyToken(client: Socket): JwtPayload {
