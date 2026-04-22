@@ -66,6 +66,11 @@ class SocketService {
   sendGpsUpdate(lat: number, lng: number): void {
     this.emit('gps_update', { lat, lng });
   }
+
+  /** Signal the server that driver is going offline (removes from geo index) */
+  goOffline(): void {
+    this.emit('driver_offline');
+  }
 }
 
 // Export a single app-wide instance
