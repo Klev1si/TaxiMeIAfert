@@ -804,6 +804,37 @@ export class RidesService {
     return { driver, ride };
   }
 
+  // ── GET /rides/history ────────────────────────────────────────────────────────
+  async getRideHistory(
+    userId: string,
+    role: UserRole,
+    page: number,
+    limit: number,
+  ): Promise<RideResponseDto[]> {
+    let clientId: string | undefined;
+    let driverId: string | undefined;
+
+    if (role === UserRole.CLIENT) {
+      const client = await this.clientRepo.findOne({ where: { userId }, select: ['id'] });
+      if (!client) return [];
+      clientId = client.id;
+    } else {
+      const driver = await this.driverRepo.findOne({ where: { userId }, select: ['id'] });
+      if (!driver) return [];
+      driverId = driver.id;
+    }
+
+    const where = clientId ? { clientId } : { driverId };
+    const rides = await this.rideRepo.find({
+      where,
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return rides.map((r) => this.toDto(r));
+  }
+
   /** Map a Ride entity to the public DTO */
   private toDto(ride: Ride): RideResponseDto {
     return {

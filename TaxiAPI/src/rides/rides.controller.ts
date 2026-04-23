@@ -42,6 +42,23 @@ export class RidesController {
     );
   }
 
+  // ── GET /rides/history ────────────────────────────────────────────────────
+  /**
+   * Returns paginated ride history for the authenticated user.
+   * Clients see rides where they are the client.
+   * Drivers see rides where they are the driver.
+   */
+  @Get('history')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.CLIENT, UserRole.DRIVER)
+  getRideHistory(
+    @Request() req: { user: { id: string; role: UserRole } },
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+  ): Promise<RideResponseDto[]> {
+    return this.ridesService.getRideHistory(req.user.id, req.user.role, +page, +limit);
+  }
+
   // ── POST /rides/request ────────────────────────────────────────────────────
   /**
    * Client submits a ride request.
