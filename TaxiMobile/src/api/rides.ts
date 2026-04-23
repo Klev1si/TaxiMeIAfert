@@ -27,6 +27,10 @@ export const ridesApi = {
       params: { lat, lng, radius, limit },
     }),
 
+  /** GET /rides/history — paginated ride history for the current user */
+  getRideHistory: (page = 1, limit = 20) =>
+    apiClient.get<Ride[]>('/rides/history', { params: { page, limit } }),
+
   /** POST /rides/request */
   requestRide: (payload: RequestRidePayload) =>
     apiClient.post<Ride>('/rides/request', payload),

@@ -52,6 +52,18 @@ export const authApi = {
   refresh: (refreshToken: string) =>
     apiClient.post<AuthTokens>('/auth/refresh', { refreshToken }),
 
+  /** GET /auth/me — full profile for the current user */
+  getMe: () =>
+    apiClient.get<{
+      id: string; phone: string; role: string;
+      firstName: string | null; lastName: string | null; rating: number | null;
+      // driver-only
+      isApproved?: boolean; licenseNumber?: string | null;
+      vehicleMake?: string | null; vehicleModel?: string | null;
+      vehiclePlate?: string | null; vehicleColor?: string | null;
+      vehicleYear?: number | null;
+    }>('/auth/me'),
+
   /** Logout — invalidates refresh token on server */
   logout: () => apiClient.post('/auth/logout'),
 };
