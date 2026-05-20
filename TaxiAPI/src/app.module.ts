@@ -61,8 +61,10 @@ import {
         DB_USERNAME:           Joi.string().required(),
         DB_PASSWORD:           Joi.string().required(),
         DB_NAME:               Joi.string().required(),
-        // Redis
-        REDIS_HOST:            Joi.string().required(),
+        // Redis — Railway plugin exposes REDIS_URL; individual vars are fallback
+        REDIS_URL:             Joi.string().optional().allow(''),
+        REDIS_PRIVATE_URL:     Joi.string().optional().allow(''),
+        REDIS_HOST:            Joi.string().optional().allow(''),
         REDIS_PORT:            Joi.number().default(6379),
         REDIS_PASSWORD:        Joi.string().optional().allow(''),
         // JWT — secrets must be at least 32 chars to prevent weak-secret attacks
@@ -70,6 +72,10 @@ import {
         JWT_EXPIRES_IN:        Joi.string().default('15m'),
         JWT_REFRESH_SECRET:    Joi.string().min(32).required(),
         JWT_REFRESH_EXPIRES_IN:Joi.string().default('30d'),
+        // Database flags — Joi.boolean() coerces the string "true"/"false" to a
+        // real boolean, so config.get<boolean>() returns the right type.
+        DB_SYNCHRONIZE:        Joi.boolean().default(false),
+        DB_LOGGING:            Joi.boolean().default(false),
         // CORS
         CORS_ORIGIN:           Joi.string().required(),
       }),
@@ -130,8 +136,9 @@ import {
           RideStop,
           DriverSubscription,
         ],
-        synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
-        logging: config.get<string>('DB_LOGGING') === 'true',
+        // Joi.boolean() has already coerced the env string to a real boolean
+        synchronize: config.get<boolean>('DB_SYNCHRONIZE', false),
+        logging:     config.get<boolean>('DB_LOGGING', false),
         migrations: [__dirname + '/database/migrations/*.js'],
         migrationsRun: false,
       }),
