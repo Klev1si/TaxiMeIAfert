@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi } from '../api/auth';
 import { socketService } from '../services/socket';
-import { STORAGE_KEYS } from '../api/client';
+import { crash } from '../services/crashlytics';
+import { track } from '../services/analytics';
+import { tokenStorage } from '../utils/tokenStorage';
 import type { AuthUser } from '../types/api';
 
 interface AuthState {
@@ -12,7 +13,7 @@ interface AuthState {
   isLoading: boolean;
   isInitialized: boolean;
 
-  /** Rehydrate tokens + user from AsyncStorage on app start */
+  /** Rehydrate tokens + user from secure Keychain storage on app start */
   initialize: () => Promise<void>;
 
   /** Login with phone + password */
@@ -34,12 +35,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      const [access, refresh] = await AsyncStorage.multiGet([
-        STORAGE_KEYS.ACCESS_TOKEN,
-        STORAGE_KEYS.REFRESH_TOKEN,
-      ]);
-      const accessToken = access[1];
-      const refreshToken = refresh[1];
+      const stored = await tokenStorage.getAll();
+      const accessToken  = stored?.accessToken  ?? null;
+      const refreshToken = stored?.refreshToken ?? null;
 
       if (accessToken && refreshToken) {
         // Decode the JWT payload to restore user info
@@ -49,8 +47,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           : null;
 
         set({ accessToken, refreshToken, user });
+        if (user) { crash.setUser(user.id); crash.setAttribute('role', user.role); }
 
-        // Connect socket if we have a valid token
+        // Connect the WebSocket — FCM is set up by RootNavigator.setupFcm()
         if (accessToken) {
           socketService.connect(accessToken);
         }
@@ -79,31 +78,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       };
       await get().setTokens(accessToken, refreshToken);
       set({ user });
+      crash.setUser(user.id);
+      crash.setAttribute('role', user.role);
+      track.login(user.role);
       socketService.connect(accessToken);
+      // FCM token registration is handled by RootNavigator.setupFcm()
     } finally {
       set({ isLoading: false });
     }
   },
 
   logout: async () => {
+    // FCM token is cleared by RootNavigator when user becomes null
     try {
       await authApi.logout();
     } catch {
       // Best-effort; continue even if server call fails
     }
+    crash.setUser(null);
+    track.logout();
     socketService.disconnect();
-    await AsyncStorage.multiRemove([
-      STORAGE_KEYS.ACCESS_TOKEN,
-      STORAGE_KEYS.REFRESH_TOKEN,
-    ]);
+    await tokenStorage.clear();
     set({ user: null, accessToken: null, refreshToken: null });
   },
 
   setTokens: async (access, refresh) => {
-    await AsyncStorage.multiSet([
-      [STORAGE_KEYS.ACCESS_TOKEN, access],
-      [STORAGE_KEYS.REFRESH_TOKEN, refresh],
-    ]);
+    await tokenStorage.set(access, refresh);
     set({ accessToken: access, refreshToken: refresh });
   },
 }));

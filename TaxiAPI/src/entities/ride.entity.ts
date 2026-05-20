@@ -6,7 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { RideStatus, PaymentStatus, UserRole } from '../common/enums';
+import { RideStatus, PaymentStatus, UserRole, VehicleType } from '../common/enums';
 import { Client } from './client.entity';
 import { Driver } from './driver.entity';
 import { Company } from './company.entity';
@@ -28,6 +28,17 @@ export class Ride {
 
   @Column({ type: 'varchar', name: 'tariff_id', nullable: true })
   tariffId: string | null;
+
+  /** Vehicle type requested by the client (economy / comfort / XL).
+   *  Null = any available driver accepted. */
+  @Column({
+    type: 'enum',
+    enum: VehicleType,
+    name: 'vehicle_type',
+    nullable: true,
+    default: null,
+  })
+  vehicleType: VehicleType | null;
 
   @Column({ type: 'enum', enum: RideStatus, default: RideStatus.REQUESTED })
   status: RideStatus;
@@ -53,8 +64,13 @@ export class Ride {
   dropoffAddress: string | null;
 
   // Fare breakdown
+  /** Straight-line or driver-supplied distance used for fare. */
   @Column({ type: 'decimal', name: 'distance_km', precision: 8, scale: 3, nullable: true })
   distanceKm: number | null;
+
+  /** Actual odometer distance computed from GPS waypoints recorded during the ride. */
+  @Column({ type: 'decimal', name: 'actual_distance_km', precision: 8, scale: 3, nullable: true })
+  actualDistanceKm: number | null;
 
   @Column({ type: 'decimal', name: 'duration_minutes', precision: 8, scale: 2, nullable: true })
   durationMinutes: number | null;
@@ -91,12 +107,38 @@ export class Ride {
   @Column({ type: 'varchar', name: 'driver_review', nullable: true, length: 500 })
   driverReview: string | null;
 
+  // Promo code
+  @Column({ type: 'varchar', name: 'promo_code', nullable: true, length: 50 })
+  promoCode: string | null;
+
+  /** Discount amount actually applied (deducted from fare). */
+  @Column({ type: 'decimal', name: 'discount_amount', precision: 10, scale: 2, nullable: true })
+  discountAmount: number | null;
+
   // Cancellation
   @Column({ type: 'varchar', name: 'cancel_reason', nullable: true, length: 300 })
   cancelReason: string | null;
 
+  /** Fee charged to the client when they cancel after the grace period. Null = free. */
+  @Column({ type: 'decimal', name: 'cancellation_fee', precision: 10, scale: 2, nullable: true })
+  cancellationFee: number | null;
+
+  /**
+   * Which role reported a no-show.
+   * DRIVER → passenger didn't show up at pickup (client is charged a fee).
+   * CLIENT → driver never arrived within the wait window (no fee to client).
+   * Null  → not a no-show event.
+   */
+  @Column({ type: 'enum', enum: UserRole, name: 'no_show_reported_by', nullable: true })
+  noShowReportedBy: UserRole | null;
+
   @Column({ type: 'enum', enum: UserRole, name: 'cancelled_by', nullable: true })
   cancelledBy: UserRole | null;
+
+  // Scheduled booking
+  /** Null = immediate ride. Future timestamp = scheduled; dispatched by the scheduler. */
+  @Column({ type: 'timestamptz', name: 'scheduled_at', nullable: true })
+  scheduledAt: Date | null;
 
   // Timestamps
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

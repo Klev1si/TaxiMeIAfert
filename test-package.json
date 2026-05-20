@@ -1,0 +1,9 @@
+{
+  "name": "taxi-test-scripts",
+  "version": "1.0.0",
+  "description": "Dev-only simulation scripts",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "socket.io-client": "^4.7.0"
+  }
+}

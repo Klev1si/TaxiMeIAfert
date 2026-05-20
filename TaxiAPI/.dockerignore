@@ -1,0 +1,40 @@
+# Compiled output (rebuilt inside Docker)
+dist/
+build/
+
+# Dependencies (reinstalled inside Docker)
+node_modules/
+
+# Local dev files
+.env
+.env.local
+.env.*.local
+
+# Uploads (mounted as a volume in production)
+uploads/
+
+# Test files
+**/*.spec.ts
+**/*.e2e-spec.ts
+coverage/
+
+# Git
+.git/
+.gitignore
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db

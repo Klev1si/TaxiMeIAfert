@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { VehicleType } from '../common/enums';
 import { Company } from './company.entity';
 import { Ride } from './ride.entity';
 
@@ -16,8 +17,9 @@ export class Tariff {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', name: 'company_id' })
-  companyId: string;
+  /** NULL = platform-wide global tariff (used by individual/solo drivers) */
+  @Column({ type: 'varchar', name: 'company_id', nullable: true, default: null })
+  companyId: string | null;
 
   @Column({ type: 'varchar', length: 80 })
   name: string;
@@ -42,6 +44,32 @@ export class Tariff {
 
   @Column({ type: 'smallint', name: 'night_end_hour', nullable: true })
   nightEndHour: number | null;
+
+  /**
+   * Surge multiplier applied on top of the standard fare (e.g. 1.5 = +50%).
+   * Set to 1.00 (no surge) by default. Admins raise it during peak hours.
+   */
+  @Column({
+    type: 'decimal',
+    name: 'surge_multiplier',
+    precision: 4,
+    scale: 2,
+    default: 1.00,
+  })
+  surgeMultiplier: number;
+
+  /**
+   * Vehicle type this tariff applies to.
+   * NULL = applies to all vehicle types (generic fallback).
+   */
+  @Column({
+    type: 'enum',
+    enum: VehicleType,
+    name: 'vehicle_type',
+    nullable: true,
+    default: null,
+  })
+  vehicleType: VehicleType | null;
 
   @Column({ name: 'is_active', default: true })
   isActive: boolean;

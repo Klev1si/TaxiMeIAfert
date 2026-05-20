@@ -1,5 +1,5 @@
 // ── Auth ─────────────────────────────────────────────────────────────────────
-export type UserRole = 'client' | 'driver' | 'company' | 'admin';
+export type UserRole = 'client' | 'driver' | 'company' | 'super_admin';
 
 export interface AuthTokens {
   accessToken: string;
@@ -10,6 +10,16 @@ export interface AuthUser {
   id: string;
   phone: string;
   role: UserRole;
+}
+
+// ── Ride Stops ────────────────────────────────────────────────────────────────
+export interface RideStop {
+  id: string;
+  sortOrder: number;
+  lat: number;
+  lng: number;
+  address: string | null;
+  reachedAt: string | null;
 }
 
 // ── Rides ─────────────────────────────────────────────────────────────────────
@@ -44,6 +54,7 @@ export interface Ride {
   clientId: string;
   driverId: string | null;
   companyId: string | null;
+  tariffId: string | null;
   pickupLat: number;
   pickupLng: number;
   pickupAddress: string | null;
@@ -59,10 +70,30 @@ export interface Ride {
   cancelledBy: string | null;
   cancelReason: string | null;
   paymentStatus: PaymentStatus;
+  // Trip metrics
+  distanceKm: number | null;
+  durationMinutes: number | null;
+  // Fare breakdown
+  baseFare: number | null;
+  distanceFare: number | null;
+  timeFare: number | null;
+  totalFare: number | null;
+  // Ratings
   clientRating: number | null;
   clientReview: string | null;
   driverRating: number | null;
   driverReview: string | null;
+  // Scheduled ride
+  scheduledAt: string | null;
+  // Promo code
+  promoCode: string | null;
+  discountAmount: number | null;
+  // Cancellation / no-show
+  cancellationFee?: number | null;
+  /** 'driver' = passenger no-show; 'client' = driver no-show; null = not a no-show */
+  noShowReportedBy?: string | null;
+  // Intermediate stops
+  stops: RideStop[];
 }
 
 // ── GPS ───────────────────────────────────────────────────────────────────────
@@ -82,6 +113,14 @@ export interface WsRideRequest {
   dropoffLat: number | null;
   dropoffLng: number | null;
   dropoffAddress: string | null;
+  stops?: RideStop[];
+}
+
+export interface WsStopReached {
+  rideId: string;
+  stopId: string;
+  sortOrder: number;
+  reachedAt: string;
 }
 
 export interface WsRideAccepted {
@@ -109,6 +148,21 @@ export interface WsRideRated {
 
 export interface WsPaymentConfirmed {
   rideId: string;
-  paymentMethod: 'cash';
+  paymentMethod: 'cash' | 'card';
   paymentStatus: 'paid';
+}
+
+export interface WsDriverLocationUpdate {
+  driverId: string;
+  lat: number;
+  lng: number;
+  ts: number;
+  etaMinutes: number | null;
+}
+
+export interface WsRideMessage {
+  rideId: string;
+  text: string;
+  fromRole: 'client' | 'driver';
+  ts: number;
 }

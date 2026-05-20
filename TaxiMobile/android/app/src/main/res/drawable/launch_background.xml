@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Splash screen background — shown while the JS bundle loads.
+  Background: primary yellow (#F59E0B) matching the app's Colors.primary.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Solid brand background -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#F59E0B"/>
+        </shape>
+    </item>
+</layer-list>

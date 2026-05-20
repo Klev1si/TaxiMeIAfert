@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   Logger,
@@ -12,6 +14,7 @@ import { Twilio } from 'twilio';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.module.js';
 import { User } from '../entities/index.js';
+import { FraudService } from '../fraud/fraud.service.js';
 
 interface OtpRecord {
   code: string;
@@ -35,10 +38,21 @@ export class PhoneVerificationService {
     private readonly config: ConfigService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly fraudService: FraudService,
   ) {}
 
   // ── Send OTP ───────────────────────────────────────────────────────────────
   async sendOtp(phone: string): Promise<void> {
+    // Fraud: check if phone is locked due to too many failures
+    const ttl = await this.fraudService.getLockoutTtl(phone);
+    if (ttl !== null) {
+      const minutes = Math.ceil(ttl / 60);
+      throw new HttpException(
+        `This number is temporarily locked due to too many failed attempts. Try again in ${minutes} minute(s).`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     // Enforce resend cooldown: block if code was sent < 60 s ago
     const existing = await this.redis.get(this.otpKey(phone));
     if (existing) {
@@ -83,20 +97,25 @@ export class PhoneVerificationService {
 
     if (record.code !== code) {
       // Persist incremented attempt count with remaining TTL
-      const ttl = await this.redis.ttl(this.otpKey(phone));
+      const remainingTtl = await this.redis.ttl(this.otpKey(phone));
       record.attempts++;
       await this.redis.setex(
         this.otpKey(phone),
-        ttl > 0 ? ttl : 1,
+        remainingTtl > 0 ? remainingTtl : 1,
         JSON.stringify(record),
       );
+      // Fraud: accumulate global failure counter (may trigger lockout)
+      const user = await this.userRepo.findOne({ where: { phone }, select: ['id'] });
+      void this.fraudService.recordOtpFailure(phone, user?.id);
+
       const remaining = this.MAX_ATTEMPTS - record.attempts;
       throw new UnauthorizedException(
         `Invalid code — ${remaining} attempt(s) remaining`,
       );
     }
 
-    // ✅ Code correct
+    // ✅ Code correct — clear failure counter
+    await this.fraudService.clearOtpFailures(phone);
     await this.redis.del(this.otpKey(phone));
 
     // Mark phone as verified in Redis so registration can proceed

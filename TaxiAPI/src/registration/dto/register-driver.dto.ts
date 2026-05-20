@@ -1,4 +1,5 @@
 import {
+  IsEnum,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -10,6 +11,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { VehicleType } from '../../common/enums/index.js';
 
 export class RegisterDriverDto {
   /** E.164 phone — must be pre-verified via /auth/send-otp + /auth/verify-otp */
@@ -66,4 +68,9 @@ export class RegisterDriverDto {
   @IsOptional()
   @MaxLength(40)
   vehicleColor?: string;
+
+  /** Vehicle category — economy, comfort, XL */
+  @IsEnum(VehicleType)
+  @IsOptional()
+  vehicleType?: VehicleType;
 }

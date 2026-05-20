@@ -7,6 +7,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import OtpScreen from '../screens/auth/OtpScreen';
 import RegisterClientScreen from '../screens/auth/RegisterClientScreen';
 import RegisterDriverScreen from '../screens/auth/RegisterDriverScreen';
+import RegisterCompanyScreen from '../screens/auth/RegisterCompanyScreen';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
@@ -15,10 +16,11 @@ export default function AuthNavigator() {
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
       initialRouteName="Login">
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Otp" component={OtpScreen} />
-      <Stack.Screen name="RegisterClient" component={RegisterClientScreen} />
-      <Stack.Screen name="RegisterDriver" component={RegisterDriverScreen} />
+      <Stack.Screen name="Login"           component={LoginScreen} />
+      <Stack.Screen name="Otp"             component={OtpScreen} />
+      <Stack.Screen name="RegisterClient"  component={RegisterClientScreen} />
+      <Stack.Screen name="RegisterDriver"  component={RegisterDriverScreen} />
+      <Stack.Screen name="RegisterCompany" component={RegisterCompanyScreen} />
     </Stack.Navigator>
   );
 }

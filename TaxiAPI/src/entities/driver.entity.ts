@@ -9,6 +9,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { VehicleType } from '../common/enums';
 import { User } from './user.entity';
 import { Company } from './company.entity';
 import { Ride } from './ride.entity';
@@ -53,6 +54,17 @@ export class Driver {
   @Column({ type: 'varchar', name: 'vehicle_color', nullable: true, length: 40 })
   vehicleColor: string | null;
 
+  /** Vehicle category — economy, comfort, XL.
+   *  Nullable for drivers registered before this feature was added. */
+  @Column({
+    type: 'enum',
+    enum: VehicleType,
+    name: 'vehicle_type',
+    nullable: true,
+    default: null,
+  })
+  vehicleType: VehicleType | null;
+
   // Status
   @Column({ name: 'is_approved', default: false })
   isApproved: boolean;
@@ -76,6 +88,14 @@ export class Driver {
 
   @Column({ name: 'total_rides', default: 0 })
   totalRides: number;
+
+  /** Rides the driver explicitly accepted via the API. Used for dispatch scoring. */
+  @Column({ name: 'total_accepted', default: 0 })
+  totalAccepted: number;
+
+  /** Rides the driver explicitly declined via the API. Used for dispatch scoring. */
+  @Column({ name: 'total_declined', default: 0 })
+  totalDeclined: number;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

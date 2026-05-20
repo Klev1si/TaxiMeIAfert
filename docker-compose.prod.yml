@@ -1,0 +1,118 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# TaxiApp — Production Docker Compose
+#
+# Usage:
+#   1. Copy TaxiAPI/.env.example to TaxiAPI/.env and fill in all values.
+#   2. docker compose -f docker-compose.prod.yml up -d
+#
+# Services:
+#   api      — NestJS backend (port 3000, behind a reverse proxy)
+#   postgres — PostgreSQL database (not exposed externally)
+#   redis    — Redis (not exposed externally)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB:       ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+        --save 60 1
+        --loglevel warning
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  # ── NestJS API ───────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./TaxiAPI
+      dockerfile: Dockerfile
+      target: runner
+    image: taxiapp-api:latest
+    restart: unless-stopped
+    env_file: ./TaxiAPI/.env
+    environment:
+      # Override connection details to use Docker service names
+      DB_HOST:    postgres
+      REDIS_HOST: redis
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # Persist uploaded files (avatars, documents)
+      # In production prefer an S3-compatible object store instead
+      - uploads:/app/uploads
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${PORT:-3000}/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+  # ── Migrations (one-shot) ────────────────────────────────────────────────────
+  # Runs all pending migrations then exits.
+  # docker compose -f docker-compose.prod.yml run --rm migrate
+  migrate:
+    build:
+      context: ./TaxiAPI
+      dockerfile: Dockerfile
+      target: builder
+    env_file: ./TaxiAPI/.env
+    environment:
+      DB_HOST: postgres
+    command: >
+      npx ts-node -r tsconfig-paths/register
+        --project tsconfig.migrations.json
+        ./node_modules/typeorm/cli.js migration:run
+        -d src/database/data-source.ts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+    profiles:
+      - migrate
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads:
+
+networks:
+  backend:
+    driver: bridge

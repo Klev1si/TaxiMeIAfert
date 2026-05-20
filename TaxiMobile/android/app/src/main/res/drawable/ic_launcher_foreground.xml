@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive icon foreground — taxi car silhouette on transparent background.
+  Drawn to fill a 108x108dp canvas; the safe zone is the inner 72x72dp circle.
+  Replace this file with your designer's SVG export for a polished icon.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Car body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M72,58 L72,52 C72,52 68,44 60,42 L48,42 C40,44 36,52 36,52 L36,58 Z"/>
+
+    <!-- Car roof / cabin -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50,42 L52,34 L56,34 L58,42 Z"/>
+
+    <!-- Taxi sign on roof -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M51,36 L57,36 L57,40 L51,40 Z"/>
+
+    <!-- Car body lower -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,58 L74,58 L74,68 C74,70 72,72 70,72 L38,72 C36,72 34,70 34,68 Z"/>
+
+    <!-- Left wheel -->
+    <path
+        android:fillColor="#333333"
+        android:pathData="M42,72 C42,75.3 39.3,78 36,78 C32.7,78 30,75.3 30,72 C30,68.7 32.7,66 36,66 C39.3,66 42,68.7 42,72 Z"/>
+    <path
+        android:fillColor="#AAAAAA"
+        android:pathData="M39,72 C39,73.7 37.7,75 36,75 C34.3,75 33,73.7 33,72 C33,70.3 34.3,69 36,69 C37.7,69 39,70.3 39,72 Z"/>
+
+    <!-- Right wheel -->
+    <path
+        android:fillColor="#333333"
+        android:pathData="M78,72 C78,75.3 75.3,78 72,78 C68.7,78 66,75.3 66,72 C66,68.7 68.7,66 72,66 C75.3,66 78,68.7 78,72 Z"/>
+    <path
+        android:fillColor="#AAAAAA"
+        android:pathData="M75,72 C75,73.7 73.7,75 72,75 C70.3,75 69,73.7 69,72 C69,70.3 70.3,69 72,69 C73.7,69 75,70.3 75,72 Z"/>
+
+    <!-- Headlight left -->
+    <path
+        android:fillColor="#FEF9C3"
+        android:pathData="M36,56 L40,56 L40,58 L36,58 Z"/>
+
+    <!-- Headlight right -->
+    <path
+        android:fillColor="#FEF9C3"
+        android:pathData="M68,56 L72,56 L72,58 L68,58 Z"/>
+
+    <!-- Stripe / checker pattern hint -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M38,62 L42,62 L42,66 L38,66 Z"/>
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M46,62 L50,62 L50,66 L46,66 Z"/>
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M58,62 L62,62 L62,66 L58,66 Z"/>
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M66,62 L70,62 L70,66 L66,66 Z"/>
+
+</vector>

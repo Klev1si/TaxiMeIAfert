@@ -1,13 +1,15 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { Ride } from '../types/api';
+// (Ride imported above — used for RideDetail params in both history stacks)
 
 // ── Auth stack ────────────────────────────────────────────────────────────────
 export type AuthStackParamList = {
   Login: undefined;
-  Otp: { phone: string; mode: 'verify' | 'register'; role?: 'client' | 'driver' };
+  Otp: { phone: string; mode: 'verify' | 'register'; role?: 'client' | 'driver' | 'company' };
   RegisterClient: { phone: string };
   RegisterDriver: { phone: string };
+  RegisterCompany: { phone: string };
 };
 
 // ── Client tab navigator ──────────────────────────────────────────────────────
@@ -24,17 +26,57 @@ export type ClientStackParamList = {
     pickupLat: number;
     pickupLng: number;
     pickupAddress?: string;
+    /** Pre-fill the dropoff when navigating from a saved location */
+    dropoffLat?: number;
+    dropoffLng?: number;
+    dropoffAddress?: string;
   };
-  ActiveRide: { rideId: string };
+  ActiveRide: {
+    rideId: string;
+    /** Driver details passed from the ride_accepted WS event */
+    driverName?: string;
+    vehicleMake?: string;
+    vehicleModel?: string;
+    vehiclePlate?: string;
+    vehicleColor?: string | null;
+  };
   PayCash: { rideId: string };
   RateRide: { rideId: string; rateTarget: 'driver' };
   RideHistory: undefined;
+  RideDetail: { ride: Ride };
+  SavedLocations: undefined;
+};
+
+// ── Client history tab stack ──────────────────────────────────────────────────
+export type ClientHistoryStackParamList = {
+  RideHistoryMain: undefined;
+  RideDetail: { ride: Ride };
+};
+
+// ── Client profile tab stack ──────────────────────────────────────────────────
+export type ClientProfileStackParamList = {
+  ClientProfileMain: undefined;
+  SavedLocations: undefined;
+  ManageCards: undefined;
+  Support: undefined;
+  SupportTicket: { ticketId: string };
+};
+
+// ── Driver profile tab stack ──────────────────────────────────────────────────
+export type DriverProfileStackParamList = {
+  DriverProfileMain:    undefined;
+  DriverSubscription:   undefined;
+  Support:              undefined;
+  SupportTicket:        { ticketId: string };
 };
 
 // ── Driver tab navigator ──────────────────────────────────────────────────────
 export type DriverTabParamList = {
   DriverHome: undefined;
   DriverRideHistory: undefined;
+  DriverEarnings: undefined;
+  DriverWallet: undefined;
+  DriverExpenses: undefined;
   DriverProfile: undefined;
 };
 
@@ -46,11 +88,67 @@ export type DriverStackParamList = {
   RateClient: { rideId: string; rateTarget: 'client' };
 };
 
+// ── Driver history tab stack ──────────────────────────────────────────────────
+export type DriverHistoryStackParamList = {
+  RideHistoryMain: undefined;
+  RideDetail: { ride: Ride };
+};
+
+// ── Admin tab navigator ───────────────────────────────────────────────────────
+export type AdminTabParamList = {
+  AdminDashboard:  undefined;
+  AdminDrivers:    undefined;
+  AdminClients:    undefined;
+  AdminCompanies:  undefined;
+  AdminPromos:     undefined;
+  AdminSupport:    undefined;
+  AdminProfile:    undefined;
+};
+
+export type AdminTabScreenProps<T extends keyof AdminTabParamList> =
+  BottomTabScreenProps<AdminTabParamList, T>;
+
+// ── Admin drivers stack (nested inside AdminDrivers tab) ──────────────────────
+export type AdminDriverStackParamList = {
+  AdminDriversMain:      undefined;
+  AdminDriverDocuments:  { driverId: string; driverName: string };
+};
+
+export type AdminDriverStackScreenProps<T extends keyof AdminDriverStackParamList> =
+  NativeStackScreenProps<AdminDriverStackParamList, T>;
+
+// ── Admin profile stack (nested inside AdminProfile tab) ──────────────────────
+export type AdminProfileStackParamList = {
+  AdminProfileMain:     undefined;
+  AdminPlans:           undefined;
+  AdminGlobalTariffs:   undefined;
+  AdminPayouts:         undefined;
+  AdminAuditLogs:       undefined;
+  AdminFraudEvents:     undefined;
+};
+
+export type AdminProfileStackScreenProps<T extends keyof AdminProfileStackParamList> =
+  NativeStackScreenProps<AdminProfileStackParamList, T>;
+
+// ── Company tab navigator ─────────────────────────────────────────────────────
+export type CompanyTabParamList = {
+  CompanyDashboard:     undefined;
+  CompanyDrivers:       undefined;
+  CompanyTariffs:       undefined;
+  CompanySubscription:  undefined;
+  CompanyProfile:       undefined;
+};
+
+export type CompanyTabScreenProps<T extends keyof CompanyTabParamList> =
+  BottomTabScreenProps<CompanyTabParamList, T>;
+
 // ── Root stack ────────────────────────────────────────────────────────────────
 export type RootStackParamList = {
-  Auth: undefined;
-  ClientApp: undefined;
-  DriverApp: undefined;
+  Auth:       undefined;
+  ClientApp:  undefined;
+  DriverApp:  undefined;
+  CompanyApp: undefined;
+  AdminApp:   undefined;
 };
 
 // ── Screen prop helpers ───────────────────────────────────────────────────────
@@ -68,3 +166,15 @@ export type DriverTabScreenProps<T extends keyof DriverTabParamList> =
 
 export type DriverStackScreenProps<T extends keyof DriverStackParamList> =
   NativeStackScreenProps<DriverStackParamList, T>;
+
+export type ClientHistoryStackScreenProps<T extends keyof ClientHistoryStackParamList> =
+  NativeStackScreenProps<ClientHistoryStackParamList, T>;
+
+export type ClientProfileStackScreenProps<T extends keyof ClientProfileStackParamList> =
+  NativeStackScreenProps<ClientProfileStackParamList, T>;
+
+export type DriverHistoryStackScreenProps<T extends keyof DriverHistoryStackParamList> =
+  NativeStackScreenProps<DriverHistoryStackParamList, T>;
+
+export type DriverProfileStackScreenProps<T extends keyof DriverProfileStackParamList> =
+  NativeStackScreenProps<DriverProfileStackParamList, T>;

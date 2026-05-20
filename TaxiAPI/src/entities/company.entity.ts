@@ -37,6 +37,13 @@ export class Company {
   @Column({ name: 'is_approved', default: false })
   isApproved: boolean;
 
+  /**
+   * Percentage of each ride's totalFare that goes to the DRIVER.
+   * E.g. 70.00 → driver keeps 70 %, company keeps 30 %.
+   */
+  @Column({ type: 'decimal', name: 'driver_commission_pct', precision: 5, scale: 2, default: 70.00 })
+  driverCommissionPct: number;
+
   @Column({ type: 'timestamptz', name: 'approved_at', nullable: true })
   approvedAt: Date | null;
 

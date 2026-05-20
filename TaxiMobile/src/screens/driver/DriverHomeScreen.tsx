@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,22 @@ import {
   PermissionsAndroid,
   Platform,
   Switch,
-  Alert,
 } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, UserLocationChangeEvent } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 import { useDriverStore } from '../../stores/driverStore';
 import { useRideStore } from '../../stores/rideStore';
+import { ridesApi } from '../../api/rides';
 import { socketService } from '../../services/socket';
-import { Colors } from '../../constants';
+import {
+  startBackgroundGps,
+  stopBackgroundGps,
+  requestBackgroundLocation,
+} from '../../services/backgroundGps';
+import { useColors } from '../../stores/themeStore';
+import { useTranslation } from '../../i18n';
+import type { ColorPalette } from '../../constants/colors';
 import type { WsRideRequest } from '../../types/api';
 import type { DriverStackScreenProps } from '../../navigation/types';
 
@@ -24,6 +31,9 @@ type Props = DriverStackScreenProps<'DriverHomeMain'>;
 const GPS_INTERVAL_MS = 8_000; // send GPS every 8 s while online
 
 export default function DriverHomeScreen({ navigation }: Props) {
+  const colors = useColors();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const { isOnline, setOnline, setLocation } = useDriverStore();
   const { setIncomingRequest } = useRideStore();
@@ -41,10 +51,10 @@ export default function DriverHomeScreen({ navigation }: Props) {
   useEffect(() => {
     if (Platform.OS === 'android') {
       PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION, {
-        title: 'Location Permission',
-        message: 'TaxiApp needs your location to accept ride requests.',
-        buttonPositive: 'Allow',
-        buttonNegative: 'Deny',
+        title: t('driver.home.locationPermTitle'),
+        message: t('driver.home.locationPermMsg'),
+        buttonPositive: t('common.allow'),
+        buttonNegative: t('common.deny'),
       }).then(result => {
         if (result !== PermissionsAndroid.RESULTS.GRANTED) {
           setPermissionDenied(true);
@@ -52,6 +62,25 @@ export default function DriverHomeScreen({ navigation }: Props) {
       });
     }
   }, []);
+
+  // ── On first mount: check server for an active ride (handles app-restart) ────
+  useEffect(() => {
+    ridesApi.getActiveRide().then(({ data }) => {
+      if (!data) { return; }
+      const { status, id: rideId } = data;
+      // accepted / driving_to_pickup / in_progress → resume active ride screen
+      if (
+        status === 'accepted' ||
+        status === 'driving_to_pickup' ||
+        status === 'in_progress'
+      ) {
+        navigation.navigate('ActiveDriverRide', { rideId });
+      }
+      // 'requested' means we were just matched — let the WS event handle it;
+      // no action needed here as handleConnection on re-connect will replay.
+    }).catch(() => { /* non-fatal */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);  // run once on mount only
 
   // ── Listen for incoming ride requests ────────────────────────────────────────
   useEffect(() => {
@@ -84,9 +113,12 @@ export default function DriverHomeScreen({ navigation }: Props) {
   );
 
   // ── Start / stop GPS broadcasting ────────────────────────────────────────────
+  // The foreground service (backgroundGps) handles GPS even when the screen is
+  // locked or the driver switches apps. The MapView interval below is kept as a
+  // foreground fallback — it fires only when the app is in the foreground and
+  // ensures the map marker updates in real time.
   const startGps = useCallback(() => {
     if (gpsIntervalRef.current) { return; }
-    // Send immediately, then on interval
     if (latRef.current !== null && lngRef.current !== null) {
       socketService.sendGpsUpdate(latRef.current, lngRef.current);
     }
@@ -102,6 +134,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
       clearInterval(gpsIntervalRef.current);
       gpsIntervalRef.current = null;
     }
+    void stopBackgroundGps();
     socketService.goOffline();
   }, []);
 
@@ -110,19 +143,30 @@ export default function DriverHomeScreen({ navigation }: Props) {
 
   // ── Online toggle ────────────────────────────────────────────────────────────
   const handleToggleOnline = async (value: boolean) => {
-    if (!locationReady && value) {
-      Alert.alert('Location unavailable', 'Waiting for GPS. Please try again in a moment.');
-      return;
-    }
     setToggling(true);
     try {
       if (value) {
+        // Request background location permission on Android 10+.
+        // Returns true  → "Allow all the time" granted → safe to start foreground service.
+        // Returns false → "Allow only while using" or denied → skip background service
+        //                 to avoid a SecurityException native crash on Android 14+.
+        const bgGranted = await requestBackgroundLocation();
+        socketService.goOnline();
         startGps();
+        // Only start the foreground service when the OS will actually allow it.
+        // Without ACCESS_BACKGROUND_LOCATION, Android 14+ throws SecurityException
+        // before JS can catch it, which kills the app.
+        if (bgGranted) {
+          void startBackgroundGps();
+        }
         setOnline(true);
       } else {
-        stopGps();
+        stopGps();   // stopGps already calls stopBackgroundGps + goOffline
         setOnline(false);
       }
+    } catch (err) {
+      // Fallback: catch any remaining JS-layer errors so the app does not crash
+      console.warn('[DriverHome] toggle error:', err);
     } finally {
       setToggling(false);
     }
@@ -141,8 +185,8 @@ export default function DriverHomeScreen({ navigation }: Props) {
   if (permissionDenied) {
     return (
       <SafeAreaView style={styles.centered}>
-        <Text style={styles.permTitle}>Location Required</Text>
-        <Text style={styles.permSub}>Enable location access in device settings to use driver mode.</Text>
+        <Text style={styles.permTitle}>{t('driver.home.permTitle')}</Text>
+        <Text style={styles.permSub}>{t('driver.home.permSub')}</Text>
       </SafeAreaView>
     );
   }
@@ -156,31 +200,39 @@ export default function DriverHomeScreen({ navigation }: Props) {
         showsUserLocation
         showsMyLocationButton={false}
         onUserLocationChange={handleUserLocationChange}
-        initialRegion={{ latitude: 40.7128, longitude: -74.006, latitudeDelta: 0.1, longitudeDelta: 0.1 }}
+        initialRegion={{ latitude: 42.21015, longitude: 20.73453, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
       />
 
       {/* Top status bar */}
       <SafeAreaView edges={['top']} style={styles.topBar}>
         <View style={styles.topCard}>
           <View>
-            <Text style={styles.greeting}>Hi, {user?.phone ?? 'Driver'}</Text>
-            <Text style={[styles.statusLabel, { color: isOnline ? Colors.success : Colors.textSecondary }]}>
-              {isOnline ? '● Online — accepting rides' : '○ Offline'}
+            <Text style={styles.greeting}>{t('driver.home.greeting', { phone: user?.phone ?? 'Driver' })}</Text>
+            <Text style={[styles.statusLabel, { color: isOnline ? colors.success : colors.textSecondary }]}>
+              {isOnline ? `● ${t('driver.home.statusOnline')}` : `○ ${t('driver.home.statusOffline')}`}
             </Text>
           </View>
           <Switch
             value={isOnline}
             onValueChange={handleToggleOnline}
             disabled={toggling}
-            trackColor={{ false: Colors.border, true: Colors.success + '80' }}
-            thumbColor={isOnline ? Colors.success : Colors.textDisabled}
+            trackColor={{ false: colors.border, true: colors.success + '80' }}
+            thumbColor={isOnline ? colors.success : colors.textDisabled}
+            accessibilityRole="switch"
+            accessibilityLabel={isOnline ? t('driver.home.statusOnline') : t('driver.home.statusOffline')}
+            accessibilityHint={t('driver.home.toggleHint')}
           />
         </View>
       </SafeAreaView>
 
       {/* Recenter */}
       {locationReady && (
-        <TouchableOpacity style={styles.recenterBtn} onPress={handleRecenter} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.recenterBtn}
+          onPress={handleRecenter}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={t('driver.home.recenterLabel')}>
           <Text style={styles.recenterIcon}>◎</Text>
         </TouchableOpacity>
       )}
@@ -189,9 +241,9 @@ export default function DriverHomeScreen({ navigation }: Props) {
       <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
         <View style={styles.hintCard}>
           {isOnline ? (
-            <Text style={styles.hintText}>🟢 Waiting for ride requests…</Text>
+            <Text style={styles.hintText}>🟢 {t('driver.home.hintOnline')}</Text>
           ) : (
-            <Text style={styles.hintText}>Toggle the switch above to start accepting rides.</Text>
+            <Text style={styles.hintText}>{t('driver.home.hintOffline')}</Text>
           )}
         </View>
       </SafeAreaView>
@@ -199,13 +251,13 @@ export default function DriverHomeScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function getStyles(c: ColorPalette) { return StyleSheet.create({
   container: { flex: 1 },
   map: { ...StyleSheet.absoluteFillObject },
 
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: Colors.background },
-  permTitle: { fontSize: 20, fontWeight: '700', color: Colors.text, marginBottom: 10, textAlign: 'center' },
-  permSub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: c.background },
+  permTitle: { fontSize: 20, fontWeight: '700', color: c.text, marginBottom: 10, textAlign: 'center' },
+  permSub: { fontSize: 14, color: c.textSecondary, textAlign: 'center', lineHeight: 20 },
 
   topBar: { position: 'absolute', top: 0, left: 0, right: 0 },
   topCard: {
@@ -214,7 +266,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginHorizontal: 16,
     marginTop: 8,
-    backgroundColor: Colors.background,
+    backgroundColor: c.background,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -224,7 +276,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 6,
   },
-  greeting: { fontSize: 14, fontWeight: '600', color: Colors.text },
+  greeting: { fontSize: 14, fontWeight: '600', color: c.text },
   statusLabel: { fontSize: 12, fontWeight: '600', marginTop: 2 },
 
   recenterBtn: {
@@ -234,7 +286,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.background,
+    backgroundColor: c.background,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 4,
@@ -243,13 +295,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 4,
   },
-  recenterIcon: { fontSize: 22, color: Colors.primary },
+  recenterIcon: { fontSize: 22, color: c.primary },
 
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0 },
   hintCard: {
     marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: Colors.background,
+    backgroundColor: c.background,
     borderRadius: 14,
     padding: 16,
     alignItems: 'center',
@@ -259,5 +311,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 6,
   },
-  hintText: { fontSize: 14, color: Colors.textSecondary, fontWeight: '500' },
-});
+  hintText: { fontSize: 14, color: c.textSecondary, fontWeight: '500' },
+}); }

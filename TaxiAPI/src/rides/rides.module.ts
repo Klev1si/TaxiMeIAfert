@@ -1,16 +1,24 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Client, Driver, Ride, User } from '../entities/index.js';
+import { Client, Company, Driver, PromoCode, Ride, RideStop, Tariff, User } from '../entities/index.js';
 import { GpsModule } from '../gps/gps.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
+import { MailerModule } from '../mailer/mailer.module.js';
+import { WalletModule } from '../wallet/wallet.module.js';
+import { FraudModule } from '../fraud/fraud.module.js';
 import { RidesService } from './rides.service.js';
+import { RouteTrackerModule } from './route-tracker.module.js';
 import { RidesController } from './rides.controller.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Driver, Client, Ride, User]),
+    TypeOrmModule.forFeature([Driver, Client, Ride, RideStop, User, Tariff, Company, PromoCode]),
     GpsModule,
     NotificationsModule,
+    MailerModule,
+    WalletModule,
+    FraudModule,
+    RouteTrackerModule,
   ],
   controllers: [RidesController],
   providers: [RidesService],

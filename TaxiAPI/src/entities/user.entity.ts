@@ -40,6 +40,9 @@ export class User {
   @Column({ type: 'varchar', name: 'fcm_token', nullable: true, length: 500 })
   fcmToken: string | null;
 
+  @Column({ type: 'varchar', name: 'avatar_url', nullable: true, length: 500 })
+  avatarUrl: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

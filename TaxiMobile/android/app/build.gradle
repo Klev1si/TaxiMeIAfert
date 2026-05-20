@@ -1,6 +1,22 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+// Copies react-native-vector-icons font files into the Android assets folder
+apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
+apply plugin: "com.google.gms.google-services"
+apply plugin: "com.google.firebase.crashlytics"
+// react-native-config — reads .env and injects variables into BuildConfig + AndroidManifest
+apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
+
+// ── Release signing ───────────────────────────────────────────────────────────
+// Read credentials from keystore.properties (gitignored).
+// On CI, set KEYSTORE_FILE, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD as
+// environment variables and the fallback branches below will pick them up.
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -54,10 +70,8 @@ react {
     autolinkLibrariesWithApp()
 }
 
-/**
- * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
- */
-def enableProguardInReleaseBuilds = false
+// ProGuard / R8 is always enabled for release builds (reduces APK size ~40%)
+def enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -77,14 +91,18 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.taximobile"
+    namespace "com.taximelafert"
     defaultConfig {
-        applicationId "com.taximobile"
+        applicationId "com.taximelafert"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 5
+        versionName "1.3"
+        manifestPlaceholders = [
+            GOOGLE_MAPS_API_KEY: project.env.get("GOOGLE_MAPS_API_KEY") ?: "",
+        ]
     }
+
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -92,17 +110,29 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            // Read from keystore.properties file (local dev) or env vars (CI)
+            def ksFile  = keystoreProperties['storeFile']  ?: System.getenv('KEYSTORE_FILE')
+            def ksPwd   = keystoreProperties['storePassword'] ?: System.getenv('KEYSTORE_PASSWORD')
+            def keyAl   = keystoreProperties['keyAlias']   ?: System.getenv('KEY_ALIAS')
+            def keyPwd  = keystoreProperties['keyPassword'] ?: System.getenv('KEY_PASSWORD')
+
+            if (ksFile) storeFile     file(ksFile)
+            if (ksPwd)  storePassword ksPwd
+            if (keyAl)  keyAlias      keyAl
+            if (keyPwd) keyPassword   keyPwd
+        }
     }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            shrinkResources enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }
 }
@@ -110,7 +140,12 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
-
+    // Android 12+ native splash screen — keeps the branded splash visible until
+    // React Native's first frame renders, preventing a white flash.
+    implementation("androidx.core:core-splashscreen:1.0.1")
+    // Firebase BOM — pins all Firebase library versions consistently
+    implementation platform('com.google.firebase:firebase-bom:34.12.0')
+    implementation 'com.google.firebase:firebase-messaging'
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

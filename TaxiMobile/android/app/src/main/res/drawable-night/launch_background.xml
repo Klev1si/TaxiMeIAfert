@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Splash screen background — DARK MODE variant.
+  Shown while the JS bundle loads on devices running in dark mode (API < 31).
+  Background: dark surface #111827 matching the app's dark theme background.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Dark background -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#111827"/>
+        </shape>
+    </item>
+</layer-list>

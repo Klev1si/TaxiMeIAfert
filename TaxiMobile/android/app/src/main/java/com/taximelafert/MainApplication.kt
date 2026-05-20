@@ -1,4 +1,4 @@
-package com.taximobile
+package com.taximelafert
 
 import android.app.Application
 import com.facebook.react.PackageList

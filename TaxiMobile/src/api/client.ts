@@ -4,14 +4,9 @@ import axios, {
   AxiosResponse,
   AxiosError,
 } from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Config from '../config';
-
-// Storage keys (shared with authStore)
-export const STORAGE_KEYS = {
-  ACCESS_TOKEN: '@taxiapp/access_token',
-  REFRESH_TOKEN: '@taxiapp/refresh_token',
-} as const;
+import { notifyNetworkError } from '../services/connectivity';
+import { tokenStorage } from '../utils/tokenStorage';
 
 // ── Create the singleton axios instance ───────────────────────────────────────
 const apiClient: AxiosInstance = axios.create({
@@ -23,7 +18,7 @@ const apiClient: AxiosInstance = axios.create({
 // ── Request interceptor — attach access token ──────────────────────────────
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    const token = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    const token = await tokenStorage.getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -53,6 +48,12 @@ apiClient.interceptors.response.use(
       _retry?: boolean;
     };
 
+    // No response at all → network unreachable (offline, timeout, DNS failure)
+    if (!error.response) {
+      notifyNetworkError();
+      return Promise.reject(error);
+    }
+
     if (error.response?.status !== 401 || original._retry) {
       return Promise.reject(error);
     }
@@ -74,18 +75,19 @@ apiClient.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const refreshToken = await AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+      const refreshToken = await tokenStorage.getRefreshToken();
       if (!refreshToken) throw new Error('No refresh token');
 
+      // JwtRefreshStrategy reads from Authorization header, NOT request body
       const { data } = await axios.post(
         `${Config.API_BASE_URL}/auth/refresh`,
-        { refreshToken },
+        {},
+        { headers: { Authorization: `Bearer ${refreshToken}` } },
       );
-      const newAccess: string = data.accessToken;
+      const newAccess: string  = data.accessToken;
       const newRefresh: string = data.refreshToken;
 
-      await AsyncStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, newAccess);
-      await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefresh);
+      await tokenStorage.set(newAccess, newRefresh);
 
       apiClient.defaults.headers.common.Authorization = `Bearer ${newAccess}`;
       drainQueue(newAccess);
@@ -95,10 +97,7 @@ apiClient.interceptors.response.use(
     } catch (refreshErr) {
       drainQueue(null, refreshErr);
       // Clear tokens — force re-login
-      await AsyncStorage.multiRemove([
-        STORAGE_KEYS.ACCESS_TOKEN,
-        STORAGE_KEYS.REFRESH_TOKEN,
-      ]);
+      await tokenStorage.clear();
       return Promise.reject(refreshErr);
     } finally {
       isRefreshing = false;

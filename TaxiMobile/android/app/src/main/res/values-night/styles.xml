@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Night-mode (dark) theme overrides.
+  Android automatically uses this file when the device is in dark mode.
+-->
+<resources>
+
+    <!--
+      Android 12+ native splash screen — dark mode variant.
+      Overrides the light-mode SplashTheme defined in values/styles.xml.
+    -->
+    <style name="SplashTheme" parent="Theme.SplashScreen">
+        <!-- Dark surface instead of brand yellow -->
+        <item name="windowSplashScreenBackground">#111827</item>
+        <!-- Keep the same foreground icon — white car still visible on dark bg -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <!-- Post-splash theme remains the same (DayNight handles the rest) -->
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
+    </style>
+
+</resources>

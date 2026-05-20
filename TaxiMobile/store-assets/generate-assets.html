@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TaxiMeIAfert — Store Assets Generator</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #111827;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 40px;
+      color: #fff;
+    }
+    h1 { font-size: 28px; font-weight: 900; color: #F5C518; margin-bottom: 8px; }
+    .page-sub { font-size: 14px; color: #6b7280; margin-bottom: 48px; }
+    h2 {
+      font-size: 11px; font-weight: 700; letter-spacing: 2.5px;
+      text-transform: uppercase; color: #F5C518; margin-bottom: 8px;
+    }
+    .hint { font-size: 12px; color: #6b7280; margin-bottom: 20px; line-height: 1.6; }
+    .section { margin-bottom: 72px; }
+    .download-btn {
+      display: inline-block; margin-top: 16px;
+      background: #F5C518; color: #111827;
+      font-size: 13px; font-weight: 700;
+      padding: 10px 24px; border-radius: 8px;
+      border: none; cursor: pointer;
+      text-decoration: none;
+    }
+    .download-btn:hover { background: #e6b800; }
+
+    /* ─── APP ICON 512×512 ─────────────────────────────────────────── */
+    #icon {
+      width: 512px; height: 512px;
+      border-radius: 96px;
+      background: linear-gradient(145deg, #F5C518 0%, #e0a800 100%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      box-shadow: 0 24px 64px rgba(245,197,24,0.4);
+      position: relative; overflow: hidden;
+    }
+    #icon::before {
+      content: ''; position: absolute;
+      top: -80px; left: -80px; width: 280px; height: 280px;
+      background: rgba(255,255,255,0.12); border-radius: 50%;
+    }
+    #icon::after {
+      content: ''; position: absolute;
+      bottom: -60px; right: -60px; width: 220px; height: 220px;
+      background: rgba(0,0,0,0.08); border-radius: 50%;
+    }
+    .icon-car { font-size: 210px; line-height: 1; margin-bottom: 8px;
+      filter: drop-shadow(0 8px 20px rgba(0,0,0,0.25)); z-index: 1; }
+    .icon-label {
+      font-size: 34px; font-weight: 900; color: #1a0f00;
+      letter-spacing: -1px; z-index: 1; text-align: center; padding: 0 24px;
+    }
+
+    /* ─── FEATURE GRAPHIC 1024×500 ────────────────────────────────── */
+    #feature {
+      width: 1024px; height: 500px;
+      background: linear-gradient(135deg, #0d0800 0%, #1f1400 45%, #0d0800 100%);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 80px; border-radius: 20px;
+      position: relative; overflow: hidden;
+    }
+    #feature::before {
+      content: ''; position: absolute;
+      top: -120px; left: -80px; width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(245,197,24,0.18) 0%, transparent 65%);
+    }
+    #feature::after {
+      content: ''; position: absolute;
+      bottom: -100px; right: 180px; width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(245,197,24,0.1) 0%, transparent 65%);
+    }
+    .feature-left { z-index: 1; max-width: 520px; }
+    .feature-eyebrow {
+      font-size: 12px; font-weight: 700; letter-spacing: 4px;
+      text-transform: uppercase; color: #F5C518; margin-bottom: 16px;
+    }
+    .feature-title {
+      font-size: 68px; font-weight: 900; color: #fff;
+      line-height: 1.0; margin-bottom: 20px; letter-spacing: -2px;
+    }
+    .feature-title span { color: #F5C518; }
+    .feature-desc {
+      font-size: 19px; color: #9ca3af; font-weight: 400;
+      line-height: 1.55; margin-bottom: 28px;
+    }
+    .feature-badges { display: flex; gap: 10px; flex-wrap: wrap; }
+    .badge {
+      background: rgba(245,197,24,0.12);
+      border: 1.5px solid rgba(245,197,24,0.35);
+      color: #F5C518; font-size: 12px; font-weight: 700;
+      padding: 6px 15px; border-radius: 100px;
+    }
+    .feature-right {
+      font-size: 220px; z-index: 1;
+      filter: drop-shadow(0 0 50px rgba(245,197,24,0.35));
+      flex-shrink: 0;
+    }
+
+    /* ─── SCREENSHOTS ──────────────────────────────────────────────── */
+    .screenshots { display: flex; gap: 24px; flex-wrap: wrap; }
+    .screen-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .screen-label { font-size: 11px; color: #6b7280; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+    .screen {
+      width: 270px; height: 480px;
+      border-radius: 28px; overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+      position: relative; flex-shrink: 0;
+    }
+
+    /* ── Screen 1: Passenger Home ── */
+    .s1 { background: #1f2937; display: flex; flex-direction: column; }
+    .s1-status { background: #F5C518; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
+    .s1-status-name { font-size: 10px; font-weight: 800; color: #1a0f00; }
+    .s1-status-dot { font-size: 8px; font-weight: 700; color: #1a0f00; opacity: 0.6; }
+    .s1-map { flex: 1; background: linear-gradient(160deg, #1e3a5f 0%, #1a2f4a 100%); position: relative; overflow: hidden; }
+    .map-grid {
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+    .road-h { position: absolute; height: 9px; left: 0; right: 0; background: rgba(255,255,255,0.11); border-radius: 4px; }
+    .road-v { position: absolute; width: 9px; top: 0; bottom: 0; background: rgba(255,255,255,0.11); border-radius: 4px; }
+    .pin { position: absolute; font-size: 26px; transform: translate(-50%,-100%); filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4)); }
+    .car-icon { position: absolute; font-size: 20px; transform: translate(-50%,-50%); }
+    .s1-bottom { background: #1f2937; padding: 14px; }
+    .s1-greeting { font-size: 10px; color: #9ca3af; margin-bottom: 4px; }
+    .s1-where { font-size: 13px; font-weight: 800; color: #F5C518; margin-bottom: 6px; }
+    .s1-search { background: #374151; border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .s1-search-text { font-size: 8px; color: #9ca3af; }
+    .s1-btn { background: #F5C518; color: #1a0f00; font-size: 10px; font-weight: 800; text-align: center; padding: 9px; border-radius: 10px; }
+
+    /* ── Screen 2: Booking / Route ── */
+    .s2 { background: #fff; display: flex; flex-direction: column; }
+    .s2-header { background: #F5C518; padding: 14px; }
+    .s2-title { font-size: 12px; font-weight: 900; color: #1a0f00; }
+    .s2-sub { font-size: 8px; color: rgba(0,0,0,0.5); margin-top: 2px; }
+    .s2-map { height: 150px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); position: relative; overflow: hidden; }
+    .s2-form { padding: 10px; flex: 1; }
+    .fr { display: flex; align-items: center; background: #f3f4f6; border-radius: 8px; padding: 7px 10px; margin-bottom: 5px; gap: 6px; }
+    .fdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .ftext { font-size: 8px; color: #374151; font-weight: 500; }
+    .fare-box { display: flex; justify-content: space-between; align-items: center; background: #fffbeb; border-radius: 8px; padding: 9px 10px; margin: 6px 0; border: 1.5px solid #F5C518; }
+    .fl { font-size: 7px; color: #92400e; }
+    .fv { font-size: 16px; font-weight: 900; color: #1a0f00; }
+    .vehicle-row { display: flex; gap: 4px; margin-bottom: 6px; }
+    .veh { flex: 1; background: #f3f4f6; border-radius: 8px; padding: 5px 4px; text-align: center; border: 1.5px solid transparent; }
+    .veh.active { background: #fffbeb; border-color: #F5C518; }
+    .veh-ico { font-size: 14px; }
+    .veh-name { font-size: 6px; color: #374151; margin-top: 2px; font-weight: 600; }
+    .confirm-btn { background: #F5C518; color: #1a0f00; font-size: 10px; font-weight: 900; text-align: center; padding: 10px; border-radius: 10px; }
+
+    /* ── Screen 3: Active Ride ── */
+    .s3 { background: #1f2937; display: flex; flex-direction: column; }
+    .s3-map { flex: 1; background: linear-gradient(160deg, #1e3a5f 0%, #1a2f4a 100%); position: relative; overflow: hidden; }
+    .route-line { position: absolute; left: 50%; top: 20%; width: 3px; height: 55%; background: linear-gradient(#4ade80, #F5C518); border-radius: 3px; transform: translateX(-50%); }
+    .s3-panel { background: #111827; border-radius: 24px 24px 0 0; padding: 16px 14px 12px; }
+    .s3-status { font-size: 11px; font-weight: 800; color: #4ade80; margin-bottom: 10px; }
+    .s3-driver { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .s3-avatar { width: 36px; height: 36px; border-radius: 18px; background: #F5C518; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .s3-dname { font-size: 10px; font-weight: 800; color: #fff; }
+    .s3-deta { font-size: 8px; color: #F5C518; margin-top: 2px; }
+    .s3-plate { font-size: 8px; color: #9ca3af; margin-top: 1px; }
+    .s3-route { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+    .s3-stop { display: flex; align-items: center; gap: 7px; }
+    .s3-dot-g { width: 9px; height: 9px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
+    .s3-dot-y { width: 9px; height: 9px; border-radius: 50%; background: #F5C518; flex-shrink: 0; }
+    .s3-addr { font-size: 8px; color: #d1d5db; }
+    .s3-actions { display: flex; gap: 6px; }
+    .s3-chat { flex: 1; background: #374151; border-radius: 8px; padding: 8px; text-align: center; font-size: 8px; color: #9ca3af; font-weight: 700; }
+    .s3-sos { background: #dc2626; border-radius: 8px; padding: 8px 14px; font-size: 8px; color: #fff; font-weight: 900; }
+
+    /* ── Screen 4: Driver Dashboard ── */
+    .s4 { background: #111827; display: flex; flex-direction: column; }
+    .s4-header { background: #F5C518; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; }
+    .s4-name { font-size: 10px; font-weight: 800; color: #1a0f00; }
+    .s4-badge { font-size: 8px; font-weight: 700; background: #1a0f00; color: #F5C518; padding: 3px 8px; border-radius: 100px; }
+    .s4-earn { background: linear-gradient(135deg, #1a0f00, #2d1a00); margin: 10px; border-radius: 14px; padding: 14px; border: 1px solid rgba(245,197,24,0.3); }
+    .s4-el { font-size: 8px; color: #F5C518; font-weight: 600; margin-bottom: 3px; }
+    .s4-ev { font-size: 26px; font-weight: 900; color: #fff; }
+    .s4-es { font-size: 7px; color: #9ca3af; margin-top: 2px; }
+    .s4-stats { display: flex; gap: 6px; margin: 0 10px 10px; }
+    .s4-stat { flex: 1; background: #1f2937; border-radius: 10px; padding: 8px; border: 1px solid rgba(255,255,255,0.07); }
+    .s4-sv { font-size: 14px; font-weight: 800; color: #fff; }
+    .s4-sl { font-size: 6px; color: #9ca3af; margin-top: 2px; }
+    .s4-card { margin: 0 10px 8px; background: #1f2937; border-radius: 10px; padding: 10px; border-left: 3px solid #F5C518; }
+    .s4-cl { font-size: 7px; color: #F5C518; font-weight: 700; margin-bottom: 4px; }
+    .s4-ca { font-size: 8px; color: #d1d5db; margin-bottom: 2px; }
+    .s4-cf { font-size: 11px; font-weight: 900; color: #F5C518; }
+    .s4-btn { background: #F5C518; color: #1a0f00; font-size: 9px; font-weight: 800; text-align: center; padding: 8px; border-radius: 8px; margin: 0 10px; }
+
+    /* ── Screen 5: Earnings ── */
+    .s5 { background: #111827; display: flex; flex-direction: column; }
+    .s5-header { background: #1f2937; padding: 14px; border-bottom: 1px solid #374151; }
+    .s5-title { font-size: 13px; font-weight: 900; color: #fff; }
+    .s5-period { display: flex; gap: 4px; margin-top: 8px; }
+    .s5-pill { font-size: 7px; font-weight: 700; padding: 4px 8px; border-radius: 100px; background: #374151; color: #9ca3af; }
+    .s5-pill.active { background: #F5C518; color: #1a0f00; }
+    .s5-hero { margin: 10px; background: linear-gradient(135deg, #1a0f00, #2d1a00); border-radius: 14px; padding: 16px; border: 1px solid rgba(245,197,24,0.25); }
+    .s5-hl { font-size: 8px; color: #F5C518; font-weight: 600; margin-bottom: 4px; }
+    .s5-hv { font-size: 30px; font-weight: 900; color: #fff; }
+    .s5-hs { font-size: 7px; color: #9ca3af; margin-top: 3px; }
+    .s5-rows { flex: 1; padding: 0 10px; }
+    .s5-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #1f2937; }
+    .s5-rl { font-size: 8px; color: #9ca3af; }
+    .s5-rv { font-size: 9px; font-weight: 700; color: #fff; }
+    .s5-rv.yellow { color: #F5C518; }
+
+    /* ── Screen 6: Payment / Rating ── */
+    .s6 { background: #1f2937; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 14px; }
+    .s6-icon { font-size: 56px; margin-bottom: 12px; }
+    .s6-title { font-size: 16px; font-weight: 900; color: #fff; text-align: center; margin-bottom: 6px; }
+    .s6-sub { font-size: 9px; color: #9ca3af; text-align: center; margin-bottom: 20px; line-height: 1.5; }
+    .s6-stars { font-size: 30px; letter-spacing: 4px; margin-bottom: 16px; }
+    .s6-comment { background: #374151; border-radius: 10px; padding: 10px; width: 100%; margin-bottom: 14px; }
+    .s6-comment-label { font-size: 7px; color: #9ca3af; margin-bottom: 6px; }
+    .s6-comment-lines { display: flex; flex-direction: column; gap: 4px; }
+    .s6-line { height: 4px; background: #4b5563; border-radius: 2px; }
+    .s6-btn { background: #F5C518; color: #1a0f00; font-size: 11px; font-weight: 800; text-align: center; padding: 11px; border-radius: 10px; width: 100%; }
+    .s6-skip { font-size: 9px; color: #9ca3af; margin-top: 10px; }
+
+    /* ─── TEXT CONTENT SECTION ─────────────────────────────────────── */
+    .text-section { margin-bottom: 64px; }
+    .text-block {
+      background: #1f2937; border-radius: 16px; padding: 28px 32px;
+      border: 1px solid #374151; margin-bottom: 24px;
+    }
+    .lang-badge {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      color: #F5C518; background: rgba(245,197,24,0.12);
+      border: 1px solid rgba(245,197,24,0.3);
+      padding: 3px 10px; border-radius: 100px; margin-bottom: 16px;
+    }
+    .text-label { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; margin-top: 20px; }
+    .text-value { font-size: 14px; color: #e5e7eb; line-height: 1.7; white-space: pre-wrap; }
+    .char-count { font-size: 11px; color: #6b7280; margin-top: 4px; }
+    .copy-btn {
+      display: inline-block; margin-top: 10px;
+      background: #374151; color: #d1d5db;
+      font-size: 11px; font-weight: 600;
+      padding: 6px 14px; border-radius: 6px;
+      border: none; cursor: pointer;
+    }
+    .copy-btn:hover { background: #4b5563; }
+
+    /* ─── CHECKLIST ────────────────────────────────────────────────── */
+    .checklist { background: #1f2937; border-radius: 16px; padding: 28px 32px; border: 1px solid #374151; }
+    .checklist h3 { font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 20px; }
+    .cl-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #374151; }
+    .cl-item:last-child { border-bottom: none; }
+    .cl-check { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .cl-text { font-size: 13px; color: #d1d5db; line-height: 1.5; }
+    .cl-note { font-size: 11px; color: #6b7280; margin-top: 3px; }
+  </style>
+</head>
+<body>
+
+  <h1>🚖 TaxiMeIAfert — Store Assets Generator</h1>
+  <p class="page-sub">Open this file in Chrome · Right-click any asset → "Save image as…" OR use the Download buttons</p>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       1. APP ICON
+  ══════════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2>01 — App Icon · 512 × 512 px</h2>
+    <p class="hint">
+      Required format: PNG, 512×512 px, no transparency.<br>
+      Right-click the icon → "Save image as…" then resize to exactly 512×512 in any image editor (Paint, Photoshop, GIMP, Canva).
+    </p>
+    <div id="icon">
+      <div class="icon-car">🚖</div>
+      <div class="icon-label">TaxiMeIAfert</div>
+    </div>
+    <button class="download-btn" onclick="downloadCanvas('icon', 512, 512, 'taximelafert-icon-512.png')">
+      ⬇ Download Icon PNG (512×512)
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       2. FEATURE GRAPHIC
+  ══════════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2>02 — Feature Graphic · 1024 × 500 px</h2>
+    <p class="hint">
+      Required format: PNG or JPG, 1024×500 px.<br>
+      This is displayed at the top of your Play Store listing.
+    </p>
+    <div id="feature">
+      <div class="feature-left">
+        <div class="feature-eyebrow">🇦🇱 Made for Albania</div>
+        <div class="feature-title">Taxi<span>Me</span><br>IAfert</div>
+        <div class="feature-desc">Book rides instantly.<br>Real-time GPS tracking.<br>Drive &amp; earn on your schedule.</div>
+        <div class="feature-badges">
+          <div class="badge">🚀 Fast Booking</div>
+          <div class="badge">📍 Live Tracking</div>
+          <div class="badge">💳 Easy Pay</div>
+          <div class="badge">⭐ Rate &amp; Review</div>
+        </div>
+      </div>
+      <div class="feature-right">🚖</div>
+    </div>
+    <button class="download-btn" onclick="downloadCanvas('feature', 1024, 500, 'taximelafert-feature-1024x500.png')">
+      ⬇ Download Feature Graphic PNG (1024×500)
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       3. SCREENSHOTS  (need at least 2, up to 8, portrait 9:16)
+  ══════════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2>03 — Phone Screenshots · 1080 × 1920 px (shown at ¼ scale)</h2>
+    <p class="hint">
+      Required: min 2, max 8 screenshots · PNG or JPG · 16:9 or 9:16 · min 320 px on shortest side.<br>
+      <strong>Best result:</strong> Run the app on an Android emulator, set it to 1080×1920, and take real screenshots (Ctrl+S in Android Studio).<br>
+      These mockups show the design direction and can be used as placeholders.
+    </p>
+    <div class="screenshots">
+
+      <!-- 1: Passenger Home -->
+      <div class="screen-wrap">
+        <div class="screen s1">
+          <div class="s1-status">
+            <div class="s1-status-name">TaxiMeIAfert</div>
+            <div class="s1-status-dot">📍 Tirana, AL</div>
+          </div>
+          <div class="s1-map">
+            <div class="map-grid"></div>
+            <div class="road-h" style="top:30%"></div>
+            <div class="road-h" style="top:58%"></div>
+            <div class="road-v" style="left:38%"></div>
+            <div class="road-v" style="left:68%"></div>
+            <div class="pin" style="top:32%;left:40%">📍</div>
+            <div class="car-icon" style="top:60%;left:70%">🚖</div>
+            <div class="car-icon" style="top:45%;left:25%">🚖</div>
+            <div class="car-icon" style="top:28%;left:65%">🚖</div>
+          </div>
+          <div class="s1-bottom">
+            <div class="s1-greeting">👋 Mirëmëngjesi!</div>
+            <div class="s1-where">Ku doni të shkoni?</div>
+            <div class="s1-search">
+              <span>🔍</span>
+              <div class="s1-search-text">Kërko destinacionin…</div>
+            </div>
+            <div class="s1-btn">Kërkoni një udhëtim</div>
+          </div>
+        </div>
+        <div class="screen-label">1 — Home</div>
+      </div>
+
+      <!-- 2: Booking Screen -->
+      <div class="screen-wrap">
+        <div class="screen s2">
+          <div class="s2-header">
+            <div class="s2-title">Rezervoni udhëtimin</div>
+            <div class="s2-sub">3 shoferë pranë · ~4 min</div>
+          </div>
+          <div class="s2-map">
+            <div class="road-h" style="top:40%;background:rgba(255,255,255,0.5)"></div>
+            <div class="road-v" style="left:40%;background:rgba(255,255,255,0.5)"></div>
+            <div style="position:absolute;top:36%;left:36%;font-size:18px;">📍</div>
+            <div style="position:absolute;top:48%;left:58%;font-size:14px;">🚖</div>
+            <div style="position:absolute;top:28%;left:55%;font-size:13px;">🚖</div>
+          </div>
+          <div class="s2-form">
+            <div class="fr"><div class="fdot" style="background:#22c55e;"></div><div class="ftext">Rruga e Durrësit 45 (Marrja)</div></div>
+            <div class="fr"><div class="fdot" style="background:#F5C518;"></div><div class="ftext">Aeroporti Nënë Tereza</div></div>
+            <div class="vehicle-row">
+              <div class="veh"><div class="veh-ico">🚗</div><div class="veh-name">Ekonomik</div></div>
+              <div class="veh active"><div class="veh-ico">🚕</div><div class="veh-name">Komfort</div></div>
+              <div class="veh"><div class="veh-ico">🚐</div><div class="veh-name">XL</div></div>
+            </div>
+            <div class="fare-box">
+              <div><div class="fl">Tarifa e vlerësuar</div><div class="fl" style="margin-top:2px;">~22 min udhëtim</div></div>
+              <div class="fv">1 450 L</div>
+            </div>
+            <div class="confirm-btn">Konfirmo &amp; Kërko Udhëtim</div>
+          </div>
+        </div>
+        <div class="screen-label">2 — Booking</div>
+      </div>
+
+      <!-- 3: Active Ride -->
+      <div class="screen-wrap">
+        <div class="screen s3">
+          <div class="s3-map">
+            <div class="map-grid"></div>
+            <div class="road-h" style="top:45%"></div>
+            <div class="road-v" style="left:50%"></div>
+            <div class="route-line"></div>
+            <div class="pin" style="top:22%;left:50%">🏁</div>
+            <div class="car-icon" style="top:75%;left:50%">🚖</div>
+          </div>
+          <div class="s3-panel">
+            <div class="s3-status">● Shoferi është në rrugë · 3 min</div>
+            <div class="s3-driver">
+              <div class="s3-avatar">👨</div>
+              <div>
+                <div class="s3-dname">Artan Hoxha · ⭐ 4.9</div>
+                <div class="s3-deta">🚖 Arrin në ~3 min</div>
+                <div class="s3-plate">AA 123 BB · Gri Skoda Octavia</div>
+              </div>
+            </div>
+            <div class="s3-route">
+              <div class="s3-stop"><div class="s3-dot-g"></div><div class="s3-addr">Rruga e Durrësit 45</div></div>
+              <div class="s3-stop"><div class="s3-dot-y"></div><div class="s3-addr">Aeroporti Nënë Tereza</div></div>
+            </div>
+            <div class="s3-actions">
+              <div class="s3-chat">💬 Chat</div>
+              <div class="s3-sos">SOS</div>
+            </div>
+          </div>
+        </div>
+        <div class="screen-label">3 — Live Tracking</div>
+      </div>
+
+      <!-- 4: Driver Dashboard -->
+      <div class="screen-wrap">
+        <div class="screen s4">
+          <div class="s4-header">
+            <div>
+              <div class="s4-name">🚗 Artan Hoxha</div>
+              <div style="font-size:7px;color:#555;margin-top:2px;">Mirëmbrëma, shofer!</div>
+            </div>
+            <div class="s4-badge">● NË LINJË</div>
+          </div>
+          <div class="s4-earn">
+            <div class="s4-el">FITIMI I SOTËM</div>
+            <div class="s4-ev">8 750 L</div>
+            <div class="s4-es">14 udhëtime të kryera</div>
+          </div>
+          <div class="s4-stats">
+            <div class="s4-stat"><div class="s4-sv">4.9★</div><div class="s4-sl">Vlerësim</div></div>
+            <div class="s4-stat"><div class="s4-sv">98%</div><div class="s4-sl">Pranuar</div></div>
+            <div class="s4-stat"><div class="s4-sv">6h</div><div class="s4-sl">Aktiv</div></div>
+          </div>
+          <div class="s4-card">
+            <div class="s4-cl">KËRKESË E RE</div>
+            <div class="s4-ca">📍 Blloku → Aeroporti</div>
+            <div class="s4-cf">1 650 L · 8 min larg</div>
+          </div>
+          <div class="s4-btn">Prano Udhëtimin</div>
+        </div>
+        <div class="screen-label">4 — Driver View</div>
+      </div>
+
+      <!-- 5: Earnings -->
+      <div class="screen-wrap">
+        <div class="screen s5">
+          <div class="s5-header">
+            <div class="s5-title">Fitimet e Mia</div>
+            <div class="s5-period">
+              <div class="s5-pill">Sot</div>
+              <div class="s5-pill active">Kjo javë</div>
+              <div class="s5-pill">Ky muaj</div>
+              <div class="s5-pill">Gjithçka</div>
+            </div>
+          </div>
+          <div class="s5-hero">
+            <div class="s5-hl">FITIMET TUAJA</div>
+            <div class="s5-hv">42 300 L</div>
+            <div class="s5-hs">nga 67 udhëtime të kryera</div>
+          </div>
+          <div class="s5-rows">
+            <div class="s5-row"><div class="s5-rl">Tarifa totale e mbledhur</div><div class="s5-rv">50 760 L</div></div>
+            <div class="s5-row"><div class="s5-rl">Pjesa juaj (83%)</div><div class="s5-rv yellow">42 300 L</div></div>
+            <div class="s5-row"><div class="s5-rl">Pjesa e kompanisë (17%)</div><div class="s5-rv">8 460 L</div></div>
+            <div class="s5-row"><div class="s5-rl">Udhëtime të kryera</div><div class="s5-rv">67</div></div>
+          </div>
+        </div>
+        <div class="screen-label">5 — Earnings</div>
+      </div>
+
+      <!-- 6: Rating -->
+      <div class="screen-wrap">
+        <div class="screen s6">
+          <div class="s6-icon">⭐</div>
+          <div class="s6-title">Vlerëso Shoferin</div>
+          <div class="s6-sub">Si ishte përvoja juaj me<br>Artan Hoxha?</div>
+          <div class="s6-stars">⭐⭐⭐⭐⭐</div>
+          <div class="s6-comment">
+            <div class="s6-comment-label">Lini një koment (opsionale)</div>
+            <div class="s6-comment-lines">
+              <div class="s6-line" style="width:90%"></div>
+              <div class="s6-line" style="width:70%"></div>
+            </div>
+          </div>
+          <div class="s6-btn">Dërgo Vlerësimin</div>
+          <div class="s6-skip">Kalo</div>
+        </div>
+        <div class="screen-label">6 — Rating</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       4. STORE LISTING TEXT
+  ══════════════════════════════════════════════════════════════════ -->
+  <div class="text-section">
+    <h2>04 — Store Listing Text</h2>
+    <p class="hint">Copy-paste these into Google Play Console → Store Listing → App details.<br>
+    You can add both Albanian (sq) and English (en) translations in the Play Console.</p>
+
+    <!-- Albanian -->
+    <div class="text-block">
+      <div class="lang-badge">🇦🇱 Albanian — sq</div>
+
+      <div class="text-label">App Name (max 30 chars)</div>
+      <div class="text-value" id="sq-name">TaxiMeIAfert</div>
+
+      <div class="text-label">Short Description (max 80 chars)</div>
+      <div class="text-value" id="sq-short">Rezervoni taksi me një prekje. Gjurmim live. Shoferë verifikuar.</div>
+      <div class="char-count" id="sq-short-count"></div>
+      <button class="copy-btn" onclick="copyText('sq-short')">Copy</button>
+
+      <div class="text-label">Full Description (max 4000 chars)</div>
+      <div class="text-value" id="sq-full">🚖 TaxiMeIAfert — Aplikacioni juaj i taksisë në Shqipëri
+
+Rezervoni taksi shpejt dhe lehtë ku të jeni. TaxiMeIAfert ju lidh me shoferë profesionistë të verifikuar në zonën tuaj, në çdo kohë.
+
+✅ PËR PASAGJERËT
+• Rezervim i menjëhershëm — gjeni një shofer brenda sekondave
+• Gjurmim live i automjetit në hartë në kohë reale
+• Pamje e tarifës para konfirmimit — pa surpriza
+• Shumë pika ndalese — shtoni ndalesa si të doni
+• Pagesë me para ose kartë — zgjidhni ju
+• Histori udhëtimesh dhe fatura dixhitale
+• Sistemim i udhëtimeve — rezervoni paraprakisht
+• Vlerësoni dhe rishikoni shoferët tuaj
+
+🚗 PËR SHOFERËT
+• Pranoni kërkesa udhëtimi në kohë reale
+• Gjurmoni fitimet ditore, javore dhe mujore
+• Sistemi i vlerësimit — ndërtoni reputacionin tuaj
+• Ngarkim i dokumenteve për verifikim
+• Kontrolloni orarin tuaj — punoni kur doni
+• Chat i drejtpërdrejtë me pasagjerin
+
+🏢 PËR KOMPANITË E TAKSISË
+• Menaxhoni flotën tuaj nga një panel i vetëm
+• Shtoni dhe aprovoni shoferë
+• Konfiguroni tarifat dhe komisionin
+• Statistika dhe analitikë e detajuar
+• Ndjekja e të ardhurave në kohë reale
+
+🔒 I SIGURT DHE I BESUESHËM
+Të gjithë shoferët kalojnë nëpër proces verifikimi para aktivizimit. Vendndodhja juaj ndahet vetëm gjatë udhëtimit aktiv.
+
+📍 Disponibël në Shqipëri
+TaxiMeIAfert është ndërtuar posaçërisht për tregun shqiptar, me mbështetje të plotë të gjuhës shqipe.</div>
+      <div class="char-count" id="sq-full-count"></div>
+      <button class="copy-btn" onclick="copyText('sq-full')">Copy</button>
+    </div>
+
+    <!-- English -->
+    <div class="text-block">
+      <div class="lang-badge">🇬🇧 English — en</div>
+
+      <div class="text-label">App Name (max 30 chars)</div>
+      <div class="text-value" id="en-name">TaxiMeIAfert</div>
+
+      <div class="text-label">Short Description (max 80 chars)</div>
+      <div class="text-value" id="en-short">Book a taxi with one tap. Live tracking. Verified drivers. Drive &amp; earn.</div>
+      <div class="char-count" id="en-short-count"></div>
+      <button class="copy-btn" onclick="copyText('en-short')">Copy</button>
+
+      <div class="text-label">Full Description (max 4000 chars)</div>
+      <div class="text-value" id="en-full">🚖 TaxiMeIAfert — Albania's Ride-Hailing App
+
+Book a taxi instantly, wherever you are. TaxiMeIAfert connects you with verified professional drivers in your area, any time of day.
+
+✅ FOR PASSENGERS
+• Instant booking — find a driver in seconds
+• Real-time vehicle tracking on a live map
+• See the fare before you confirm — no surprises
+• Multiple stops — add as many waypoints as you need
+• Pay by cash or card — your choice
+• Full ride history and digital receipts
+• Schedule rides in advance
+• Rate and review your drivers
+
+🚗 FOR DRIVERS
+• Accept ride requests in real time
+• Track daily, weekly and monthly earnings
+• Rating system — build your reputation
+• Upload documents for verification
+• Control your own schedule — work when you want
+• In-app chat with passengers
+
+🏢 FOR TAXI COMPANIES
+• Manage your entire fleet from one dashboard
+• Add and approve drivers
+• Configure tariffs and commission rates
+• Detailed statistics and analytics
+• Real-time revenue tracking
+
+🔒 SAFE &amp; RELIABLE
+All drivers go through a verification process before activation. Your location is only shared during an active ride.
+
+📍 Available in Albania
+TaxiMeIAfert is built specifically for the Albanian market, with full Albanian language support.</div>
+      <div class="char-count" id="en-full-count"></div>
+      <button class="copy-btn" onclick="copyText('en-full')">Copy</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       5. STORE LISTING CHECKLIST
+  ══════════════════════════════════════════════════════════════════ -->
+  <div class="text-section">
+    <h2>05 — Play Console Checklist</h2>
+    <div class="checklist">
+      <h3>Complete these in Google Play Console to go live:</h3>
+      <div class="cl-item"><div class="cl-check">✅</div><div><div class="cl-text">App uploaded (AAB · version 3)</div><div class="cl-note">Already done — waiting for review</div></div></div>
+      <div class="cl-item"><div class="cl-check">🔲</div><div><div class="cl-text">App icon (512×512 PNG)</div><div class="cl-note">Download from Section 01 above</div></div></div>
+      <div class="cl-item"><div class="cl-check">🔲</div><div><div class="cl-text">Feature graphic (1024×500 PNG)</div><div class="cl-note">Download from Section 02 above</div></div></div>
+      <div class="cl-item"><div class="cl-check">🔲</div><div><div class="cl-text">Phone screenshots (min 2, max 8)</div><div class="cl-note">Use real emulator screenshots or export the mockups above</div></div></div>
+      <div class="cl-item"><div class="cl-check">🔲</div><div><div class="cl-text">Short description (Albanian + English)</div><div class="cl-note">Copy from Section 04 above</div></div></div>
+      <div class="cl-item"><div class="cl-check">🔲</div><div><div class="cl-text">Full description (Albanian + English)</div><div class="cl-note">Copy from Section 04 above</div></div></div>
+      <div class="cl-item"><div class="cl-check">🔲</div><div><div class="cl-text">App category: Travel &amp; Local (or Maps &amp; Navigation)</div><div class="cl-note">Store Listing → Categorization</div></div></div>
+      <div class="cl-item"><div class="cl-check">🔲</div><div><div class="cl-text">Content rating questionnaire</div><div class="cl-note">Policy → App Content → Content Rating — answer all questions</div></div></div>
+      <div class="cl-item"><div class="cl-check">🔲</div><div><div class="cl-text">Privacy Policy URL</div><div class="cl-note">Required — host a simple privacy policy page (see note below)</div></div></div>
+      <div class="cl-item"><div class="cl-check">🔲</div><div><div class="cl-text">Target audience (13+ or 18+)</div><div class="cl-note">Policy → App Content → Target Audience and Content</div></div></div>
+      <div class="cl-item"><div class="cl-check">🔲</div><div><div class="cl-text">Data safety form</div><div class="cl-note">Policy → App Content → Data Safety — declare location, name, etc.</div></div></div>
+      <div class="cl-item"><div class="cl-check">🔲</div><div><div class="cl-text">Contact email visible on store page</div><div class="cl-note">Store Listing → Contact details</div></div></div>
+    </div>
+
+    <div style="margin-top:24px;background:#1f2937;border-radius:12px;padding:20px 24px;border:1px solid #374151;">
+      <div style="font-size:13px;font-weight:700;color:#F5C518;margin-bottom:8px;">⚠️ Privacy Policy — Required by Google</div>
+      <div style="font-size:13px;color:#d1d5db;line-height:1.7;">
+        Your app collects location data and personal info (name, phone, email), so a Privacy Policy is mandatory.<br><br>
+        <strong>Quick option:</strong> Use <a href="https://www.privacypolicygenerator.info" style="color:#F5C518;">privacypolicygenerator.info</a> or
+        <a href="https://app.termly.io" style="color:#F5C518;">termly.io</a> to generate one free.<br>
+        Host it on a public URL (GitHub Pages, Notion, your website) and paste the link into Play Console.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Character counters ───────────────────────────────────────────
+    function updateCount(id, max) {
+      const el = document.getElementById(id);
+      const countEl = document.getElementById(id + '-count');
+      if (!el || !countEl) return;
+      const len = el.textContent.length;
+      countEl.textContent = `${len} / ${max} characters`;
+      countEl.style.color = len > max ? '#ef4444' : '#6b7280';
+    }
+    updateCount('sq-short', 80);
+    updateCount('sq-full', 4000);
+    updateCount('en-short', 80);
+    updateCount('en-full', 4000);
+
+    // ── Copy text ────────────────────────────────────────────────────
+    function copyText(id) {
+      const el = document.getElementById(id);
+      navigator.clipboard.writeText(el.textContent).then(() => {
+        const btn = el.nextElementSibling.nextElementSibling;
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      });
+    }
+
+    // ── Canvas download helper ───────────────────────────────────────
+    function downloadCanvas(elementId, w, h, filename) {
+      const el = document.getElementById(elementId);
+      // html2canvas not loaded — instruct user
+      alert(
+        'To export at exact dimensions:\n\n' +
+        '1. Right-click the asset → "Save image as…"\n' +
+        '2. Open in Paint / Photoshop / GIMP\n' +
+        '3. Resize canvas to ' + w + '×' + h + ' px\n' +
+        '4. Save as PNG\n\n' +
+        'OR: Use a browser screenshot extension like "GoFullPage" or\n' +
+        '"Screenshot Guru" to capture at exact size.'
+      );
+    }
+  </script>
+</body>
+</html>

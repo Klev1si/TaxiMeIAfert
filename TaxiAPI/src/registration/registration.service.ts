@@ -99,6 +99,7 @@ export class RegistrationService {
         vehicleYear: dto.vehicleYear,
         vehiclePlate: dto.vehiclePlate,
         vehicleColor: dto.vehicleColor ?? null,
+        vehicleType:  dto.vehicleType  ?? null,
         isApproved: false,
         isOnline: false,
       });

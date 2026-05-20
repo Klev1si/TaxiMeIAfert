@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.module.js';
 import { Driver } from '../entities/index.js';
+import { FraudService } from '../fraud/fraud.service.js';
+import { RouteTrackerService } from '../rides/route-tracker.service.js';
 
 /** Sorted-set key used for GEOSEARCH in Step 17 */
 export const DRIVERS_GEO_KEY = 'drivers:geo';
@@ -29,6 +31,8 @@ export class GpsService {
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @InjectRepository(Driver) private readonly driverRepo: Repository<Driver>,
+    private readonly fraudService:     FraudService,
+    private readonly routeTracker:     RouteTrackerService,
   ) {}
 
   // ── Called by EventsGateway on gps_update ─────────────────────────────────
@@ -37,6 +41,14 @@ export class GpsService {
     lat: number,
     lng: number,
   ): Promise<void> {
+    // 0a. Fraud: GPS spoof / teleport detection (fire-and-forget)
+    void this.fraudService.detectGpsSpoof(driverId, lat, lng);
+
+    // 0b. Route tracking: record waypoint if driver has an active ride (fire-and-forget)
+    void this.routeTracker.getActiveRideId(driverId).then(rideId => {
+      if (rideId) void this.routeTracker.recordWaypoint(rideId, lat, lng);
+    });
+
     // 1. Geospatial index — powers GEOSEARCH (Step 17)
     //    GEOADD key longitude latitude member
     await this.redis.geoadd(DRIVERS_GEO_KEY, lng, lat, driverId);
@@ -61,11 +73,21 @@ export class GpsService {
     }
   }
 
+  // ── Called when driver goes online (before first GPS fix) ────────────────
+  async setOnlineStatus(driverId: string, isOnline: boolean): Promise<void> {
+    await this.driverRepo.update({ id: driverId }, { isOnline });
+    this.logger.log(`Driver ${driverId} isOnline → ${isOnline}`);
+  }
+
   // ── Called when driver goes offline / disconnects ─────────────────────────
   async removeFromGeo(driverId: string): Promise<void> {
     await this.redis.zrem(DRIVERS_GEO_KEY, driverId);
     await this.redis.del(`driver:loc:${driverId}`);
     this.lastDbWrite.delete(driverId);
+    // Clear the persistent online flag in the DB
+    await this.driverRepo.update({ id: driverId }, { isOnline: false });
+    // Clear fraud GPS snapshot so next online session starts fresh
+    void this.fraudService.clearGpsSnapshot(driverId);
     this.logger.log(`Driver ${driverId} removed from geo index`);
   }
 
@@ -117,6 +139,27 @@ export class GpsService {
       lat: parseFloat(dLatStr),
       lng: parseFloat(dLngStr),
     }));
+  }
+
+  // ── All currently online drivers (for admin live-monitor) ────────────────
+  async getAllOnlineDriverLocations(): Promise<DriverLocation[]> {
+    // ZRANGE returns every member stored in the geo sorted-set
+    const driverIds: string[] = await this.redis.zrange(DRIVERS_GEO_KEY, 0, -1);
+    if (driverIds.length === 0) return [];
+
+    const locations: DriverLocation[] = [];
+    for (const driverId of driverIds) {
+      const raw = await this.redis.hgetall(`driver:loc:${driverId}`);
+      if (raw.lat) {
+        locations.push({
+          driverId,
+          lat: parseFloat(raw.lat),
+          lng: parseFloat(raw.lng),
+          ts: parseInt(raw.ts, 10),
+        });
+      }
+    }
+    return locations;
   }
 
   // ── Lookup driver record for a user (used during socket connect) ──────────

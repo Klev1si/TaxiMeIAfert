@@ -1,8 +1,13 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule } from '@nestjs/throttler';
+import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { LoggingMiddleware } from './common/middleware/logging.middleware';
+import { HealthModule } from './health/health.module';
+import { FraudModule } from './fraud/fraud.module';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
 import { PhoneVerificationModule } from './phone-verification/phone-verification.module';
@@ -10,6 +15,15 @@ import { RegistrationModule } from './registration/registration.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { GpsModule } from './gps/gps.module';
 import { RidesModule } from './rides/rides.module';
+import { AdminModule } from './admin/admin.module';
+import { SavedLocationsModule } from './saved-locations/saved-locations.module';
+import { ExpensesModule } from './expenses/expenses.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { PaymentsModule } from './payments/payments.module';
+import { AppVersionModule } from './app-version/app-version.module';
+import { DriverDocumentsModule } from './driver-documents/driver-documents.module';
+import { WalletModule } from './wallet/wallet.module';
+import { SupportModule } from './support/support.module';
 import {
   User,
   Company,
@@ -20,12 +34,76 @@ import {
   Tariff,
   Ride,
   Expense,
+  SavedLocation,
+  PromoCode,
+  AuditLog,
+  DriverLedger,
+  SupportTicket,
+  SupportMessage,
+  FraudEvent,
+  RideWaypoint,
+  RideStop,
+  DriverSubscription,
 } from './entities';
 
 @Module({
   imports: [
-    // Load .env file globally
-    ConfigModule.forRoot({ isGlobal: true }),
+    // Load .env file globally — Joi schema validates required vars at startup
+    // so the app refuses to start if a critical secret is missing.
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: Joi.object({
+        NODE_ENV:              Joi.string().valid('development', 'test', 'production').default('development'),
+        PORT:                  Joi.number().default(3000),
+        // Database
+        DB_HOST:               Joi.string().required(),
+        DB_PORT:               Joi.number().default(5432),
+        DB_USERNAME:           Joi.string().required(),
+        DB_PASSWORD:           Joi.string().required(),
+        DB_NAME:               Joi.string().required(),
+        // Redis
+        REDIS_HOST:            Joi.string().required(),
+        REDIS_PORT:            Joi.number().default(6379),
+        // JWT — secrets must be at least 32 chars to prevent weak-secret attacks
+        JWT_SECRET:            Joi.string().min(32).required(),
+        JWT_EXPIRES_IN:        Joi.string().default('15m'),
+        JWT_REFRESH_SECRET:    Joi.string().min(32).required(),
+        JWT_REFRESH_EXPIRES_IN:Joi.string().default('30d'),
+        // CORS
+        CORS_ORIGIN:           Joi.string().required(),
+      }),
+      validationOptions: {
+        allowUnknown: true,  // extra vars (FIREBASE_, TWILIO_, etc.) are fine
+        abortEarly:   false, // report all missing vars at once
+      },
+    }),
+
+    // Rate limiting — applied globally via APP_GUARD below.
+    // Two named limiters so sensitive endpoints can apply a stricter one
+    // using @Throttle({ strict: { ... } }) without touching the default.
+    ThrottlerModule.forRoot([
+      {
+        // "default" — general API protection
+        // 200 requests per 60 seconds per IP
+        name:  'default',
+        ttl:   60_000,  // ms
+        limit: 200,
+      },
+      {
+        // "strict" — auth / OTP / registration routes
+        // 10 requests per 60 seconds per IP
+        name:  'strict',
+        ttl:   60_000,
+        limit: 10,
+      },
+      {
+        // "otp" — SMS send-otp route (prevent SMS-bombing)
+        // 3 requests per 60 seconds per IP
+        name:  'otp',
+        ttl:   60_000,
+        limit: 3,
+      },
+    ]),
 
     // TypeORM — async so it can read env vars from ConfigService
     TypeOrmModule.forRootAsync({
@@ -41,7 +119,15 @@ import {
         entities: [
           User, Company, Driver, Client,
           SubscriptionPlan, CompanySubscription,
-          Tariff, Ride, Expense,
+          Tariff, Ride, Expense, SavedLocation, PromoCode,
+          AuditLog,
+          DriverLedger,
+          SupportTicket,
+          SupportMessage,
+          FraudEvent,
+          RideWaypoint,
+          RideStop,
+          DriverSubscription,
         ],
         synchronize: false,
         logging: config.get<string>('DB_LOGGING') === 'true',
@@ -58,8 +144,29 @@ import {
     GatewayModule,
     GpsModule,
     RidesModule,
+    AdminModule,
+    SavedLocationsModule,
+    ExpensesModule,
+    SubscriptionsModule,
+    PaymentsModule,
+    AppVersionModule,
+    DriverDocumentsModule,
+    WalletModule,
+    SupportModule,
+    HealthModule,
+    FraudModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // ThrottlerGuard is applied per-controller/per-method on sensitive auth
+    // routes only (login, OTP, registration, change-password, delete-account).
+    // No global guard here — applying it globally blocks admin/dashboard routes
+    // in development where all requests share the same 127.0.0.1 IP.
+  ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggingMiddleware).forRoutes('*');
+  }
+}

@@ -1,5 +1,6 @@
 import apiClient from './client';
 import type { AuthTokens } from '../types/api';
+import type { VehicleType } from './rides';
 
 export interface LoginPayload {
   phone: string;
@@ -24,7 +25,16 @@ export interface RegisterDriverPayload {
   vehicleYear: number;
   vehiclePlate: string;
   vehicleColor?: string;
+  vehicleType?: VehicleType;
   companyId?: string;
+}
+
+export interface RegisterCompanyPayload {
+  phone: string;
+  password: string;
+  companyName: string;
+  address?: string;
+  city?: string;
 }
 
 export const authApi = {
@@ -48,6 +58,10 @@ export const authApi = {
   registerDriver: (payload: RegisterDriverPayload) =>
     apiClient.post('/auth/register/driver', payload),
 
+  /** Register a new company account */
+  registerCompany: (payload: RegisterCompanyPayload) =>
+    apiClient.post('/auth/register/company', payload),
+
   /** Refresh access token */
   refresh: (refreshToken: string) =>
     apiClient.post<AuthTokens>('/auth/refresh', { refreshToken }),
@@ -56,14 +70,49 @@ export const authApi = {
   getMe: () =>
     apiClient.get<{
       id: string; phone: string; role: string;
+      avatarUrl: string | null;
       firstName: string | null; lastName: string | null; rating: number | null;
       // driver-only
       isApproved?: boolean; licenseNumber?: string | null;
       vehicleMake?: string | null; vehicleModel?: string | null;
       vehiclePlate?: string | null; vehicleColor?: string | null;
-      vehicleYear?: number | null;
+      vehicleYear?: number | null; vehicleType?: VehicleType | null;
     }>('/auth/me'),
 
   /** Logout — invalidates refresh token on server */
   logout: () => apiClient.post('/auth/logout'),
+
+  /** PATCH /auth/fcm-token — register or clear the FCM push token */
+  updateFcmToken: (fcmToken: string | null) =>
+    apiClient.patch('/auth/fcm-token', { fcmToken }),
+
+  /** PATCH /auth/profile — update firstName / lastName (and vehicleColor for drivers) */
+  updateProfile: (payload: { firstName?: string; lastName?: string; vehicleColor?: string }) =>
+    apiClient.patch('/auth/profile', payload),
+
+  /** PATCH /auth/change-password — verifies current password then saves new one */
+  changePassword: (payload: { currentPassword: string; newPassword: string }) =>
+    apiClient.patch('/auth/change-password', payload),
+
+  /**
+   * POST /auth/avatar — upload a profile photo.
+   * `formData` must contain a field named "avatar" with the image file.
+   * Returns { avatarUrl: string } — relative path, prepend API_BASE_URL to display.
+   */
+  uploadAvatar: (formData: FormData) =>
+    apiClient.post<{ avatarUrl: string }>('/auth/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  /** DELETE /auth/avatar — remove the current profile photo */
+  removeAvatar: () =>
+    apiClient.delete('/auth/avatar'),
+
+  /**
+   * DELETE /auth/account — permanently anonymises the account (GDPR).
+   * All personal data is erased; the user is signed out automatically.
+   * Returns 204 No Content on success.
+   */
+  deleteAccount: () =>
+    apiClient.delete('/auth/account'),
 };

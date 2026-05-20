@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule } from '@nestjs/config';
-import { Client, Driver, User } from '../entities';
+import { Client, Driver, Ride, User } from '../entities';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -13,7 +13,7 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
   imports: [
     ConfigModule,
     PassportModule,
-    TypeOrmModule.forFeature([User, Client, Driver]),
+    TypeOrmModule.forFeature([User, Client, Driver, Ride]),
     // JwtModule registered without a default secret —
     // each signAsync call passes its own secret explicitly
     JwtModule.register({}),

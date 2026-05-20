@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,13 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  TextInput,
+  FlatList,
+  Keyboard,
+  Modal,
+  Platform,
 } from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import MapView, {
   Marker,
   Region,
@@ -16,24 +22,346 @@ import MapView, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
+import type { FareEstimate, VehicleType } from '../../api/rides';
 import { socketService } from '../../services/socket';
-import { Colors } from '../../constants';
+import { useColors } from '../../stores/themeStore';
+import { useTranslation } from '../../i18n';
+import type { ColorPalette } from '../../constants/colors';
 import type { WsRideAccepted, WsRideCancelled } from '../../types/api';
 import type { ClientStackScreenProps } from '../../navigation/types';
+import { toAlertString } from '../../utils/errorMessage';
 
 type Props = ClientStackScreenProps<'RideRequest'>;
 
 const DELTA = 0.015;
 
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
 export default function RideRequestScreen({ navigation, route }: Props) {
-  const { pickupLat, pickupLng, pickupAddress } = route.params;
+  const { pickupLat, pickupLng, pickupAddress, dropoffLat, dropoffLng, dropoffAddress } = route.params;
 
   const { setActiveRide, setIsSearching, isSearching, clearAll } = useRideStore();
+  const colors = useColors();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+  const { t } = useTranslation();
 
   const mapRef = useRef<MapView>(null);
 
-  const [dropoff, setDropoff] = useState<{ lat: number; lng: number } | null>(null);
+  const [dropoff, setDropoff] = useState<{ lat: number; lng: number; address?: string } | null>(
+    dropoffLat != null && dropoffLng != null
+      ? { lat: dropoffLat, lng: dropoffLng, address: dropoffAddress }
+      : null,
+  );
+
+  /** Intermediate stops added by the passenger (max 5). */
+  const [stops, setStops] = useState<Array<{ lat: number; lng: number; address?: string }>>([]);
+  /**
+   * Index of the stop currently being searched.
+   * -1 = adding a brand-new stop; ≥0 = editing existing stop at that index.
+   * null = no stop search active.
+   */
+  const [editingStopIdx, setEditingStopIdx] = useState<number | null>(null);
+  const [stopSearchQuery,   setStopSearchQuery]   = useState('');
+  const [stopSearchResults, setStopSearchResults] = useState<NominatimResult[]>([]);
+  const [stopSearchLoading, setStopSearchLoading] = useState(false);
+  const stopSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchStopAddresses = useCallback(async (q: string) => {
+    if (q.trim().length < 3) { setStopSearchResults([]); return; }
+    setStopSearchLoading(true);
+    try {
+      const url =
+        `https://nominatim.openstreetmap.org/search` +
+        `?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=0`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'TaxiApp/1.0 (contact@taxiapp.com)' },
+      });
+      const json: NominatimResult[] = await res.json();
+      setStopSearchResults(json);
+    } catch {
+      setStopSearchResults([]);
+    } finally {
+      setStopSearchLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (stopSearchTimeout.current) { clearTimeout(stopSearchTimeout.current); }
+    if (!stopSearchQuery.trim()) { setStopSearchResults([]); return; }
+    stopSearchTimeout.current = setTimeout(() => fetchStopAddresses(stopSearchQuery), 500);
+    return () => { if (stopSearchTimeout.current) { clearTimeout(stopSearchTimeout.current); } };
+  }, [stopSearchQuery, fetchStopAddresses]);
+
+  const selectStopResult = (item: NominatimResult) => {
+    const lat = parseFloat(item.lat);
+    const lng = parseFloat(item.lon);
+    const address = item.display_name;
+    setStops(prev => {
+      if (editingStopIdx === -1) {
+        return [...prev, { lat, lng, address }];
+      }
+      const updated = [...prev];
+      updated[editingStopIdx!] = { lat, lng, address };
+      return updated;
+    });
+    setEditingStopIdx(null);
+    setStopSearchQuery('');
+    setStopSearchResults([]);
+    Keyboard.dismiss();
+    mapRef.current?.animateToRegion({
+      latitude: lat, longitude: lng,
+      latitudeDelta: DELTA, longitudeDelta: DELTA,
+    }, 400);
+  };
+
+  const removeStop = (idx: number) => {
+    setStops(prev => prev.filter((_, i) => i !== idx));
+    if (editingStopIdx === idx) {
+      setEditingStopIdx(null);
+      setStopSearchQuery('');
+      setStopSearchResults([]);
+    }
+  };
+
   const [requesting, setRequesting] = useState(false);
+
+  // ── Scheduling ───────────────────────────────────────────────────────────────
+  /** null = immediate ride. A future Date = scheduled ride. */
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
+
+  /**
+   * Android: 'date' → shows date-picker dialog, 'time' → shows time-picker dialog.
+   * iOS:     shown inside a modal; same two-step flow.
+   * null = picker is closed.
+   */
+  const [pickerStep, setPickerStep] = useState<'date' | 'time' | null>(null);
+
+  /**
+   * Staging area while the user is still picking (date first, then time).
+   * Only committed to scheduledAt when both steps complete successfully.
+   */
+  const pickerTempRef = useRef<Date>(new Date());
+
+  /** Minimum bookable time = 10 minutes from now */
+  const minSchedule = () => new Date(Date.now() + 10 * 60 * 1000);
+
+  /** Open the date-picker step, seeding it with the current scheduledAt or min-time */
+  const openCustomPicker = () => {
+    pickerTempRef.current = scheduledAt ?? minSchedule();
+    setPickerStep('date');
+  };
+
+  /** Called by DateTimePicker on Android (and inside the iOS modal) */
+  const handlePickerChange = (event: DateTimePickerEvent, selected?: Date) => {
+    // Android dismissal
+    if (event.type === 'dismissed') {
+      setPickerStep(null);
+      return;
+    }
+
+    if (!selected) { return; }
+
+    if (pickerStep === 'date') {
+      // Preserve the time part from pickerTemp; update only the date
+      const merged = new Date(pickerTempRef.current);
+      merged.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+      pickerTempRef.current = merged;
+      // Move to time step
+      setPickerStep('time');
+    } else if (pickerStep === 'time') {
+      // Preserve the date part; update only the time
+      const merged = new Date(pickerTempRef.current);
+      merged.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+
+      if (merged < minSchedule()) {
+        Alert.alert(
+          t('client.rideRequest.tooSoonTitle'),
+          t('client.rideRequest.tooSoonMsg'),
+        );
+        setPickerStep(null);
+        return;
+      }
+
+      setScheduledAt(merged);
+      setPickerStep(null);
+    }
+  };
+
+  /** Preset chips — quick shortcuts */
+  const SCHEDULE_CHIPS: Array<{ label: string; action: () => void }> = [
+    { label: t('client.rideRequest.scheduleNow'),      action: () => setScheduledAt(null) },
+    { label: t('client.rideRequest.schedule30'),       action: () => setScheduledAt(new Date(Date.now() + 30 * 60_000)) },
+    { label: t('client.rideRequest.schedule1h'),       action: () => setScheduledAt(new Date(Date.now() + 60 * 60_000)) },
+    { label: t('client.rideRequest.schedule2h'),       action: () => setScheduledAt(new Date(Date.now() + 120 * 60_000)) },
+    { label: t('client.rideRequest.schedule4h'),       action: () => setScheduledAt(new Date(Date.now() + 240 * 60_000)) },
+    {
+      label: t('client.rideRequest.scheduleTomorrow'),
+      action: () => {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        d.setHours(8, 0, 0, 0);
+        setScheduledAt(d);
+      },
+    },
+    { label: t('client.rideRequest.scheduleCustom'), action: openCustomPicker },
+  ];
+
+  /**
+   * Determine which chip (if any) matches the current scheduledAt so we can
+   * highlight it. Returns 'Custom…' for any time that wasn't set via a chip.
+   */
+  const activeChipLabel = (() => {
+    if (!scheduledAt) { return t('client.rideRequest.scheduleNow'); }
+    const diffMin = (scheduledAt.getTime() - Date.now()) / 60_000;
+    if (diffMin >= 25 && diffMin <= 35)   { return t('client.rideRequest.schedule30'); }
+    if (diffMin >= 55 && diffMin <= 65)   { return t('client.rideRequest.schedule1h'); }
+    if (diffMin >= 115 && diffMin <= 125) { return t('client.rideRequest.schedule2h'); }
+    if (diffMin >= 235 && diffMin <= 245) { return t('client.rideRequest.schedule4h'); }
+    const tomorrow8 = new Date();
+    tomorrow8.setDate(tomorrow8.getDate() + 1);
+    tomorrow8.setHours(8, 0, 0, 0);
+    if (Math.abs(scheduledAt.getTime() - tomorrow8.getTime()) < 60_000) {
+      return t('client.rideRequest.scheduleTomorrow');
+    }
+    return t('client.rideRequest.scheduleCustom');
+  })();
+
+  // ── Vehicle type ─────────────────────────────────────────────────────────────
+  const [vehicleType, setVehicleType] = useState<VehicleType | null>(null);
+
+  const VEHICLE_TYPES: { value: VehicleType; label: string; icon: string }[] = [
+    { value: 'economy', label: t('client.rideRequest.vehicleEconomy'), icon: '🚗' },
+    { value: 'comfort', label: t('client.rideRequest.vehicleComfort'), icon: '🚙' },
+    { value: 'xl',      label: t('client.rideRequest.vehicleXL'),      icon: '🚐' },
+  ];
+
+  // ── Fare estimate ────────────────────────────────────────────────────────────
+  const [estimate,        setEstimate]        = useState<FareEstimate | null>(null);
+  const [estimateLoading, setEstimateLoading] = useState(false);
+  const estimateTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Promo code ───────────────────────────────────────────────────────────────
+  const [promoInput,   setPromoInput]   = useState('');
+  const [promoResult,  setPromoResult]  = useState<{
+    valid: boolean;
+    code: string;
+    discountType: 'percent' | 'fixed';
+    discountValue: number;
+    maxDiscountAmount: number | null;
+    discountAmount: number | null;
+    description: string | null;
+  } | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError,   setPromoError]   = useState('');
+
+  const applyPromo = useCallback(async () => {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    setPromoLoading(true);
+    setPromoError('');
+    setPromoResult(null);
+    try {
+      const fare = estimate?.estimatedFare;
+      const { data } = await ridesApi.validatePromo({
+        code,
+        ...(fare != null ? { fare: String(fare) } : {}),
+      });
+      setPromoResult(data);
+    } catch (err: any) {
+      setPromoError(toAlertString(err?.response?.data?.message, 'Invalid or expired promo code.'));
+    } finally {
+      setPromoLoading(false);
+    }
+  }, [promoInput, estimate?.estimatedFare]);
+
+  const removePromo = () => {
+    setPromoInput('');
+    setPromoResult(null);
+    setPromoError('');
+  };
+
+  const fetchEstimate = useCallback(async (d: { lat: number; lng: number }) => {
+    setEstimateLoading(true);
+    try {
+      const { data } = await ridesApi.getFareEstimate(
+        pickupLat, pickupLng, d.lat, d.lng,
+        vehicleType ?? undefined,
+      );
+      setEstimate(data);
+    } catch {
+      setEstimate(null);
+    } finally {
+      setEstimateLoading(false);
+    }
+  }, [pickupLat, pickupLng, vehicleType]);
+
+  // Debounce: fetch estimate 600 ms after dropoff changes
+  useEffect(() => {
+    if (!dropoff) {
+      setEstimate(null);
+      return;
+    }
+    if (estimateTimeout.current) { clearTimeout(estimateTimeout.current); }
+    estimateTimeout.current = setTimeout(() => fetchEstimate(dropoff), 600);
+    return () => {
+      if (estimateTimeout.current) { clearTimeout(estimateTimeout.current); }
+    };
+  }, [dropoff, fetchEstimate]);
+
+  // ── Address search (Nominatim / OpenStreetMap) ───────────────────────────────
+  const [searchQuery,   setSearchQuery]   = useState('');
+  const [searchResults, setSearchResults] = useState<NominatimResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchAddresses = useCallback(async (q: string) => {
+    if (q.trim().length < 3) { setSearchResults([]); return; }
+    setSearchLoading(true);
+    try {
+      const url =
+        `https://nominatim.openstreetmap.org/search` +
+        `?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=0`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'TaxiApp/1.0 (contact@taxiapp.com)' },
+      });
+      const json: NominatimResult[] = await res.json();
+      setSearchResults(json);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  // Debounce search 500 ms after keystroke
+  useEffect(() => {
+    if (searchTimeout.current) { clearTimeout(searchTimeout.current); }
+    if (!searchQuery.trim()) { setSearchResults([]); return; }
+    searchTimeout.current = setTimeout(() => fetchAddresses(searchQuery), 500);
+    return () => { if (searchTimeout.current) { clearTimeout(searchTimeout.current); } };
+  }, [searchQuery, fetchAddresses]);
+
+  const selectResult = (item: NominatimResult) => {
+    const lat = parseFloat(item.lat);
+    const lng = parseFloat(item.lon);
+    const address = item.display_name;
+    setDropoff({ lat, lng, address });
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchFocused(false);
+    Keyboard.dismiss();
+    // Snap map to the selected location
+    mapRef.current?.animateToRegion({
+      latitude: lat, longitude: lng,
+      latitudeDelta: DELTA, longitudeDelta: DELTA,
+    }, 500);
+  };
 
   const pickupRegion: Region = {
     latitude: pickupLat,
@@ -59,7 +387,14 @@ export default function RideRequestScreen({ navigation, route }: Props) {
       'ride_accepted',
       (payload) => {
         setIsSearching(false);
-        navigation.replace('ActiveRide', { rideId: payload.rideId });
+        navigation.replace('ActiveRide', {
+          rideId:       payload.rideId,
+          driverName:   payload.driverName,
+          vehicleMake:  payload.vehicleMake,
+          vehicleModel: payload.vehicleModel,
+          vehiclePlate: payload.vehiclePlate,
+          vehicleColor: payload.vehicleColor,
+        });
       },
     );
 
@@ -69,9 +404,9 @@ export default function RideRequestScreen({ navigation, route }: Props) {
         setIsSearching(false);
         clearAll();
         Alert.alert(
-          'No drivers available',
-          payload.reason ?? 'All nearby drivers are unavailable. Please try again.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }],
+          t('client.rideRequest.noDriversTitle'),
+          payload.reason ?? t('client.rideRequest.noDriversTitle'),
+          [{ text: t('common.ok'), onPress: () => navigation.goBack() }],
         );
       },
     );
@@ -86,6 +421,7 @@ export default function RideRequestScreen({ navigation, route }: Props) {
   const handleMapPress = (e: MapPressEvent) => {
     if (isSearching || requesting) { return; }
     const { latitude, longitude } = e.nativeEvent.coordinate;
+    // Tapping the map always clears any saved-location address label
     setDropoff({ lat: latitude, lng: longitude });
   };
 
@@ -97,14 +433,36 @@ export default function RideRequestScreen({ navigation, route }: Props) {
         pickupLat,
         pickupLng,
         pickupAddress,
-        dropoffLat: dropoff?.lat,
-        dropoffLng: dropoff?.lng,
+        dropoffLat:     dropoff?.lat,
+        dropoffLng:     dropoff?.lng,
+        dropoffAddress: dropoff?.address,
+        scheduledAt:    scheduledAt ? scheduledAt.toISOString() : undefined,
+        promoCode:      promoResult?.code,
+        vehicleType:    vehicleType ?? undefined,
+        stops:          stops.length > 0 ? stops.map(s => ({ lat: s.lat, lng: s.lng, address: s.address })) : undefined,
       });
       setActiveRide(ride);
-      setIsSearching(true);
+
+      if (scheduledAt) {
+        // Scheduled ride — show confirmation and go back to home
+        const label = scheduledAt.toLocaleString('en-US', {
+          weekday: 'short', month: 'short', day: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        });
+        Alert.alert(
+          t('client.rideRequest.scheduledTitle'),
+          `Your ride has been booked for ${label}.`,
+          [{ text: t('common.ok'), onPress: () => navigation.goBack() }],
+        );
+      } else {
+        setIsSearching(true);
+      }
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Failed to request ride. Try again.';
-      Alert.alert('Error', Array.isArray(msg) ? msg.join('\n') : msg);
+      const apiMsg = err?.response?.data?.message;
+      const fallback = err?.message ?? 'Failed to request ride. Try again.';
+      Alert.alert(t('common.error'), toAlertString(apiMsg, fallback));
+      // eslint-disable-next-line no-console
+      console.warn('[requestRide] error', JSON.stringify(err?.response?.data ?? err?.message));
     } finally {
       setRequesting(false);
     }
@@ -112,10 +470,10 @@ export default function RideRequestScreen({ navigation, route }: Props) {
 
   // ── Cancel while searching ───────────────────────────────────────────────────
   const handleCancel = () => {
-    Alert.alert('Cancel Ride', 'Are you sure you want to cancel?', [
-      { text: 'No', style: 'cancel' },
+    Alert.alert(t('client.rideRequest.cancelTitle'), t('client.rideRequest.cancelMsg'), [
+      { text: t('common.no'), style: 'cancel' },
       {
-        text: 'Yes, cancel',
+        text: t('client.rideRequest.yesCancel'),
         style: 'destructive',
         onPress: async () => {
           const rideId = useRideStore.getState().activeRide?.id;
@@ -151,7 +509,7 @@ export default function RideRequestScreen({ navigation, route }: Props) {
           coordinate={{ latitude: pickupLat, longitude: pickupLng }}
           title="Pickup"
           description={pickupAddress ?? 'Your location'}
-          pinColor={Colors.primary}
+          pinColor={colors.primary}
         />
 
         {/* Dropoff marker */}
@@ -160,9 +518,20 @@ export default function RideRequestScreen({ navigation, route }: Props) {
             coordinate={{ latitude: dropoff.lat, longitude: dropoff.lng }}
             title="Dropoff"
             description="Tap to change"
-            pinColor={Colors.info}
+            pinColor={colors.info}
           />
         )}
+
+        {/* Intermediate stop markers */}
+        {stops.map((stop, i) => (
+          <Marker
+            key={`stop-${i}`}
+            coordinate={{ latitude: stop.lat, longitude: stop.lng }}
+            title={`Stop ${i + 1}`}
+            description={stop.address ?? ''}
+            pinColor="#f59e0b"
+          />
+        ))}
       </MapView>
 
       {/* Top back button */}
@@ -171,8 +540,10 @@ export default function RideRequestScreen({ navigation, route }: Props) {
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => navigation.goBack()}
-            activeOpacity={0.8}>
-            <Text style={styles.backText}>← Back</Text>
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Go back">
+            <Text style={styles.backText}>{t('client.rideRequest.backBtn')}</Text>
           </TouchableOpacity>
         </SafeAreaView>
       )}
@@ -181,16 +552,18 @@ export default function RideRequestScreen({ navigation, route }: Props) {
       {isSearching && (
         <View style={styles.searchingOverlay}>
           <View style={styles.searchingCard}>
-            <ActivityIndicator size="large" color={Colors.primary} style={styles.spinner} />
-            <Text style={styles.searchingTitle}>Finding your driver…</Text>
+            <ActivityIndicator size="large" color={colors.primary} style={styles.spinner} />
+            <Text style={styles.searchingTitle}>{t('client.rideRequest.findingDriver')}</Text>
             <Text style={styles.searchingSubtitle}>
-              We're contacting nearby drivers. This usually takes under a minute.
+              {t('client.rideRequest.contactingDrivers')}
             </Text>
             <TouchableOpacity
               style={styles.cancelBtn}
               onPress={handleCancel}
-              activeOpacity={0.8}>
-              <Text style={styles.cancelBtnText}>Cancel Ride</Text>
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel ride search">
+              <Text style={styles.cancelBtnText}>{t('client.rideRequest.cancelRide')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -205,58 +578,506 @@ export default function RideRequestScreen({ navigation, route }: Props) {
             <View style={styles.locationRow}>
               <View style={[styles.dot, styles.dotPickup]} />
               <View style={styles.locationInfo}>
-                <Text style={styles.locationLabel}>Pickup</Text>
+                <Text style={styles.locationLabel}>{t('client.rideRequest.pickup')}</Text>
                 <Text style={styles.locationValue} numberOfLines={1}>
                   {pickupAddress ?? `${pickupLat.toFixed(5)}, ${pickupLng.toFixed(5)}`}
                 </Text>
               </View>
             </View>
 
+            {/* ── Intermediate stops ──────────────────────────── */}
+            {stops.map((stop, i) => (
+              <View key={`stoprow-${i}`}>
+                <View style={styles.locationDivider} />
+                <View style={styles.locationRow}>
+                  <View style={[styles.dot, styles.dotStop]}>
+                    <Text style={styles.dotStopLabel}>{i + 1}</Text>
+                  </View>
+                  <View style={styles.locationInfo}>
+                    <Text style={styles.locationLabel}>{t('client.rideRequest.stop', { n: i + 1 })}</Text>
+                    {editingStopIdx === i ? (
+                      <TextInput
+                        style={styles.searchInput}
+                        value={stopSearchQuery}
+                        onChangeText={setStopSearchQuery}
+                        placeholder={t('client.rideRequest.searchStop')}
+                        placeholderTextColor={colors.textDisabled}
+                        returnKeyType="search"
+                        autoCorrect={false}
+                        autoFocus
+                      />
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setStopSearchQuery(stop.address ?? '');
+                          setEditingStopIdx(i);
+                        }}
+                        activeOpacity={0.7}>
+                        <Text style={styles.locationValue} numberOfLines={1}>
+                          {stop.address ?? `${stop.lat.toFixed(5)}, ${stop.lng.toFixed(5)}`}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => removeStop(i)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={styles.clearDropoff}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Stop search results */}
+                {editingStopIdx === i && stopSearchResults.length > 0 && (
+                  <FlatList
+                    data={stopSearchResults}
+                    keyExtractor={item => String(item.place_id)}
+                    style={styles.resultsList}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.resultItem}
+                        onPress={() => selectStopResult(item)}
+                        activeOpacity={0.7}>
+                        <Text style={styles.resultIcon}>🟠</Text>
+                        <Text style={styles.resultText} numberOfLines={2}>
+                          {item.display_name}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    ItemSeparatorComponent={() => <View style={styles.resultDivider} />}
+                  />
+                )}
+                {editingStopIdx === i && stopSearchLoading && (
+                  <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 4, marginLeft: 24 }} />
+                )}
+              </View>
+            ))}
+
+            {/* Add stop search (when adding a new stop) */}
+            {editingStopIdx === -1 && (
+              <>
+                <View style={styles.locationDivider} />
+                <View style={styles.locationRow}>
+                  <View style={[styles.dot, styles.dotStop]}>
+                    <Text style={styles.dotStopLabel}>{stops.length + 1}</Text>
+                  </View>
+                  <View style={styles.locationInfo}>
+                    <Text style={styles.locationLabel}>{t('client.rideRequest.newStop')}</Text>
+                    <TextInput
+                      style={styles.searchInput}
+                      value={stopSearchQuery}
+                      onChangeText={setStopSearchQuery}
+                      placeholder={t('client.rideRequest.searchStop')}
+                      placeholderTextColor={colors.textDisabled}
+                      returnKeyType="search"
+                      autoCorrect={false}
+                      autoFocus
+                    />
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => { setEditingStopIdx(null); setStopSearchQuery(''); setStopSearchResults([]); }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={styles.clearDropoff}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                {stopSearchResults.length > 0 && (
+                  <FlatList
+                    data={stopSearchResults}
+                    keyExtractor={item => String(item.place_id)}
+                    style={styles.resultsList}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.resultItem}
+                        onPress={() => selectStopResult(item)}
+                        activeOpacity={0.7}>
+                        <Text style={styles.resultIcon}>🟠</Text>
+                        <Text style={styles.resultText} numberOfLines={2}>
+                          {item.display_name}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    ItemSeparatorComponent={() => <View style={styles.resultDivider} />}
+                  />
+                )}
+                {stopSearchLoading && (
+                  <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 4, marginLeft: 24 }} />
+                )}
+              </>
+            )}
+
             <View style={styles.locationDivider} />
 
-            {/* Dropoff row */}
+            {/* Dropoff row — search input */}
             <View style={styles.locationRow}>
               <View style={[styles.dot, styles.dotDropoff]} />
               <View style={styles.locationInfo}>
-                <Text style={styles.locationLabel}>Dropoff</Text>
-                <Text
-                  style={[
-                    styles.locationValue,
-                    !dropoff && styles.locationValuePlaceholder,
-                  ]}
-                  numberOfLines={1}>
-                  {dropoff
-                    ? `${dropoff.lat.toFixed(5)}, ${dropoff.lng.toFixed(5)}`
-                    : 'Tap the map to set (optional)'}
-                </Text>
+                <Text style={styles.locationLabel}>{t('client.rideRequest.dropoff')}</Text>
+                {dropoff && !searchFocused ? (
+                  // Show selected address — tap to re-search
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSearchQuery(dropoff.address ?? '');
+                      setSearchFocused(true);
+                    }}
+                    activeOpacity={0.7}>
+                    <Text style={styles.locationValue} numberOfLines={1}>
+                      {dropoff.address ?? `${dropoff.lat.toFixed(5)}, ${dropoff.lng.toFixed(5)}`}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TextInput
+                    style={styles.searchInput}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    onFocus={() => setSearchFocused(true)}
+                    onBlur={() => {
+                      // Small delay so tapping a result fires before blur clears it
+                      setTimeout(() => setSearchFocused(false), 150);
+                    }}
+                    placeholder={t('client.rideRequest.searchDestination')}
+                    placeholderTextColor={colors.textDisabled}
+                    returnKeyType="search"
+                    autoCorrect={false}
+                  />
+                )}
               </View>
-              {dropoff && (
-                <TouchableOpacity onPress={() => setDropoff(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              {dropoff && !searchFocused ? (
+                <TouchableOpacity
+                  onPress={() => { setDropoff(null); setSearchQuery(''); }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Text style={styles.clearDropoff}>✕</Text>
+                </TouchableOpacity>
+              ) : searchLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 8 }} />
+              ) : null}
+            </View>
+
+            {/* Search results dropdown */}
+            {searchFocused && searchResults.length > 0 && (
+              <FlatList
+                data={searchResults}
+                keyExtractor={item => String(item.place_id)}
+                style={styles.resultsList}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.resultItem}
+                    onPress={() => selectResult(item)}
+                    activeOpacity={0.7}>
+                    <Text style={styles.resultIcon}>📍</Text>
+                    <Text style={styles.resultText} numberOfLines={2}>
+                      {item.display_name}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                ItemSeparatorComponent={() => <View style={styles.resultDivider} />}
+              />
+            )}
+
+            {/* Hint when search is empty and no dropoff set */}
+            {!dropoff && !searchFocused && (
+              <Text style={styles.mapHint}>
+                🗺 {t('client.rideRequest.tapMapHint')}
+              </Text>
+            )}
+
+            {/* Add stop button */}
+            {dropoff && !searchFocused && editingStopIdx === null && stops.length < 5 && (
+              <TouchableOpacity
+                style={styles.addStopBtn}
+                onPress={() => setEditingStopIdx(-1)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Add intermediate stop">
+                <Text style={styles.addStopText}>➕  {t('client.rideRequest.addStop')}</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* ── Fare estimate card ─────────────────────────────── */}
+            {dropoff && !searchFocused && (
+              <View style={styles.estimateCard}>
+                {estimateLoading ? (
+                  <View style={styles.estimateRow}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={styles.estimateLoading}>{t('client.rideRequest.calculatingFare')}</Text>
+                  </View>
+                ) : estimate ? (
+                  <>
+                    {/* Night tariff badge */}
+                    {estimate.isNightTariff && (
+                      <View style={styles.nightBadge}>
+                        <Text style={styles.nightBadgeText}>
+                          🌙 Night rates apply{estimate.tariffName ? ` · ${estimate.tariffName}` : ''}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Surge pricing badge */}
+                    {estimate.surgeActive && (
+                      <View style={styles.surgeBadge}>
+                        <Text style={styles.surgeBadgeText}>
+                          ⚡ Surge ×{(estimate.surgeMultiplier ?? 1).toFixed(1)} — high demand
+                        </Text>
+                      </View>
+                    )}
+
+                    <View style={styles.estimateRow}>
+                      <Text style={styles.estimateLabel}>📏 {t('client.rideRequest.distanceLabel')}</Text>
+                      <Text style={styles.estimateValue}>{estimate.distanceKm} km</Text>
+                    </View>
+                    <View style={styles.estimateRow}>
+                      <Text style={styles.estimateLabel}>⏱ {t('client.rideRequest.durationLabel')}</Text>
+                      <Text style={styles.estimateValue}>{Math.round(estimate.durationMinutes)} min</Text>
+                    </View>
+                    {estimate.estimatedFare != null ? (
+                      <View style={[styles.estimateRow, styles.estimateFareRow]}>
+                        <Text style={styles.estimateFareLabel}>💰 {t('client.rideRequest.fareLabel')}</Text>
+                        <Text style={styles.estimateFareValue}>${estimate.estimatedFare.toFixed(2)}</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.estimateNote}>
+                        {estimate.tariffName
+                          ? `Tariff: ${estimate.tariffName} — fare calculated at trip end`
+                          : 'Final fare calculated at trip end'}
+                      </Text>
+                    )}
+                  </>
+                ) : null}
+              </View>
+            )}
+
+            {/* ── Vehicle type selector ────────────────────────── */}
+            {!searchFocused && (
+              <View style={styles.vehicleSection}>
+                <Text style={styles.vehicleSectionTitle}>{t('client.rideRequest.vehicleType')}</Text>
+                <View style={styles.vehicleRow}>
+                  {/* "Any" option */}
+                  <TouchableOpacity
+                    style={[styles.vehicleChip, vehicleType === null && styles.vehicleChipActive]}
+                    onPress={() => setVehicleType(null)}
+                    accessibilityRole="radio"
+                    accessibilityLabel="Any vehicle type"
+                    accessibilityState={{ checked: vehicleType === null }}
+                  >
+                    <Text style={[styles.vehicleChipIcon]}>🚕</Text>
+                    <Text style={[styles.vehicleChipLabel, vehicleType === null && styles.vehicleChipLabelActive]}>
+                      {t('client.rideRequest.vehicleAny')}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {VEHICLE_TYPES.map(vt => (
+                    <TouchableOpacity
+                      key={vt.value}
+                      style={[styles.vehicleChip, vehicleType === vt.value && styles.vehicleChipActive]}
+                      onPress={() => setVehicleType(vt.value)}
+                      accessibilityRole="radio"
+                      accessibilityLabel={`${vt.label} vehicle type`}
+                      accessibilityState={{ checked: vehicleType === vt.value }}
+                    >
+                      <Text style={styles.vehicleChipIcon}>{vt.icon}</Text>
+                      <Text style={[styles.vehicleChipLabel, vehicleType === vt.value && styles.vehicleChipLabelActive]}>
+                        {vt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* ── Promo code section ────────────────────────────── */}
+            {dropoff && !searchFocused && (
+              <View style={styles.promoSection}>
+                {promoResult ? (
+                  /* Applied code banner */
+                  <View style={styles.promoApplied}>
+                    <View style={styles.promoAppliedLeft}>
+                      <Text style={styles.promoAppliedIcon}>🏷️</Text>
+                      <View>
+                        <Text style={styles.promoAppliedCode}>{promoResult.code}</Text>
+                        <Text style={styles.promoAppliedDiscount}>
+                          {promoResult.discountType === 'percent'
+                            ? `${promoResult.discountValue}% off${promoResult.maxDiscountAmount != null ? ` (max $${promoResult.maxDiscountAmount})` : ''}`
+                            : `$${promoResult.discountValue} off`
+                          }
+                          {promoResult.discountAmount != null
+                            ? ` · Save $${promoResult.discountAmount.toFixed(2)}`
+                            : ''}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      onPress={removePromo}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove promo code">
+                      <Text style={styles.promoRemove}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  /* Promo input row */
+                  <View style={styles.promoRow}>
+                    <TextInput
+                      style={styles.promoInput}
+                      value={promoInput}
+                      onChangeText={t => { setPromoInput(t.toUpperCase()); setPromoError(''); }}
+                      placeholder={t('client.rideRequest.promoPlaceholder')}
+                      placeholderTextColor={colors.textDisabled}
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      returnKeyType="done"
+                      onSubmitEditing={applyPromo}
+                    />
+                    <TouchableOpacity
+                      style={[styles.promoApplyBtn, promoLoading && styles.promoApplyBtnDisabled]}
+                      onPress={applyPromo}
+                      disabled={promoLoading || !promoInput.trim()}
+                      activeOpacity={0.8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Apply promo code"
+                      accessibilityState={{ disabled: promoLoading || !promoInput.trim() }}>
+                      {promoLoading
+                        ? <ActivityIndicator size="small" color={colors.primary} />
+                        : <Text style={styles.promoApplyText}>{t('common.apply')}</Text>
+                      }
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {!!promoError && (
+                  <Text style={styles.promoError}>{promoError}</Text>
+                )}
+              </View>
+            )}
+
+            {/* ── Schedule section ──────────────────────────────── */}
+            <View style={styles.scheduleSection}>
+              <Text style={styles.scheduleLabel}>🕐 {t('client.rideRequest.whenLabel')}</Text>
+              <View style={styles.chipRow}>
+                {SCHEDULE_CHIPS.map(({ label, action }) => {
+                  const active = label === activeChipLabel;
+                  return (
+                    <TouchableOpacity
+                      key={label}
+                      style={[
+                        styles.chip,
+                        active && styles.chipActive,
+                        label === 'Custom…' && styles.chipCustom,
+                      ]}
+                      onPress={action}
+                      activeOpacity={0.75}
+                      accessibilityRole="radio"
+                      accessibilityLabel={`Schedule: ${label}`}
+                      accessibilityState={{ checked: active }}>
+                      <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Selected time display */}
+              {scheduledAt && (
+                <TouchableOpacity
+                  style={styles.scheduledTimeBadge}
+                  onPress={openCustomPicker}
+                  activeOpacity={0.75}>
+                  <Text style={styles.scheduledTimeText}>
+                    📅 {scheduledAt.toLocaleString('en-US', {
+                      weekday: 'short', month: 'short', day: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </Text>
+                  <Text style={styles.scheduledTimeEdit}>{t('client.rideRequest.editBtn')} ✏️</Text>
                 </TouchableOpacity>
               )}
             </View>
+
+            {/* ── Date/Time picker (Android: native dialog, iOS: modal) ── */}
+            {pickerStep !== null && Platform.OS === 'android' && (
+              <DateTimePicker
+                value={pickerTempRef.current}
+                mode={pickerStep}
+                display="default"
+                minimumDate={pickerStep === 'date' ? minSchedule() : undefined}
+                onChange={handlePickerChange}
+              />
+            )}
 
             {/* Request button */}
             <TouchableOpacity
               style={[styles.requestBtn, requesting && styles.requestBtnDisabled]}
               onPress={handleRequest}
               disabled={requesting}
-              activeOpacity={0.85}>
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={scheduledAt ? 'Schedule ride' : 'Confirm and request ride'}
+              accessibilityState={{ disabled: requesting }}>
               {requesting ? (
-                <ActivityIndicator color={Colors.textOnPrimary} />
+                <ActivityIndicator color={colors.textOnPrimary} />
               ) : (
-                <Text style={styles.requestBtnText}>Confirm & Request Ride</Text>
+                <Text style={styles.requestBtnText}>
+                  {scheduledAt ? t('client.rideRequest.scheduleBtn') : t('client.rideRequest.confirmBtn')}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
         </SafeAreaView>
       )}
+
+      {/* ── iOS date/time picker modal ─────────────────────────────────────── */}
+      {Platform.OS === 'ios' && (
+        <Modal
+          visible={pickerStep !== null}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setPickerStep(null)}>
+          <View style={styles.iosPickerOverlay}>
+            <View style={styles.iosPickerCard}>
+              {/* Header */}
+              <View style={styles.iosPickerHeader}>
+                <TouchableOpacity onPress={() => setPickerStep(null)}>
+                  <Text style={styles.iosPickerCancel}>{t('common.cancel')}</Text>
+                </TouchableOpacity>
+                <Text style={styles.iosPickerTitle}>
+                  {pickerStep === 'date' ? t('client.rideRequest.selectDate') : t('client.rideRequest.selectTime')}
+                </Text>
+                {pickerStep === 'time' ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      // Confirm the staged time as-is
+                      handlePickerChange(
+                        { type: 'set', nativeEvent: { timestamp: pickerTempRef.current.getTime() } } as DateTimePickerEvent,
+                        pickerTempRef.current,
+                      );
+                    }}>
+                    <Text style={styles.iosPickerDone}>{t('common.done')}</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={{ width: 50 }} />
+                )}
+              </View>
+
+              {/* Picker */}
+              {pickerStep !== null && (
+                <DateTimePicker
+                  value={pickerTempRef.current}
+                  mode={pickerStep}
+                  display="spinner"
+                  minimumDate={pickerStep === 'date' ? minSchedule() : undefined}
+                  onChange={handlePickerChange}
+                  style={styles.iosPicker}
+                />
+              )}
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function getStyles(c: ColorPalette) { return StyleSheet.create({
   container: { flex: 1 },
   map: { ...StyleSheet.absoluteFillObject },
 
@@ -264,7 +1085,7 @@ const styles = StyleSheet.create({
   backBtn: {
     margin: 16,
     alignSelf: 'flex-start',
-    backgroundColor: Colors.background,
+    backgroundColor: c.background,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
@@ -274,7 +1095,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 4,
   },
-  backText: { fontSize: 14, fontWeight: '600', color: Colors.primary },
+  backText: { fontSize: 14, fontWeight: '600', color: c.primary },
 
   // Searching overlay
   searchingOverlay: {
@@ -286,7 +1107,7 @@ const styles = StyleSheet.create({
   },
   searchingCard: {
     width: '90%',
-    backgroundColor: Colors.background,
+    backgroundColor: c.background,
     borderRadius: 24,
     padding: 28,
     alignItems: 'center',
@@ -295,13 +1116,13 @@ const styles = StyleSheet.create({
   searchingTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: Colors.text,
+    color: c.text,
     marginBottom: 8,
     textAlign: 'center',
   },
   searchingSubtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 28,
@@ -311,18 +1132,18 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: Colors.error,
+    borderColor: c.error,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancelBtnText: { fontSize: 15, fontWeight: '700', color: Colors.error },
+  cancelBtnText: { fontSize: 15, fontWeight: '700', color: c.error },
 
   // Bottom card
   bottomArea: { position: 'absolute', bottom: 0, left: 0, right: 0 },
   bottomCard: {
     marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: Colors.background,
+    backgroundColor: c.background,
     borderRadius: 20,
     padding: 20,
     elevation: 8,
@@ -342,34 +1163,430 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginRight: 12,
   },
-  dotPickup: { backgroundColor: Colors.primary },
-  dotDropoff: { backgroundColor: Colors.info },
+  dotPickup: { backgroundColor: c.primary },
+  dotDropoff: { backgroundColor: c.info },
+  dotStop: {
+    backgroundColor: c.warning,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dotStopLabel: {
+    fontSize: 7,
+    fontWeight: '800',
+    color: '#fff',
+    lineHeight: 10,
+  },
   locationInfo: { flex: 1 },
   locationLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: Colors.textSecondary,
+    color: c.textSecondary,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-  locationValue: { fontSize: 14, color: Colors.text, fontWeight: '500', marginTop: 2 },
-  locationValuePlaceholder: { color: Colors.textDisabled, fontStyle: 'italic' },
-  clearDropoff: { fontSize: 16, color: Colors.textSecondary, paddingLeft: 8 },
+  locationValue: { fontSize: 14, color: c.text, fontWeight: '500', marginTop: 2 },
+  locationValuePlaceholder: { color: c.textDisabled, fontStyle: 'italic' },
+  clearDropoff: { fontSize: 16, color: c.textSecondary, paddingLeft: 8 },
   locationDivider: {
     height: 1,
-    backgroundColor: Colors.border,
+    backgroundColor: c.border,
     marginVertical: 4,
     marginLeft: 24,
   },
 
+  // Search input (inline, no border box — blends into the row)
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: c.text,
+    fontWeight: '500',
+    marginTop: 2,
+    padding: 0,           // remove default Android padding
+    height: 26,
+  },
+
+  // Nominatim results dropdown
+  resultsList: {
+    maxHeight: 200,
+    marginTop: 6,
+    marginLeft: 24,
+    backgroundColor: c.background,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: c.border,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+  },
+  resultItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  resultIcon: { fontSize: 14, marginTop: 1 },
+  resultText: { flex: 1, fontSize: 13, color: c.text, lineHeight: 18 },
+  resultDivider: { height: 1, backgroundColor: c.border, marginHorizontal: 12 },
+
+  // Add stop button
+  addStopBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    marginTop: 4,
+    marginLeft: 24,
+  },
+  addStopText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: c.warning,
+  },
+
+  // Tap-map hint
+  mapHint: {
+    fontSize: 12,
+    color: c.textDisabled,
+    marginTop: 8,
+    marginLeft: 24,
+    fontStyle: 'italic',
+  },
+
+  // Fare estimate card
+  estimateCard: {
+    marginTop: 14,
+    backgroundColor: c.surface,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: c.border,
+    gap: 6,
+  },
+  estimateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  estimateLoading: {
+    marginLeft: 8,
+    fontSize: 13,
+    color: c.textSecondary,
+  },
+  estimateLabel: {
+    fontSize: 13,
+    color: c.textSecondary,
+  },
+  estimateValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: c.text,
+  },
+  estimateFareRow: {
+    marginTop: 4,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: c.border,
+  },
+  estimateFareLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: c.text,
+  },
+  estimateFareValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: c.primary,
+  },
+  estimateNote: {
+    fontSize: 12,
+    color: c.textSecondary,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+
+  // Night tariff badge
+  nightBadge: {
+    backgroundColor: '#1e1b4b',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+  },
+  nightBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#c7d2fe',
+  },
+
+  // Surge pricing badge
+  surgeBadge: {
+    backgroundColor: '#7c2d12',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+  },
+  surgeBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fed7aa',
+  },
+
+  // Vehicle type selector
+  vehicleSection: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: c.border,
+    paddingTop: 12,
+  },
+  vehicleSectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: c.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  vehicleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  vehicleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: c.border,
+    backgroundColor: c.surface,
+    gap: 4,
+  },
+  vehicleChipActive: {
+    borderColor: c.primary,
+    backgroundColor: c.primary + '15',
+  },
+  vehicleChipIcon: {
+    fontSize: 16,
+  },
+  vehicleChipLabel: {
+    fontSize: 13,
+    color: c.textSecondary,
+    fontWeight: '500',
+  },
+  vehicleChipLabelActive: {
+    color: c.primary,
+    fontWeight: '700',
+  },
+
+  // Promo code
+  promoSection: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: c.border,
+    paddingTop: 10,
+  },
+  promoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  promoInput: {
+    flex: 1,
+    height: 38,
+    borderWidth: 1.5,
+    borderColor: c.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    fontWeight: '700',
+    color: c.text,
+    letterSpacing: 1,
+    fontFamily: 'monospace',
+  },
+  promoApplyBtn: {
+    height: 38,
+    paddingHorizontal: 14,
+    backgroundColor: c.primary + '18',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: c.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 60,
+  },
+  promoApplyBtnDisabled: { opacity: 0.5 },
+  promoApplyText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: c.primary,
+  },
+  promoApplied: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: c.successLight ?? '#f0fdf4',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1.5,
+    borderColor: c.success,
+  },
+  promoAppliedLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  promoAppliedIcon: { fontSize: 18 },
+  promoAppliedCode: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: c.success,
+    letterSpacing: 1,
+  },
+  promoAppliedDiscount: {
+    fontSize: 12,
+    color: c.success,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  promoRemove: {
+    fontSize: 16,
+    color: c.success,
+    paddingLeft: 8,
+  },
+  promoError: {
+    fontSize: 12,
+    color: c.error,
+    marginTop: 4,
+    marginLeft: 2,
+  },
+
+  // Schedule chips
+  scheduleSection: {
+    marginTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: c.border,
+    paddingTop: 12,
+  },
+  scheduleLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: c.textSecondary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: c.border,
+    backgroundColor: c.surface,
+  },
+  chipActive: {
+    borderColor: c.primary,
+    backgroundColor: c.primary + '18',
+  },
+  chipCustom: {
+    borderStyle: 'dashed',
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: c.textSecondary,
+  },
+  chipTextActive: {
+    color: c.primary,
+  },
+  // Selected time badge (tappable to re-edit)
+  scheduledTimeBadge: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: c.primary + '12',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: c.primary + '40',
+  },
+  scheduledTimeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: c.primary,
+  },
+  scheduledTimeEdit: {
+    fontSize: 12,
+    color: c.primary,
+    opacity: 0.7,
+  },
+  // iOS modal picker
+  iosPickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  iosPickerCard: {
+    backgroundColor: c.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 30,
+  },
+  iosPickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: c.border,
+  },
+  iosPickerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: c.text,
+  },
+  iosPickerCancel: {
+    fontSize: 15,
+    color: c.textSecondary,
+    width: 50,
+  },
+  iosPickerDone: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: c.primary,
+    textAlign: 'right',
+    width: 50,
+  },
+  iosPicker: {
+    height: 200,
+  },
+
   requestBtn: {
     height: 52,
-    backgroundColor: Colors.primary,
+    backgroundColor: c.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 16,
   },
   requestBtnDisabled: { opacity: 0.6 },
-  requestBtnText: { fontSize: 16, fontWeight: '700', color: Colors.textOnPrimary },
-});
+  requestBtnText: { fontSize: 16, fontWeight: '700', color: c.textOnPrimary },
+}); }

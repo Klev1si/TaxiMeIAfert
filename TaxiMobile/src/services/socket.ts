@@ -15,7 +15,8 @@ class SocketService {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
+      reconnectionDelay:    3_000,   // wait 3 s before first retry
+      reconnectionDelayMax: 30_000,  // cap backoff at 30 s — prevents radio hammering
     });
 
     this.socket.on('connect', () => {
@@ -65,6 +66,11 @@ class SocketService {
   /** Send a GPS update (driver only) */
   sendGpsUpdate(lat: number, lng: number): void {
     this.emit('gps_update', { lat, lng });
+  }
+
+  /** Signal the server that driver is now online and accepting rides */
+  goOnline(): void {
+    this.emit('driver_online');
   }
 
   /** Signal the server that driver is going offline (removes from geo index) */

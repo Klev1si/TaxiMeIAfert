@@ -1,0 +1,72 @@
+workflows:
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # iOS — builds a signed IPA and uploads it to TestFlight
+  # ─────────────────────────────────────────────────────────────────────────────
+  ios-release:
+    name: iOS Release → TestFlight
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    environment:
+      # Codemagic manages code signing automatically.
+      # Add your Apple Distribution certificate + provisioning profile
+      # in Codemagic UI → Teams → Code signing identities.
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.taximelafert
+
+      # These three secrets must be added in Codemagic UI → Environment variables.
+      # See setup guide below for how to create them.
+      vars:
+        APP_STORE_CONNECT_ISSUER_ID:        $APP_STORE_CONNECT_ISSUER_ID
+        APP_STORE_CONNECT_KEY_IDENTIFIER:   $APP_STORE_CONNECT_KEY_IDENTIFIER
+        APP_STORE_CONNECT_PRIVATE_KEY:      $APP_STORE_CONNECT_PRIVATE_KEY
+        BUNDLE_ID:                          com.taximelafert
+        XCODE_SCHEME:                       TaxiMobile
+        XCODE_WORKSPACE:                    ios/TaxiMobile.xcworkspace
+
+      node: v18.20.4
+      xcode: latest
+      cocoapods: default
+
+    scripts:
+      - name: Set up App Store Connect API key
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+
+      - name: Install npm dependencies
+        script: npm install
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios
+          pod install
+
+      - name: Build iOS IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+
+    publishing:
+      app_store_connect:
+        # Uses the API key variables defined above
+        auth: integration
+        # Upload to TestFlight first for testing
+        submit_to_testflight: true
+        # Set to true only when ready for full App Store review
+        submit_to_app_store: false
+      email:
+        recipients:
+          - YOUR_EMAIL@example.com   # ← replace with your email
+        notify:
+          success: true
+          failure: true

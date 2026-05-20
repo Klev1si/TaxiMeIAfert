@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,13 +13,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authApi } from '../../api/auth';
-import { Colors, Sizes } from '../../constants';
+import { Sizes } from '../../constants';
+import { useColors } from '../../stores/themeStore';
+import { useTranslation } from '../../i18n';
+import type { ColorPalette } from '../../constants/colors';
 import type { AuthScreenProps } from '../../navigation/types';
 
 type Props = AuthScreenProps<'RegisterClient'>;
 
 export default function RegisterClientScreen({ navigation, route }: Props) {
   const { phone } = route.params;
+  const colors = useColors();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+  const { t } = useTranslation();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -29,15 +35,15 @@ export default function RegisterClientScreen({ navigation, route }: Props) {
 
   const handleRegister = async () => {
     if (!firstName.trim() || !lastName.trim()) {
-      Alert.alert('Missing fields', 'Please enter your first and last name.');
+      Alert.alert(t('auth.registerClient.missingTitle'), t('auth.registerClient.missingMsg'));
       return;
     }
     if (password.length < 8) {
-      Alert.alert('Weak password', 'Password must be at least 8 characters.');
+      Alert.alert(t('auth.registerClient.weakPassTitle'), t('auth.registerClient.weakPassMsg'));
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Password mismatch', 'Passwords do not match.');
+      Alert.alert(t('auth.registerClient.mismatchTitle'), t('auth.registerClient.mismatchMsg'));
       return;
     }
 
@@ -50,13 +56,13 @@ export default function RegisterClientScreen({ navigation, route }: Props) {
         lastName: lastName.trim(),
       });
       Alert.alert(
-        'Account created!',
-        'Your passenger account is ready. Please sign in.',
-        [{ text: 'Sign In', onPress: () => navigation.navigate('Login') }],
+        t('auth.registerClient.successTitle'),
+        t('auth.registerClient.successMsg'),
+        [{ text: t('auth.registerClient.signInBtn'), onPress: () => navigation.navigate('Login') }],
       );
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Registration failed.';
-      Alert.alert('Error', Array.isArray(msg) ? msg.join('\n') : msg);
+      const msg = err?.response?.data?.message ?? t('common.error');
+      Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     } finally {
       setLoading(false);
     }
@@ -76,64 +82,70 @@ export default function RegisterClientScreen({ navigation, route }: Props) {
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => navigation.goBack()}
-            activeOpacity={0.7}>
-            <Text style={styles.backText}>← Back</Text>
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Go back">
+            <Text style={styles.backText}>{t('auth.otp.backBtn')}</Text>
           </TouchableOpacity>
 
           {/* Title */}
-          <Text style={styles.title}>Create Passenger Account</Text>
+          <Text style={styles.title}>{t('auth.registerClient.title')}</Text>
           <Text style={styles.subtitle}>
-            Phone: <Text style={styles.phoneText}>{phone}</Text>
+            {t('auth.registerClient.phoneLabel')} <Text style={styles.phoneText}>{phone}</Text>
           </Text>
 
           {/* Form */}
           <View style={styles.card}>
-            <Field label="First Name">
+            <Field label={t('auth.registerClient.firstNameLabel')} colors={colors}>
               <TextInput
                 style={styles.input}
                 placeholder="Jane"
-                placeholderTextColor={Colors.textDisabled}
+                placeholderTextColor={colors.textDisabled}
                 value={firstName}
                 onChangeText={setFirstName}
                 autoCapitalize="words"
                 returnKeyType="next"
+                accessibilityLabel="First name"
               />
             </Field>
 
-            <Field label="Last Name">
+            <Field label={t('auth.registerClient.lastNameLabel')} colors={colors}>
               <TextInput
                 style={styles.input}
                 placeholder="Doe"
-                placeholderTextColor={Colors.textDisabled}
+                placeholderTextColor={colors.textDisabled}
                 value={lastName}
                 onChangeText={setLastName}
                 autoCapitalize="words"
                 returnKeyType="next"
+                accessibilityLabel="Last name"
               />
             </Field>
 
-            <Field label="Password">
+            <Field label={t('auth.registerClient.passwordLabel')} colors={colors}>
               <TextInput
                 style={styles.input}
-                placeholder="Min. 8 characters"
-                placeholderTextColor={Colors.textDisabled}
+                placeholder={t('auth.registerClient.passwordPlaceholder')}
+                placeholderTextColor={colors.textDisabled}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
                 returnKeyType="next"
+                accessibilityLabel="Password, minimum 8 characters"
               />
             </Field>
 
-            <Field label="Confirm Password">
+            <Field label={t('auth.registerClient.confirmLabel')} colors={colors}>
               <TextInput
                 style={styles.input}
-                placeholder="Repeat your password"
-                placeholderTextColor={Colors.textDisabled}
+                placeholder={t('auth.registerClient.confirmPlaceholder')}
+                placeholderTextColor={colors.textDisabled}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
                 returnKeyType="done"
                 onSubmitEditing={handleRegister}
+                accessibilityLabel="Confirm password"
               />
             </Field>
           </View>
@@ -142,11 +154,14 @@ export default function RegisterClientScreen({ navigation, route }: Props) {
             style={[styles.btn, loading && styles.btnDisabled]}
             onPress={handleRegister}
             disabled={loading}
-            activeOpacity={0.8}>
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Create account"
+            accessibilityState={{ disabled: loading }}>
             {loading ? (
-              <ActivityIndicator color={Colors.textOnPrimary} />
+              <ActivityIndicator color={colors.textOnPrimary} />
             ) : (
-              <Text style={styles.btnText}>Create Account</Text>
+              <Text style={styles.btnText}>{t('auth.registerClient.createBtn')}</Text>
             )}
           </TouchableOpacity>
 
@@ -157,67 +172,54 @@ export default function RegisterClientScreen({ navigation, route }: Props) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, colors }: { label: string; children: React.ReactNode; colors: ColorPalette }) {
   return (
-    <View style={fieldStyles.wrap}>
-      <Text style={fieldStyles.label}>{label}</Text>
+    <View style={{ marginBottom: 4 }}>
+      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 6, marginTop: 12 }}>
+        {label}
+      </Text>
       {children}
     </View>
   );
 }
 
-const fieldStyles = StyleSheet.create({
-  wrap: { marginBottom: 4 },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    marginBottom: 6,
-    marginTop: 12,
-  },
-});
+function getStyles(c: ColorPalette) {
+  return StyleSheet.create({
+    safe:   { flex: 1, backgroundColor: c.background },
+    flex:   { flex: 1 },
+    scroll: { padding: Sizes.screenPadding },
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-  flex: { flex: 1 },
-  scroll: { padding: Sizes.screenPadding },
+    backBtn:  { marginBottom: 24 },
+    backText: { fontSize: 16, color: c.primary, fontWeight: '600' },
 
-  backBtn: { marginBottom: 24 },
-  backText: { fontSize: 16, color: Colors.primary, fontWeight: '600' },
+    title:     { fontSize: 26, fontWeight: '800', color: c.text, marginBottom: 8 },
+    subtitle:  { fontSize: 14, color: c.textSecondary, marginBottom: 24 },
+    phoneText: { color: c.text, fontWeight: '700' },
 
-  title: { fontSize: 26, fontWeight: '800', color: Colors.text, marginBottom: 8 },
-  subtitle: { fontSize: 14, color: Colors.textSecondary, marginBottom: 24 },
-  phoneText: { color: Colors.text, fontWeight: '700' },
+    card: {
+      backgroundColor: c.surface,
+      borderRadius: 16,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: c.border,
+      marginBottom: 24,
+    },
 
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: 24,
-  },
+    input: {
+      height: 48,
+      borderWidth: 1.5,
+      borderColor: c.border,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      fontSize: 15,
+      color: c.text,
+      backgroundColor: c.background,
+    },
 
-  input: {
-    height: 48,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: Colors.text,
-    backgroundColor: Colors.background,
-  },
+    btn:         { height: 52, backgroundColor: c.primary, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    btnDisabled: { opacity: 0.6 },
+    btnText:     { fontSize: 16, fontWeight: '700', color: c.textOnPrimary },
 
-  btn: {
-    height: 52,
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnDisabled: { opacity: 0.6 },
-  btnText: { fontSize: 16, fontWeight: '700', color: Colors.textOnPrimary },
-
-  bottomPad: { height: 32 },
-});
+    bottomPad: { height: 32 },
+  });
+}

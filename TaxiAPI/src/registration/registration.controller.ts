@@ -1,11 +1,16 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { RegistrationService } from './registration.service.js';
 import { RegisterClientDto } from './dto/register-client.dto.js';
 import { RegisterDriverDto } from './dto/register-driver.dto.js';
 import { RegisterCompanyDto } from './dto/register-company.dto.js';
 import { AuthTokensDto } from '../auth/dto/auth-tokens.dto.js';
 
+// All registration endpoints share the strict throttle:
+// max 5 accounts per minute per IP — prevents mass account creation
 @Controller('auth/register')
+@UseGuards(ThrottlerGuard)
+@Throttle({ strict: { limit: 5, ttl: 60_000 } })
 export class RegistrationController {
   constructor(private readonly registrationService: RegistrationService) {}
 

@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@react-native-community/geolocation": "^3.4.0",
+    "axios": "^1.15.2",
+    "react-native-background-actions": "^4.1.0",
+    "socket.io-client": "^4.8.3"
+  }
+}
