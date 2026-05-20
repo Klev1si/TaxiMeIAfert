@@ -71,22 +71,18 @@ async function bootstrap() {
   app.useWebSocketAdapter(new IoAdapter(app));
 
   // ── Database schema sync ──────────────────────────────────────────────────
-  // TypeORM's synchronize option in app.module.ts handles this at module-init
-  // time. As a belt-and-suspenders guarantee we also run it here explicitly
-  // when DB_SYNCHRONIZE=true so that the outcome is visible in the logs and
-  // any errors surface clearly rather than being silently swallowed.
-  const rawDbSync = String(process.env.DB_SYNCHRONIZE ?? '').toLowerCase().trim();
-  logger.log(`DB_SYNCHRONIZE raw env value: ${JSON.stringify(process.env.DB_SYNCHRONIZE)} → normalised: "${rawDbSync}"`);
-  if (rawDbSync === 'true' || rawDbSync === '1') {
-    try {
-      const dataSource = app.get(DataSource);
-      logger.log('DB_SYNCHRONIZE=true — running dataSource.synchronize()…');
-      await dataSource.synchronize();
-      logger.log('dataSource.synchronize() completed — all tables are up to date');
-    } catch (err) {
-      logger.error('dataSource.synchronize() FAILED:', err);
-      // Don't crash the server — the error is logged above for diagnosis.
-    }
+  // Run dataSource.synchronize() unconditionally on every startup so that all
+  // TypeORM entities are reflected in the database schema.  This is safe for
+  // development and initial production bring-up; remove / gate behind an env
+  // var once the schema is stable and migrations are in place.
+  try {
+    const dataSource = app.get(DataSource);
+    logger.log('Running dataSource.synchronize() to ensure schema is up to date…');
+    await dataSource.synchronize();
+    logger.log('dataSource.synchronize() completed — all tables are up to date');
+  } catch (err) {
+    logger.error('dataSource.synchronize() FAILED:', err);
+    // Don't crash the server — the error is logged above for diagnosis.
   }
 
   // ── Start ─────────────────────────────────────────────────────────────────
