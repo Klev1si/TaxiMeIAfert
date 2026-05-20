@@ -4,6 +4,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { join } from 'path';
 import helmet from 'helmet';
+import { DataSource } from 'typeorm';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
@@ -68,6 +69,23 @@ async function bootstrap() {
 
   // ── Socket.io adapter ─────────────────────────────────────────────────────
   app.useWebSocketAdapter(new IoAdapter(app));
+
+  // ── Database schema sync ──────────────────────────────────────────────────
+  // TypeORM's synchronize option in app.module.ts handles this at module-init
+  // time. As a belt-and-suspenders guarantee we also run it here explicitly
+  // when DB_SYNCHRONIZE=true so that the outcome is visible in the logs and
+  // any errors surface clearly rather than being silently swallowed.
+  if (process.env.DB_SYNCHRONIZE === 'true') {
+    try {
+      const dataSource = app.get(DataSource);
+      logger.log('DB_SYNCHRONIZE=true — running dataSource.synchronize()…');
+      await dataSource.synchronize();
+      logger.log('dataSource.synchronize() completed — all tables are up to date');
+    } catch (err) {
+      logger.error('dataSource.synchronize() FAILED:', err);
+      // Don't crash the server — the error is logged above for diagnosis.
+    }
+  }
 
   // ── Start ─────────────────────────────────────────────────────────────────
   const port = Number(process.env.PORT ?? 3000);
