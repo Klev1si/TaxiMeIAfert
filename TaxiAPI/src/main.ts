@@ -75,7 +75,9 @@ async function bootstrap() {
   // time. As a belt-and-suspenders guarantee we also run it here explicitly
   // when DB_SYNCHRONIZE=true so that the outcome is visible in the logs and
   // any errors surface clearly rather than being silently swallowed.
-  if (process.env.DB_SYNCHRONIZE === 'true') {
+  const rawDbSync = String(process.env.DB_SYNCHRONIZE ?? '').toLowerCase().trim();
+  logger.log(`DB_SYNCHRONIZE raw env value: ${JSON.stringify(process.env.DB_SYNCHRONIZE)} → normalised: "${rawDbSync}"`);
+  if (rawDbSync === 'true' || rawDbSync === '1') {
     try {
       const dataSource = app.get(DataSource);
       logger.log('DB_SYNCHRONIZE=true — running dataSource.synchronize()…');
