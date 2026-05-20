@@ -64,6 +64,7 @@ import {
         // Redis
         REDIS_HOST:            Joi.string().required(),
         REDIS_PORT:            Joi.number().default(6379),
+        REDIS_PASSWORD:        Joi.string().optional().allow(''),
         // JWT — secrets must be at least 32 chars to prevent weak-secret attacks
         JWT_SECRET:            Joi.string().min(32).required(),
         JWT_EXPIRES_IN:        Joi.string().default('15m'),
@@ -129,7 +130,7 @@ import {
           RideStop,
           DriverSubscription,
         ],
-        synchronize: false,
+        synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
         logging: config.get<string>('DB_LOGGING') === 'true',
         migrations: [__dirname + '/database/migrations/*.js'],
         migrationsRun: false,
