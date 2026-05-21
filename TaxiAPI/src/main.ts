@@ -77,6 +77,8 @@ async function bootstrap() {
   // var once the schema is stable and migrations are in place.
   try {
     const dataSource = app.get(DataSource);
+    // Ensure uuid-ossp extension exists (required for uuid_generate_v4()).
+    await dataSource.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
     logger.log('Running dataSource.synchronize() to ensure schema is up to date…');
     await dataSource.synchronize();
     logger.log('dataSource.synchronize() completed — all tables are up to date');
