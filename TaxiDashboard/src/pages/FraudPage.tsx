@@ -78,7 +78,7 @@ export default function FraudPage() {
   const [error,       setError]       = useState('');
   const [page,        setPage]        = useState(1);
   const [filterType,  setFilterType]  = useState('');
-  const [filterUser,  setFilterUser]  = useState('');
+  const [filterUser,  _setFilterUser]  = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
