@@ -21,10 +21,10 @@
       android:networkSecurityConfig="@xml/network_security_config"
       android:supportsRtl="true">
 
-      <!-- Google Maps API key — set GOOGLE_MAPS_API_KEY in .env -->
+      <!-- Google Maps API key — hardcoded to guarantee it survives dotenv issues -->
       <meta-data
         android:name="com.google.android.geo.API_KEY"
-        android:value="${GOOGLE_MAPS_API_KEY}"/>
+        android:value="AIzaSyAYBI5oVv2TnqtysGBsIbWx4kvupAEiGEE"/>
 
       <!-- Foreground service used by react-native-background-actions for GPS -->
       <service
