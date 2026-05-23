@@ -19,9 +19,9 @@ import Config from '../config';
 import { useNetworkStore } from '../stores/networkStore';
 
 // HEAD request target — the API root always responds with *something*
-const PING_URL = Config.API_BASE_URL.replace(/\/$/, '') + '/';
-const POLL_MS  = 5_000;   // how often to retry while offline
-const TIMEOUT  = 4_000;   // max wait per ping
+const PING_URL = Config.API_BASE_URL.replace(/\/$/, '') + '/health';
+const POLL_MS  = 6_000;   // how often to retry while offline
+const TIMEOUT  = 10_000;  // max wait per ping (must handle Railway cold start)
 
 // ── Internal state ────────────────────────────────────────────────────────────
 
@@ -87,6 +87,15 @@ export function notifyNetworkError() {
  * Returns a cleanup function to call on unmount.
  */
 export function startConnectivityMonitor(): () => void {
+  // Eagerly check on startup — if Railway is sleeping, start polling immediately
+  // so the banner appears and the poll loop wakes it up before the user tries to log in.
+  ping().then((online) => {
+    if (!online) {
+      useNetworkStore.getState().setOnline(false);
+      startPolling();
+    }
+  });
+
   appStateSub = AppState.addEventListener(
     'change',
     async (nextState: AppStateStatus) => {

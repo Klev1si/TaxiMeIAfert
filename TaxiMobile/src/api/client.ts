@@ -11,7 +11,7 @@ import { tokenStorage } from '../utils/tokenStorage';
 // ── Create the singleton axios instance ───────────────────────────────────────
 const apiClient: AxiosInstance = axios.create({
   baseURL: Config.API_BASE_URL,
-  timeout: 15_000,
+  timeout: 30_000,  // 30s — allows time for Railway cold start (sleeps after inactivity)
   headers: { 'Content-Type': 'application/json' },
 });
 

@@ -102,7 +102,7 @@ export default function AnalyticsPage() {
               />
               <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
               <Tooltip
-                formatter={(v: number, name: string) => [v, name.charAt(0).toUpperCase() + name.slice(1)]}
+                formatter={(v, name) => [v as number, String(name).charAt(0).toUpperCase() + String(name).slice(1)]}
                 labelFormatter={l => `Date: ${l}`}
               />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
@@ -140,7 +140,7 @@ export default function AnalyticsPage() {
                       />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => [v.toLocaleString(), 'Rides']} />
+                  <Tooltip formatter={(v) => [(v as number).toLocaleString(), 'Rides']} />
                 </PieChart>
               </ResponsiveContainer>
               <ul className="flex-1 space-y-2">
@@ -182,7 +182,7 @@ export default function AnalyticsPage() {
                   width={80}
                 />
                 <Tooltip
-                  formatter={(v: number) => [v, 'Completed rides']}
+                  formatter={(v) => [v as number, 'Completed rides']}
                   labelFormatter={l => `Driver: ${l}`}
                 />
                 <Bar dataKey="rides" fill="#4f46e5" radius={[0, 4, 4, 0]} />

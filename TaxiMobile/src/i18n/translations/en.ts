@@ -517,13 +517,70 @@ export default {
     },
 
     profile: {
-      statusApproved:   '✅ Approved',
-      statusPending:    '⏳ Pending',
+      // ── Account card ──────────────────────────────────────────────────────
+      accountSection:   'Account',
+      phoneLabel:       'Phone',
+      roleLabel:        'Role',
+      roleValue:        'Driver',
+      statusLabel:      'Status',
+      statusApproved:   'Approved',
+      statusPending:    'Pending',
       licenseLabel:     'License',
+      driverRatingLabel:'driver rating',
+      pendingApproval:  'Your account is pending admin approval. You will be notified once reviewed.',
+
+      // ── Vehicle card ──────────────────────────────────────────────────────
+      vehicleSection:   'Vehicle',
       vehicleLabel:     'Vehicle',
       carLabel:         'Car',
       plateLabel:       'Plate',
       colorLabel:       'Color',
+
+      // ── Documents card ────────────────────────────────────────────────────
+      docsSection:      'Documents',
+      docsHint:         'Upload the required documents for account approval. All documents must be current and valid.',
+      docLicense:       "Driver's License",
+      docRegistration:  'Vehicle Registration',
+      docInsurance:     'Insurance',
+      docStatusPending: 'Pending Review',
+      docStatusApproved:'Approved',
+      docStatusRejected:'Rejected',
+      docNotUploaded:   'Not uploaded',
+      docApprovedLabel: '{label} — approved',
+      docReuploadLabel: 'Re-upload {label}',
+      docUploadLabel:   'Upload {label}',
+      reuploadBtn:      'Re-upload',
+      uploadBtn:        'Upload',
+      docSubmitted:     'Document submitted for review.',
+      uploadFailed:     'Could not upload document.',
+      imagePickerUnavailable: 'Image picker is not available.',
+
+      // ── Edit profile modal ────────────────────────────────────────────────
+      editTitle:             'Edit Profile',
+      firstNameLabel:        'First Name',
+      firstNamePlaceholder:  'Enter first name',
+      lastNameLabel:         'Last Name',
+      lastNamePlaceholder:   'Enter last name',
+      vehicleColorLabel:     'Vehicle Color',
+      vehicleColorPlaceholder:'e.g. White',
+      firstNameRequired:     'First name is required.',
+      saveFailMsg:           'Could not save profile.',
+
+      // ── Change password modal ─────────────────────────────────────────────
+      changePwTitle:          'Change Password',
+      currentPwLabel:         'Current Password',
+      currentPwPlaceholder:   'Enter current password',
+      newPwLabel:             'New Password',
+      newPwPlaceholder:       'Enter new password (min 6 chars)',
+      confirmPwLabel:         'Confirm New Password',
+      confirmPwPlaceholder:   'Re-enter new password',
+      currentPasswordRequired:'Enter your current password.',
+      passwordTooShort:       'New password must be at least 6 characters.',
+      passwordMismatch:       'Passwords do not match.',
+      passwordChanged:        'Password changed successfully.',
+      passwordChangeFailMsg:  'Could not change password.',
+
+      // ── Legacy keys (kept for compatibility) ──────────────────────────────
       documentsLabel:   'Documents',
       ratingsLabel:     'My Ratings',
       recentReviews:    'Recent Reviews',
@@ -532,17 +589,13 @@ export default {
       docPendingReview: 'Pending Review',
       docApproved:      'Approved',
       docRejected:      'Rejected',
-      reuploadBtn:      'Re-upload',
-      uploadBtn:        'Upload',
       subscriptionLink: 'Subscription',
-      pendingApproval:  'Your account is pending admin approval. You will be notified once reviewed.',
       noComment:        'No comment left',
       driverRating:     'driver rating',
       uploadedTitle:    'Uploaded',
       uploadedMsg:      'Document submitted for review.',
       notAvailableTitle:'Not available',
       notAvailableMsg:  'Image picker module is not installed.',
-      firstNameRequired:'First name is required.',
       currentPwdRequired:'Enter your current password.',
       newPwdTooShort:   'New password must be at least 6 characters.',
       pwdMismatch:      'Passwords do not match.',
@@ -1135,7 +1188,7 @@ export default {
 
   components: {
     offlineBanner: {
-      message:    'No internet connection',
+      message:    'Cannot reach server — retrying…',
       backOnline: 'Back online',
     },
     errorBoundary: {

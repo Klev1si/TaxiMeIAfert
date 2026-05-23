@@ -77,19 +77,6 @@ export default function App() {
   );
 }
 
-// ── Temporary placeholder ─────────────────────────────────────────────────────
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="flex items-center justify-center h-64">
-      <div className="text-center">
-        <p className="text-4xl mb-3">🚧</p>
-        <p className="text-lg font-semibold text-gray-700">{title}</p>
-        <p className="text-sm text-gray-400 mt-1">Coming in the next step</p>
-      </div>
-    </div>
-  );
-}
-
 function UnauthorizedPage() {
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center text-center">
