@@ -46,19 +46,19 @@ export default function PassengersPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Passengers</h2>
           <p className="text-sm text-gray-500 mt-0.5">{total} total</p>
         </div>
 
         {/* Search */}
-        <form onSubmit={handleSearch} className="flex gap-2">
+        <form onSubmit={handleSearch} className="flex gap-2 flex-wrap">
           <input
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             placeholder="Search by name…"
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg w-48 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg flex-1 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <button
             type="submit"
@@ -90,7 +90,8 @@ export default function PassengersPage() {
             <p className="text-sm">No passengers found</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[480px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
@@ -123,6 +124,7 @@ export default function PassengersPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

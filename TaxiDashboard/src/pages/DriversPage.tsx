@@ -193,7 +193,7 @@ export default function DriversPage() {
       <div className={`flex flex-col gap-5 min-w-0 transition-all duration-200 ${detail ? 'flex-1' : 'w-full'}`}>
 
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold text-gray-900">
               {isAdmin ? 'Drivers' : 'My Drivers'}
@@ -201,21 +201,21 @@ export default function DriversPage() {
             <p className="text-sm text-gray-500 mt-0.5">{total} total</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             {!isAdmin && (
               <button
                 onClick={() => { setAddOpen(true); setAddForm(EMPTY_ADD); setAddError(''); }}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors whitespace-nowrap"
               >
                 + Add Driver
               </button>
             )}
-            <form onSubmit={handleSearch} className="flex gap-2">
+            <form onSubmit={handleSearch} className="flex gap-2 flex-wrap">
               <input
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
                 placeholder="Search name or plate…"
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg w-52 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg flex-1 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <button type="submit" className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors">
                 Search
@@ -263,7 +263,8 @@ export default function DriversPage() {
               <p className="text-sm">No drivers found</p>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[560px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Driver</th>
@@ -332,15 +333,27 @@ export default function DriversPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
         <Pagination page={page} total={total} limit={LIMIT} onChange={p => { setPage(p); fetchDrivers(p); }} />
       </div>
 
-      {/* ── Right: Driver Detail Panel ────────────────────────────────────── */}
+      {/* ── Right: Driver Detail Panel — side panel on desktop, modal on mobile ── */}
       {detail && (
-        <div className="w-80 shrink-0 bg-white border border-gray-200 rounded-xl flex flex-col self-start sticky top-0 overflow-hidden">
+        <>
+          {/* Mobile backdrop */}
+          <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setDetail(null)} />
+        </>
+      )}
+      {detail && (
+        <div className="
+          fixed inset-x-0 bottom-0 z-50 max-h-[85vh] rounded-t-2xl
+          lg:static lg:w-80 lg:max-h-none lg:rounded-xl lg:z-auto lg:inset-auto
+          shrink-0 bg-white border border-gray-200 flex flex-col overflow-hidden
+          lg:self-start lg:sticky lg:top-0
+        ">
           {/* Panel header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <h3 className="font-bold text-gray-900">Driver Details</h3>

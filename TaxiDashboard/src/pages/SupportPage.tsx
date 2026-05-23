@@ -345,7 +345,7 @@ export default function SupportPage() {
   return (
     <div className="flex h-full gap-0 -m-6">
       {/* ── Left: ticket list ────────────────────────────────────── */}
-      <div className={`flex flex-col bg-white border-r border-gray-200 transition-all duration-200 ${selected ? 'w-[55%]' : 'w-full'}`}>
+      <div className={`flex flex-col bg-white border-r border-gray-200 transition-all duration-200 ${selected ? 'hidden lg:flex lg:w-[55%]' : 'w-full'}`}>
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 shrink-0">
           <div className="flex items-center justify-between mb-3">
@@ -416,7 +416,8 @@ export default function SupportPage() {
               <p className="text-xs mt-1">Try adjusting the filters above</p>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[560px]">
               <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
                 <tr>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Subject</th>
@@ -461,13 +462,14 @@ export default function SupportPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>
 
       {/* ── Right: ticket detail panel ───────────────────────────── */}
       {selected && (
-        <div className="w-[45%] flex flex-col border-l border-gray-200 bg-gray-50">
+        <div className="w-full lg:w-[45%] flex flex-col border-l border-gray-200 bg-gray-50">
           <TicketPanel
             key={selected}
             ticketId={selected}
