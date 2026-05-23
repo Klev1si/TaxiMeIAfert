@@ -38,7 +38,9 @@ const Config = {
   // hardcoded Railway URL instead of the emulator-only 10.0.2.2 address.
   API_BASE_URL:           RNConfig.API_BASE_URL           || (__DEV__ ? 'http://10.0.2.2:3000' : PROD_API_URL),
   WS_URL:                 RNConfig.WS_URL                 || (__DEV__ ? 'http://10.0.2.2:3000' : PROD_API_URL),
-  GOOGLE_MAPS_API_KEY:    RNConfig.GOOGLE_MAPS_API_KEY    ?? '',
+  // NOTE: This key is already baked into the AndroidManifest so it is not secret.
+  // The hardcoded fallback ensures fetchRoute() works even when TurboModule fails.
+  GOOGLE_MAPS_API_KEY:    RNConfig.GOOGLE_MAPS_API_KEY    || 'AIzaSyAYBI5oVv2TnqtysGBsIbWx4kvupAEiGEE',
   // Stripe publishable key — use pk_test_... in dev, pk_live_... in production
   STRIPE_PUBLISHABLE_KEY: RNConfig.STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder',
 };
