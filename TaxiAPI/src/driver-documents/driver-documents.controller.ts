@@ -13,11 +13,11 @@ import {
   BadRequestException,
   Body,
   Request,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { mkdirSync, existsSync } from 'fs';
+import { memoryStorage } from 'multer';
+import { v2 as cloudinary } from 'cloudinary';
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -25,17 +25,11 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole, DocumentType } from '../common/enums';
 import { DriverDocumentsService, DocumentDto } from './driver-documents.service';
 
-// ── Upload storage ────────────────────────────────────────────────────────────
-const DOCS_DIR = join(process.cwd(), 'uploads', 'documents');
-if (!existsSync(DOCS_DIR)) mkdirSync(DOCS_DIR, { recursive: true });
-
-const docStorage = diskStorage({
-  destination: DOCS_DIR,
-  filename: (_req, file, cb) => {
-    const ext  = extname(file.originalname).toLowerCase() || '.jpg';
-    const name = `doc-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
-    cb(null, name);
-  },
+// ── Cloudinary config (reads env vars at runtime) ─────────────────────────────
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 const ALLOWED_MIME = [
@@ -53,6 +47,24 @@ function docFileFilter(
   } else {
     cb(new BadRequestException('Only images (JPG/PNG/WEBP/HEIC) and PDF files are accepted'), false);
   }
+}
+
+/** Upload a buffer to Cloudinary and return the secure URL. */
+async function uploadToCloudinary(
+  buffer: Buffer,
+  folder: string,
+  resourceType: 'image' | 'raw' = 'image',
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder, resource_type: resourceType },
+      (error, result) => {
+        if (error || !result) return reject(error ?? new Error('Cloudinary upload failed'));
+        resolve(result.secure_url);
+      },
+    );
+    stream.end(buffer);
+  });
 }
 
 // ── DTOs ─────────────────────────────────────────────────────────────────────
@@ -87,24 +99,34 @@ export class DriverDocumentsController {
   /**
    * POST /driver/documents
    * Multipart form: field "file" (image/PDF) + field "type" (DocumentType enum).
-   * Replaces an existing document of the same type (status reset to pending).
+   * File is uploaded to Cloudinary; the secure URL is stored in the database.
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: docStorage,
+      storage: memoryStorage(),
       fileFilter: docFileFilter,
       limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
     }),
   )
-  uploadDocument(
+  async uploadDocument(
     @Request() req: { user: { id: string } },
     @UploadedFile() file: Express.Multer.File | undefined,
     @Body() dto: UploadDocumentDto,
   ): Promise<DocumentDto> {
     if (!file) throw new BadRequestException('No file provided');
-    const fileUrl = `/uploads/documents/${file.filename}`;
+
+    // Determine Cloudinary resource type: PDFs are 'raw', images are 'image'
+    const resourceType = file.mimetype === 'application/pdf' ? 'raw' : 'image';
+
+    let fileUrl: string;
+    try {
+      fileUrl = await uploadToCloudinary(file.buffer, 'driver-documents', resourceType);
+    } catch {
+      throw new InternalServerErrorException('Failed to upload file. Please try again.');
+    }
+
     return this.svc.uploadDocument(req.user.id, dto.type, fileUrl, file.originalname ?? null);
   }
 

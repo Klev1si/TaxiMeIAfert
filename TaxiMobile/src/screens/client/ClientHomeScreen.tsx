@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import Geolocation from '@react-native-community/geolocation';
 import MapView, { Marker, Region, PROVIDER_GOOGLE, UserLocationChangeEvent } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -87,11 +88,30 @@ export default function ClientHomeScreen({ navigation }: Props) {
         );
         if (result !== PermissionsAndroid.RESULTS.GRANTED) {
           setPermissionDenied(true);
+          return;
         }
       } catch {
         setPermissionDenied(true);
+        return;
       }
     }
+    // Permission granted — get position immediately without waiting for the map callback
+    Geolocation.getCurrentPosition(
+      (pos) => {
+        const region: Region = {
+          latitude:      pos.coords.latitude,
+          longitude:     pos.coords.longitude,
+          latitudeDelta: DEFAULT_DELTA,
+          longitudeDelta: DEFAULT_DELTA,
+        };
+        setUserRegion(region);
+        setLocationReady(true);
+        mapRef.current?.animateToRegion(region, 800);
+        fetchNearestDrivers(pos.coords.latitude, pos.coords.longitude);
+      },
+      () => { /* silent — onUserLocationChange will still fire as fallback */ },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
   };
 
   // ── Fetch nearest drivers ────────────────────────────────────────────────────
@@ -112,18 +132,25 @@ export default function ClientHomeScreen({ navigation }: Props) {
       const coordinate = event.nativeEvent.coordinate;
       if (!coordinate) { return; }
       const { latitude, longitude } = coordinate;
-      if (!locationReady) {
-        const region: Region = {
-          latitude,
-          longitude,
-          latitudeDelta: DEFAULT_DELTA,
-          longitudeDelta: DEFAULT_DELTA,
-        };
-        setUserRegion(region);
-        setLocationReady(true);
-        mapRef.current?.animateToRegion(region, 800);
-        fetchNearestDrivers(latitude, longitude);
+      // If getCurrentPosition already set us up, just keep userRegion in sync
+      if (locationReady) {
+        setUserRegion(prev => prev
+          ? { ...prev, latitude, longitude }
+          : { latitude, longitude, latitudeDelta: DEFAULT_DELTA, longitudeDelta: DEFAULT_DELTA },
+        );
+        return;
       }
+      // Fallback: getCurrentPosition failed, use map callback instead
+      const region: Region = {
+        latitude,
+        longitude,
+        latitudeDelta: DEFAULT_DELTA,
+        longitudeDelta: DEFAULT_DELTA,
+      };
+      setUserRegion(region);
+      setLocationReady(true);
+      mapRef.current?.animateToRegion(region, 800);
+      fetchNearestDrivers(latitude, longitude);
     },
     [locationReady, fetchNearestDrivers],
   );
