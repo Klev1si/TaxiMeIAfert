@@ -95,7 +95,8 @@ export default function ClientHomeScreen({ navigation }: Props) {
         return;
       }
     }
-    // Permission granted — get position immediately without waiting for the map callback
+    // Permission granted — get position immediately using network location (fast)
+    // enableHighAccuracy: false uses cell/WiFi — fires in <1s vs GPS which can take 30s+
     Geolocation.getCurrentPosition(
       (pos) => {
         const region: Region = {
@@ -109,8 +110,8 @@ export default function ClientHomeScreen({ navigation }: Props) {
         mapRef.current?.animateToRegion(region, 800);
         fetchNearestDrivers(pos.coords.latitude, pos.coords.longitude);
       },
-      () => { /* silent — onUserLocationChange will still fire as fallback */ },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+      () => { /* silent — onUserLocationChange will fire as fallback */ },
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 },
     );
   };
 

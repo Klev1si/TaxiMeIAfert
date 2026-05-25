@@ -4,6 +4,26 @@ import { useAuthStore } from '../stores/authStore';
 import Pagination from '../components/Pagination';
 import StatusBadge from '../components/StatusBadge';
 
+type DocumentStatus = 'pending' | 'approved' | 'rejected';
+type DocumentType   = 'license' | 'vehicle_registration' | 'insurance' | 'other';
+
+interface DriverDoc {
+  id: string;
+  type: DocumentType;
+  status: DocumentStatus;
+  fileUrl: string;
+  originalName: string | null;
+  rejectionReason: string | null;
+  uploadedAt: string;
+}
+
+const DOC_LABELS: Record<DocumentType, string> = {
+  license:              '🪪 License',
+  vehicle_registration: '📄 Registration',
+  insurance:            '🛡 Insurance',
+  other:                '📎 Other',
+};
+
 type FilterTab = 'all' | 'pending' | 'approved';
 
 interface Driver {
@@ -66,6 +86,14 @@ export default function DriversPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [rejectSaving, setRejectSaving] = useState(false);
 
+  // Documents
+  const [docs,          setDocs]          = useState<DriverDoc[]>([]);
+  const [docsLoading,   setDocsLoading]   = useState(false);
+  const [docActionId,   setDocActionId]   = useState<string | null>(null);
+  const [rejectDocId,   setRejectDocId]   = useState<string | null>(null);
+  const [rejectDocReason, setRejectDocReason] = useState('');
+  const [rejectDocSaving, setRejectDocSaving] = useState(false);
+
   // Add Driver modal (company only)
   const [addOpen,   setAddOpen]   = useState(false);
   const [addForm,   setAddForm]   = useState<AddDriverForm>(EMPTY_ADD);
@@ -99,8 +127,46 @@ export default function DriversPage() {
     } catch { /* ignore */ }
   }, [isAdmin]);
 
+  const fetchDocs = useCallback(async (driverId: string) => {
+    setDocsLoading(true);
+    try {
+      const { data } = await apiClient.get<DriverDoc[]>(`/admin/drivers/${driverId}/documents`);
+      setDocs(data);
+    } catch {
+      setDocs([]);
+    } finally {
+      setDocsLoading(false);
+    }
+  }, []);
+
+  const handleApproveDoc = async (driverId: string, docId: string) => {
+    setDocActionId(docId);
+    try {
+      await apiClient.post(`/admin/drivers/${driverId}/documents/${docId}/approve`);
+      setDocs(prev => prev.map(d => d.id === docId ? { ...d, status: 'approved' } : d));
+    } finally {
+      setDocActionId(null);
+    }
+  };
+
+  const handleRejectDocConfirm = async (driverId: string) => {
+    if (!rejectDocId) return;
+    setRejectDocSaving(true);
+    try {
+      await apiClient.post(`/admin/drivers/${driverId}/documents/${rejectDocId}/reject`, {
+        reason: rejectDocReason.trim() || undefined,
+      });
+      setDocs(prev => prev.map(d => d.id === rejectDocId ? { ...d, status: 'rejected', rejectionReason: rejectDocReason.trim() || null } : d));
+      setRejectDocId(null);
+      setRejectDocReason('');
+    } finally {
+      setRejectDocSaving(false);
+    }
+  };
+
   useEffect(() => { setPage(1); fetchDrivers(1); }, [filter, search, fetchDrivers]);
   useEffect(() => { fetchPendingCount(); }, [fetchPendingCount]);
+  useEffect(() => { if (detail && isAdmin) fetchDocs(detail.id); else setDocs([]); }, [detail, isAdmin, fetchDocs]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -401,6 +467,68 @@ export default function DriversPage() {
               )}
             </DetailSection>
 
+            {/* Documents — admin only */}
+            {isAdmin && (
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Documents</p>
+                {docsLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : docs.length === 0 ? (
+                  <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-3">No documents uploaded yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {docs.map(doc => (
+                      <div key={doc.id} className="bg-gray-50 rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-gray-800">{DOC_LABELS[doc.type]}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            doc.status === 'approved' ? 'bg-green-100 text-green-700' :
+                            doc.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
+                          </span>
+                        </div>
+                        <a
+                          href={doc.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block text-xs text-indigo-600 hover:text-indigo-800 underline truncate"
+                        >
+                          {doc.originalName ?? 'View document'}
+                        </a>
+                        {doc.rejectionReason && (
+                          <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">
+                            Reason: {doc.rejectionReason}
+                          </p>
+                        )}
+                        {doc.status === 'pending' && (
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              disabled={docActionId === doc.id}
+                              onClick={() => handleApproveDoc(detail.id, doc.id)}
+                              className="flex-1 py-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
+                            >
+                              {docActionId === doc.id ? '…' : '✅ Approve'}
+                            </button>
+                            <button
+                              disabled={docActionId === doc.id}
+                              onClick={() => { setRejectDocId(doc.id); setRejectDocReason(''); }}
+                              className="flex-1 py-1 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold rounded-lg transition-colors"
+                            >
+                              ❌ Reject
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
 
           {/* Actions (admin only) */}
@@ -468,6 +596,44 @@ export default function DriversPage() {
                 className="px-5 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
               >
                 {rejectSaving ? 'Rejecting…' : 'Confirm Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reject Document modal ────────────────────────────────────────── */}
+      {rejectDocId && detail && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">Reject Document</h3>
+              <button onClick={() => setRejectDocId(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">
+                  Rejection Reason <span className="text-gray-400 font-normal normal-case">(optional)</span>
+                </label>
+                <textarea
+                  value={rejectDocReason}
+                  onChange={e => setRejectDocReason(e.target.value)}
+                  placeholder="e.g. Document is blurry, expired, or invalid…"
+                  rows={3}
+                  maxLength={500}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button onClick={() => setRejectDocId(null)}
+                className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button
+                onClick={() => handleRejectDocConfirm(detail.id)}
+                disabled={rejectDocSaving}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                {rejectDocSaving ? 'Rejecting…' : 'Confirm Reject'}
               </button>
             </div>
           </div>
