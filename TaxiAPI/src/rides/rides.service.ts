@@ -24,7 +24,7 @@ import { FraudService } from '../fraud/fraud.service.js';
 import { RouteTrackerService } from './route-tracker.service.js';
 import { NearestDriverDto } from './dto/nearest-driver.dto.js';
 import { RequestRideDto } from './dto/request-ride.dto.js';
-import { RideResponseDto, RideStopResponseDto } from './dto/ride-response.dto.js';
+import { RideResponseDto, RideStopResponseDto, TariffSnapshotDto } from './dto/ride-response.dto.js';
 import { CancelRideDto } from './dto/cancel-ride.dto.js';
 import { RateRideDto } from './dto/rate-ride.dto.js';
 
@@ -1818,7 +1818,20 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     companyId: string | null,
     atTime: Date = new Date(),
     vehicleType?: VehicleType | null,
+    driverId?: string | null,
   ): Promise<Tariff | null> {
+    // 1. If this driver has set a personal tariff (only solo drivers can), prefer it
+    if (driverId && !companyId) {
+      const driverTariffs = await this.tariffRepo.find({
+        where: { driverId, isActive: true },
+        order: { createdAt: 'ASC' },
+      });
+      if (driverTariffs.length > 0) {
+        // Run the same vehicle-type + night-window selection on driver pool
+        return this.pickFromPool(driverTariffs, atTime, vehicleType);
+      }
+    }
+
     const tariffs = await this.tariffRepo.find({
       where: companyId ? { companyId, isActive: true } : { companyId: IsNull(), isActive: true },
       order: { createdAt: 'ASC' },
@@ -1849,6 +1862,28 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     if (dayTariff) return dayTariff;
 
     // 3. Fallback — return first tariff regardless (night tariff outside window)
+    return candidates[0];
+  }
+
+  /** Same selection logic as selectActiveTariff but operating on a passed pool. */
+  private pickFromPool(
+    tariffs: Tariff[],
+    atTime: Date,
+    vehicleType?: VehicleType | null,
+  ): Tariff | null {
+    if (tariffs.length === 0) return null;
+    const typed   = vehicleType ? tariffs.filter(t => t.vehicleType === vehicleType) : [];
+    const generic = tariffs.filter(t => t.vehicleType == null);
+    const pool    = typed.length > 0 ? typed : generic;
+    const candidates = pool.length > 0 ? pool : tariffs;
+    const utcHour = atTime.getUTCHours();
+    const matchingNight = candidates.find(
+      t => t.isNightTariff && t.nightStartHour != null && t.nightEndHour != null &&
+           this.isInNightWindow(utcHour, t.nightStartHour, t.nightEndHour),
+    );
+    if (matchingNight) return matchingNight;
+    const dayTariff = candidates.find(t => !t.isNightTariff);
+    if (dayTariff) return dayTariff;
     return candidates[0];
   }
 
@@ -2070,7 +2105,9 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
 
       if (!ride) return null;
       await this.attachStops([ride]);
-      return this.toDto(ride);
+      const dto = this.toDto(ride);
+      dto.tariffSnapshot = await this.resolveLiveTariffSnapshot(ride);
+      return dto;
     }
 
     if (role === UserRole.DRIVER) {
@@ -2082,10 +2119,43 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       });
       if (!ride) return null;
       await this.attachStops([ride]);
-      return this.toDto(ride);
+      const dto = this.toDto(ride);
+      dto.tariffSnapshot = await this.resolveLiveTariffSnapshot(ride);
+      return dto;
     }
 
     return null;
+  }
+
+  /**
+   * Resolve the tariff that should be used to compute the live fare for this
+   * ride. Honors the same selection logic as the final fare computation in
+   * completeRide(): driver-personal > company > global, with night-window and
+   * vehicle-type matching.
+   * Returns null if no tariff is configured.
+   */
+  private async resolveLiveTariffSnapshot(ride: Ride): Promise<TariffSnapshotDto | null> {
+    if (!ride.driverId) return null;
+    const driver = await this.driverRepo.findOne({
+      where:  { id: ride.driverId },
+      select: ['id', 'companyId', 'vehicleType'],
+    });
+    if (!driver) return null;
+    const tariff = await this.selectActiveTariff(
+      driver.companyId,
+      ride.startedAt ?? ride.acceptedAt ?? new Date(),
+      driver.vehicleType ?? null,
+      driver.id,
+    );
+    if (!tariff) return null;
+    return {
+      baseFare:        Number(tariff.baseFare),
+      perKmRate:       Number(tariff.perKmRate),
+      perMinuteRate:   Number(tariff.perMinuteRate),
+      minimumFare:     Number(tariff.minimumFare),
+      surgeMultiplier: Number(tariff.surgeMultiplier ?? 1),
+      name:            tariff.name,
+    };
   }
 
   async getRideHistory(

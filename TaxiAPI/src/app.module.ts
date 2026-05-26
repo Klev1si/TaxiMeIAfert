@@ -22,6 +22,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { PaymentsModule } from './payments/payments.module';
 import { AppVersionModule } from './app-version/app-version.module';
 import { DriverDocumentsModule } from './driver-documents/driver-documents.module';
+import { DriverTariffModule } from './driver-tariff/driver-tariff.module';
 import { WalletModule } from './wallet/wallet.module';
 import { SupportModule } from './support/support.module';
 import {
@@ -161,6 +162,7 @@ import {
     PaymentsModule,
     AppVersionModule,
     DriverDocumentsModule,
+    DriverTariffModule,
     WalletModule,
     SupportModule,
     HealthModule,

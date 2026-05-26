@@ -54,4 +54,18 @@ export class RideResponseDto {
   noShowReportedBy: string | null;
   // ── Intermediate stops ────────────────────────────────────────────────────────
   stops: RideStopResponseDto[];
+  // ── Live tariff snapshot — sent to mobile so the taximeter can compute a
+  //    real-time fare during the ride. Resolved from the driver's company
+  //    tariff (or driver-specific tariff for solo drivers). Null until a
+  //    driver is assigned. ────────────────────────────────────────────────────
+  tariffSnapshot?: TariffSnapshotDto | null;
+}
+
+export class TariffSnapshotDto {
+  baseFare:        number;
+  perKmRate:       number;
+  perMinuteRate:   number;
+  minimumFare:     number;
+  surgeMultiplier: number;
+  name:            string;
 }

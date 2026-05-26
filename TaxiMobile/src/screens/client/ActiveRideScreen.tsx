@@ -21,6 +21,7 @@ import { useTranslation } from '../../i18n';
 import type { ColorPalette } from '../../constants/colors';
 import CancelRideModal from '../../components/CancelRideModal';
 import SosButton from '../../components/SosButton';
+import Taximeter from '../../components/Taximeter';
 import type { Ride, RideStatus, WsDriverLocationUpdate, WsRideMessage, WsStopReached } from '../../types/api';
 import type { ClientStackScreenProps } from '../../navigation/types';
 import Config from '../../config';
@@ -425,6 +426,15 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
           />
         )}
       </MapView>
+
+      {/* ── Real-time taximeter — shows running fare while in_progress ──── */}
+      {ride.status === 'in_progress' && (
+        <Taximeter
+          tariff={ride.tariffSnapshot ?? null}
+          startedAt={ride.startedAt}
+          position={driverLocation ? { latitude: driverLocation.lat, longitude: driverLocation.lng } : null}
+        />
+      )}
 
       {/* ── Floating action buttons (share + chat) ──────────────────────── */}
       {!chatOpen && (

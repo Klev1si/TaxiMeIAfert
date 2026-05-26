@@ -94,6 +94,18 @@ export interface Ride {
   noShowReportedBy?: string | null;
   // Intermediate stops
   stops: RideStop[];
+  // Live tariff snapshot — present when the ride has a driver, used by the
+  // real-time taximeter on both client and driver screens.
+  tariffSnapshot?: TariffSnapshot | null;
+}
+
+export interface TariffSnapshot {
+  baseFare:        number;
+  perKmRate:       number;
+  perMinuteRate:   number;
+  minimumFare:     number;
+  surgeMultiplier: number;
+  name:            string;
 }
 
 // ── GPS ───────────────────────────────────────────────────────────────────────

@@ -21,6 +21,14 @@ export class Tariff {
   @Column({ type: 'varchar', name: 'company_id', nullable: true, default: null })
   companyId: string | null;
 
+  /**
+   * NULL = company- or platform-wide tariff (the normal case).
+   * Non-null = a solo driver's personal tariff. Only one such row per driver is
+   * expected, but the schema allows multiple to support vehicle-type variants.
+   */
+  @Column({ type: 'varchar', name: 'driver_id', nullable: true, default: null })
+  driverId: string | null;
+
   @Column({ type: 'varchar', length: 80 })
   name: string;
 

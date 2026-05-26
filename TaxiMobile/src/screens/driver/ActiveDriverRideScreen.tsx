@@ -23,10 +23,23 @@ import { useTranslation } from '../../i18n';
 import type { ColorPalette } from '../../constants/colors';
 import CancelRideModal from '../../components/CancelRideModal';
 import SosButton from '../../components/SosButton';
+import Taximeter from '../../components/Taximeter';
 import type { Ride, RideStatus, WsRideMessage } from '../../types/api';
 import type { DriverStackScreenProps } from '../../navigation/types';
 import Config from '../../config';
 import { fetchRoute, haversineKm, type LatLng } from '../../services/directions';
+
+/** Compute compass bearing (degrees, 0 = North) from point A to B. */
+function bearingDegrees(a: LatLng, b: LatLng): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const toDeg = (r: number) => (r * 180) / Math.PI;
+  const φ1 = toRad(a.latitude);
+  const φ2 = toRad(b.latitude);
+  const Δλ = toRad(b.longitude - a.longitude);
+  const y  = Math.sin(Δλ) * Math.cos(φ2);
+  const x  = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
 import { toAlertString } from '../../utils/errorMessage';
 
 type Props = DriverStackScreenProps<'ActiveDriverRide'>;
@@ -76,6 +89,11 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
   const [currentToPickupRoute, setCurrentToPickupRoute] = useState<LatLng[]>([]);
   const [pickupToDropoffRoute, setPickupToDropoffRoute] = useState<LatLng[]>([]);
   const lastDriverPosFetchRef = useRef<LatLng | null>(null);
+
+  // ── Driver position & rotation — used to render the moving 🚕 marker ───────
+  const [driverPos, setDriverPos] = useState<LatLng | null>(null);
+  const [carHeading, setCarHeading] = useState(0); // bearing in degrees (0 = north)
+  const mapViewRef = useRef<MapView>(null);
 
   const updateRide = (patch: Partial<Ride>) =>
     setRide(r => (r ? { ...r, ...patch } : r));
@@ -134,9 +152,24 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
     const { latitude, longitude } = coord;
 
     const driverLatLng: LatLng = { latitude, longitude };
+
+    // Always update the car marker position so it animates smoothly across the map
+    setDriverPos(prev => {
+      // Compute the bearing (direction the car is facing) from the previous point
+      if (prev && (Math.abs(prev.latitude - latitude) > 1e-6 || Math.abs(prev.longitude - longitude) > 1e-6)) {
+        setCarHeading(bearingDegrees(prev, driverLatLng));
+      }
+      return driverLatLng;
+    });
+
+    // During the ride, keep the camera centered on the moving car
+    if (status === 'in_progress') {
+      mapViewRef.current?.animateCamera({ center: driverLatLng }, { duration: 600 });
+    }
+
     const lastFetch = lastDriverPosFetchRef.current;
 
-    // Throttle: only act when driver has moved ≥ 150 m from the last update
+    // Throttle network/socket calls: only act when driver has moved ≥ 150 m
     if (lastFetch && haversineKm(lastFetch, driverLatLng) < 0.15) return;
     lastDriverPosFetchRef.current = driverLatLng;
 
@@ -356,9 +389,10 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
     <View style={styles.container}>
       {/* Map */}
       <MapView
+        ref={mapViewRef}
         style={styles.map}
         provider={PROVIDER_GOOGLE}
-        showsUserLocation
+        showsUserLocation={false}  /* hide default blue dot — we draw our own 🚕 */
         onUserLocationChange={handleUserLocationChange}
         initialRegion={{
           latitude: ride.pickupLat,
@@ -366,6 +400,29 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
           latitudeDelta: 0.03,
           longitudeDelta: 0.03,
         }}>
+        {/* Driver position — animated car marker */}
+        {driverPos && (
+          <Marker
+            coordinate={driverPos}
+            anchor={{ x: 0.5, y: 0.5 }}
+            flat              /* keep flat against the map so rotation works */
+            rotation={carHeading}
+            tracksViewChanges={false}  /* let the marker animate smoothly between coordinates */
+          >
+            <View style={{
+              width: 40, height: 40, borderRadius: 20,
+              backgroundColor: 'white',
+              alignItems: 'center', justifyContent: 'center',
+              borderWidth: 2, borderColor: colors.primary,
+              shadowColor: '#000', shadowOpacity: 0.3,
+              shadowRadius: 3, shadowOffset: { width: 0, height: 1 },
+              elevation: 4,
+            }}>
+              <Text style={{ fontSize: 22 }}>🚕</Text>
+            </View>
+          </Marker>
+        )}
+
         <Marker
           coordinate={{ latitude: ride.pickupLat, longitude: ride.pickupLng }}
           title={t('common.pickup')}
@@ -411,6 +468,15 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
           />
         )}
       </MapView>
+
+      {/* ── Real-time taximeter — shows running fare while in_progress ──── */}
+      {status === 'in_progress' && (
+        <Taximeter
+          tariff={ride.tariffSnapshot ?? null}
+          startedAt={ride.startedAt}
+          position={driverPos}
+        />
+      )}
 
       {/* ── Floating chat button ────────────────────────────────────────── */}
       {!chatOpen && (
