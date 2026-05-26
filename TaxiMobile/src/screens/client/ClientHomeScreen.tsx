@@ -24,6 +24,7 @@ import type { ColorPalette } from '../../constants/colors';
 import type { NearestDriver } from '../../types/api';
 import type { ClientStackScreenProps } from '../../navigation/types';
 
+
 type Props = ClientStackScreenProps<'ClientHomeMain'>;
 
 const DEFAULT_DELTA = 0.02;
@@ -35,7 +36,8 @@ export default function ClientHomeScreen({ navigation }: Props) {
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
 
-  const mapRef = useRef<MapView>(null);
+  const mapRef       = useRef<MapView>(null);
+  const mapRegionRef = useRef<Region | null>(null); // last visible map center, used as pickup fallback
   const [locationReady,    setLocationReady]    = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [userRegion,       setUserRegion]       = useState<Region | null>(null);
@@ -69,51 +71,112 @@ export default function ClientHomeScreen({ navigation }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Request location permission ──────────────────────────────────────────────
+  // ── Request location permission + start watcher (same as driver flow) ──────
   useEffect(() => {
-    requestLocationPermission();
-  }, []);
-
-  const requestLocationPermission = async () => {
     if (Platform.OS === 'android') {
-      try {
-        const result = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: t('client.home.locationPermTitle'),
-            message: t('client.home.locationPermMsg'),
-            buttonPositive: t('client.home.allow'),
-            buttonNegative: t('client.home.deny'),
-          },
-        );
+      PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        {
+          title: t('client.home.locationPermTitle'),
+          message: t('client.home.locationPermMsg'),
+          buttonPositive: t('client.home.allow'),
+          buttonNegative: t('client.home.deny'),
+        },
+      ).then(result => {
         if (result !== PermissionsAndroid.RESULTS.GRANTED) {
           setPermissionDenied(true);
-          return;
         }
-      } catch {
-        setPermissionDenied(true);
-        return;
-      }
+      });
     }
-    // Permission granted — get position immediately using network location (fast)
-    // enableHighAccuracy: false uses cell/WiFi — fires in <1s vs GPS which can take 30s+
-    Geolocation.getCurrentPosition(
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Primary path: MapView's onUserLocationChange (this works for drivers) ──
+  const handleUserLocationChange = useCallback(
+    (event: UserLocationChangeEvent) => {
+      const coordinate = event.nativeEvent.coordinate;
+      if (!coordinate) { return; }
+      const { latitude, longitude } = coordinate;
+      const region: Region = {
+        latitude,
+        longitude,
+        latitudeDelta: DEFAULT_DELTA,
+        longitudeDelta: DEFAULT_DELTA,
+      };
+      setUserRegion(region);
+      if (!locationReady) {
+        setLocationReady(true);
+        mapRef.current?.animateToRegion(region, 700);
+        fetchNearestDriversRef.current?.(latitude, longitude);
+      }
+    },
+    [locationReady],
+  );
+
+  // ── Secondary path: Geolocation.watchPosition (extra safety net) ───────────
+  useEffect(() => {
+    if (permissionDenied) return;
+    const id = Geolocation.watchPosition(
       (pos) => {
+        const { latitude, longitude } = pos.coords;
         const region: Region = {
-          latitude:      pos.coords.latitude,
-          longitude:     pos.coords.longitude,
+          latitude,
+          longitude,
           latitudeDelta: DEFAULT_DELTA,
           longitudeDelta: DEFAULT_DELTA,
         };
         setUserRegion(region);
-        setLocationReady(true);
-        mapRef.current?.animateToRegion(region, 800);
-        fetchNearestDrivers(pos.coords.latitude, pos.coords.longitude);
+        if (!locationReady) {
+          setLocationReady(true);
+          mapRef.current?.animateToRegion(region, 700);
+          fetchNearestDriversRef.current?.(latitude, longitude);
+        }
       },
-      () => { /* silent — onUserLocationChange will fire as fallback */ },
+      () => { /* non-fatal — other paths may still fire */ },
+      { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000, distanceFilter: 10 },
+    );
+    return () => { Geolocation.clearWatch(id); };
+  }, [permissionDenied, locationReady]);
+
+  // ── Tertiary path: try getCurrentPosition once immediately ─────────────────
+  useEffect(() => {
+    if (permissionDenied) return;
+    Geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const region: Region = {
+          latitude,
+          longitude,
+          latitudeDelta: DEFAULT_DELTA,
+          longitudeDelta: DEFAULT_DELTA,
+        };
+        setUserRegion(region);
+        if (!locationReady) {
+          setLocationReady(true);
+          mapRef.current?.animateToRegion(region, 700);
+          fetchNearestDriversRef.current?.(latitude, longitude);
+        }
+      },
+      () => { /* non-fatal */ },
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 },
     );
-  };
+  }, [permissionDenied, locationReady]);
+
+  // ── Final fallback: unblock UI after 4 s using the map's visible center ────
+  // If no location source fired by now, let the user request a ride from the
+  // map's current center (they can adjust the pickup on the next screen).
+  useEffect(() => {
+    if (permissionDenied) return;
+    const t = setTimeout(() => {
+      if (!locationReady) {
+        setLocationReady(true); // unblock the "Where to?" UI even without GPS
+      }
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [permissionDenied, locationReady]);
+
+  // Stable ref to fetchNearestDrivers so the callback above doesn't depend on it
+  const fetchNearestDriversRef = useRef<((lat: number, lng: number) => void) | null>(null);
 
   // ── Fetch nearest drivers ────────────────────────────────────────────────────
   const fetchNearestDrivers = useCallback(async (lat: number, lng: number) => {
@@ -128,53 +191,31 @@ export default function ClientHomeScreen({ navigation }: Props) {
     }
   }, [setNearestDrivers]);
 
-  const handleUserLocationChange = useCallback(
-    (event: UserLocationChangeEvent) => {
-      const coordinate = event.nativeEvent.coordinate;
-      if (!coordinate) { return; }
-      const { latitude, longitude } = coordinate;
-      // If getCurrentPosition already set us up, just keep userRegion in sync
-      if (locationReady) {
-        setUserRegion(prev => prev
-          ? { ...prev, latitude, longitude }
-          : { latitude, longitude, latitudeDelta: DEFAULT_DELTA, longitudeDelta: DEFAULT_DELTA },
-        );
-        return;
-      }
-      // Fallback: getCurrentPosition failed, use map callback instead
-      const region: Region = {
-        latitude,
-        longitude,
-        latitudeDelta: DEFAULT_DELTA,
-        longitudeDelta: DEFAULT_DELTA,
-      };
-      setUserRegion(region);
-      setLocationReady(true);
-      mapRef.current?.animateToRegion(region, 800);
-      fetchNearestDrivers(latitude, longitude);
-    },
-    [locationReady, fetchNearestDrivers],
-  );
+  // Keep the ref in sync so the MapView callback can use the latest version
+  useEffect(() => {
+    fetchNearestDriversRef.current = fetchNearestDrivers;
+  }, [fetchNearestDrivers]);
+
+  // Pickup priority: GPS userRegion → last visible map center → no-op alert
+  const pickupOrAlert = (): { lat: number; lng: number } | null => {
+    if (userRegion) return { lat: userRegion.latitude, lng: userRegion.longitude };
+    if (mapRegionRef.current) return { lat: mapRegionRef.current.latitude, lng: mapRegionRef.current.longitude };
+    Alert.alert(t('client.home.locationUnavailableTitle'), t('client.home.locationUnavailableMsg'));
+    return null;
+  };
 
   const handleRequestRide = () => {
-    if (!userRegion) {
-      Alert.alert(t('client.home.locationUnavailableTitle'), t('client.home.locationUnavailableMsg'));
-      return;
-    }
-    navigation.navigate('RideRequest', {
-      pickupLat: userRegion.latitude,
-      pickupLng: userRegion.longitude,
-    });
+    const p = pickupOrAlert();
+    if (!p) return;
+    navigation.navigate('RideRequest', { pickupLat: p.lat, pickupLng: p.lng });
   };
 
   const handleSavedLocationChip = (loc: SavedLocation) => {
-    if (!userRegion) {
-      Alert.alert(t('client.home.locationUnavailableTitle'), t('client.home.locationUnavailableMsg'));
-      return;
-    }
+    const p = pickupOrAlert();
+    if (!p) return;
     navigation.navigate('RideRequest', {
-      pickupLat:      userRegion.latitude,
-      pickupLng:      userRegion.longitude,
+      pickupLat:      p.lat,
+      pickupLng:      p.lng,
       dropoffLat:     loc.lat,
       dropoffLng:     loc.lng,
       dropoffAddress: loc.address ?? loc.label,
@@ -206,10 +247,11 @@ export default function ClientHomeScreen({ navigation }: Props) {
         showsUserLocation
         showsMyLocationButton={false}
         onUserLocationChange={handleUserLocationChange}
+        onRegionChangeComplete={(region) => { mapRegionRef.current = region; }}
         initialRegion={
           userRegion ?? {
-            latitude: 40.7128,
-            longitude: -74.006,
+            latitude: 42.21015,    // Kosovo — same as driver default
+            longitude: 20.73453,
             latitudeDelta: 0.1,
             longitudeDelta: 0.1,
           }
@@ -246,17 +288,37 @@ export default function ClientHomeScreen({ navigation }: Props) {
         </View>
       </SafeAreaView>
 
-      {/* ── Recenter button ─────────────────────────────────────────────── */}
-      {locationReady && (
-        <TouchableOpacity
-          style={styles.recenterBtn}
-          onPress={() => userRegion && mapRef.current?.animateToRegion(userRegion, 500)}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel="Re-center map to my location">
-          <Text style={styles.recenterIcon}>◎</Text>
-        </TouchableOpacity>
-      )}
+      {/* ── Recenter button — always visible ───────────────────────────── */}
+      <TouchableOpacity
+        style={styles.recenterBtn}
+        onPress={() => {
+          if (userRegion) {
+            mapRef.current?.animateToRegion(userRegion, 500);
+          } else {
+            // No GPS yet — try one-shot getCurrentPosition on tap as a manual retry
+            Geolocation.getCurrentPosition(
+              (pos) => {
+                const region: Region = {
+                  latitude:      pos.coords.latitude,
+                  longitude:     pos.coords.longitude,
+                  latitudeDelta: DEFAULT_DELTA,
+                  longitudeDelta: DEFAULT_DELTA,
+                };
+                setUserRegion(region);
+                setLocationReady(true);
+                mapRef.current?.animateToRegion(region, 500);
+                fetchNearestDriversRef.current?.(pos.coords.latitude, pos.coords.longitude);
+              },
+              () => Alert.alert(t('client.home.locationUnavailableTitle'), t('client.home.locationUnavailableMsg')),
+              { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 },
+            );
+          }
+        }}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Re-center map to my location">
+        <Text style={styles.recenterIcon}>📍</Text>
+      </TouchableOpacity>
 
       {/* ── Bottom card ─────────────────────────────────────────────────── */}
       <SafeAreaView edges={['bottom']} style={styles.bottomArea}>

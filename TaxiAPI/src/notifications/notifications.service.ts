@@ -67,6 +67,28 @@ export class NotificationsService {
         token,
         notification: { title: payload.title, body: payload.body },
         data: payload.data ?? {},
+        // ── Android: high-priority so the device wakes even when screen-locked ──
+        android: {
+          priority: 'high',
+          notification: {
+            channelId:              'taxiapp_rides',
+            priority:               'max',
+            defaultSound:           true,
+            defaultVibrateTimings:  true,
+            visibility:             'public', // show full content on lock screen
+          },
+        },
+        // ── iOS: alert + sound, mark as time-sensitive so it bypasses focus modes ──
+        apns: {
+          headers: { 'apns-priority': '10' },
+          payload: {
+            aps: {
+              alert: { title: payload.title, body: payload.body },
+              sound: 'default',
+              'interruption-level': 'time-sensitive',
+            },
+          },
+        },
       });
       this.logger.debug(`FCM sent to ${token.slice(0, 20)}...`);
     } catch (err: unknown) {

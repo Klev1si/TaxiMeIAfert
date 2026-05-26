@@ -25,6 +25,7 @@ import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
 import type { ColorPalette } from '../../constants/colors';
 import AvatarPicker from '../../components/AvatarPicker';
+import LanguagePickerModal from '../../components/LanguagePickerModal';
 import ThemeToggle from '../../components/ThemeToggle';
 import Config from '../../config';
 
@@ -290,6 +291,7 @@ export default function DriverProfileScreen() {
   const [loggingOut,       setLoggingOut]       = useState(false);
   const [editVisible,      setEditVisible]      = useState(false);
   const [pwVisible,        setPwVisible]        = useState(false);
+  const [langVisible,      setLangVisible]      = useState(false);
   const [ratings,          setRatings]          = useState<DriverRatings | null>(null);
   const [showAllReviews,   setShowAllReviews]   = useState(false);
   const [deletingAccount,  setDeletingAccount]  = useState(false);
@@ -312,10 +314,10 @@ export default function DriverProfileScreen() {
   }, []);
 
   const handleLogout = () => {
-    Alert.alert(t('common.signOut'), t('common.signOutConfirm'), [
+    Alert.alert(t('auth.signOutTitle'), t('auth.signOutConfirm'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
-        text: t('common.signOut'),
+        text: t('auth.signOut'),
         style: 'destructive',
         onPress: async () => {
           setLoggingOut(true);
@@ -704,7 +706,17 @@ export default function DriverProfileScreen() {
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Edit profile">
-            <Text style={styles.actionLabel}>✏️  Edit Profile</Text>
+            <Text style={styles.actionLabel}>✏️  {t('profile.editProfile')}</Text>
+            <Text style={styles.actionChevron}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => setLangVisible(true)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Language">
+            <Text style={styles.actionLabel}>🌐  {t('profile.language')}</Text>
             <Text style={styles.actionChevron}>›</Text>
           </TouchableOpacity>
 
@@ -714,7 +726,7 @@ export default function DriverProfileScreen() {
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Change password">
-            <Text style={styles.actionLabel}>🔒  Change Password</Text>
+            <Text style={styles.actionLabel}>🔒  {t('profile.changePassword')}</Text>
             <Text style={styles.actionChevron}>›</Text>
           </TouchableOpacity>
 
@@ -724,7 +736,7 @@ export default function DriverProfileScreen() {
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Subscription">
-            <Text style={styles.actionLabel}>⭐  Subscription</Text>
+            <Text style={styles.actionLabel}>⭐  {t('driver.subscription.title')}</Text>
             <Text style={styles.actionChevron}>›</Text>
           </TouchableOpacity>
 
@@ -734,7 +746,7 @@ export default function DriverProfileScreen() {
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Help and support">
-            <Text style={styles.actionLabel}>🎫  Help &amp; Support</Text>
+            <Text style={styles.actionLabel}>🎫  {t('client.profile.helpSupport')}</Text>
             <Text style={styles.actionChevron}>›</Text>
           </TouchableOpacity>
         </View>
@@ -755,7 +767,7 @@ export default function DriverProfileScreen() {
           accessibilityState={{ disabled: loggingOut }}>
           {loggingOut
             ? <ActivityIndicator color={colors.error} />
-            : <Text style={styles.logoutText}>Sign Out</Text>}
+            : <Text style={styles.logoutText}>{t('auth.signOut')}</Text>}
         </TouchableOpacity>
 
         {/* Delete account — GDPR */}
@@ -788,6 +800,10 @@ export default function DriverProfileScreen() {
       <ChangePasswordModal
         visible={pwVisible}
         onClose={() => setPwVisible(false)}
+      />
+      <LanguagePickerModal
+        visible={langVisible}
+        onClose={() => setLangVisible(false)}
       />
     </SafeAreaView>
   );

@@ -8,6 +8,7 @@ import {
   Platform,
   Switch,
 } from 'react-native';
+import Geolocation from '@react-native-community/geolocation';
 import MapView, { PROVIDER_GOOGLE, UserLocationChangeEvent } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
@@ -61,7 +62,39 @@ export default function DriverHomeScreen({ navigation }: Props) {
         }
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Backup GPS source: Geolocation.watchPosition ───────────────────────────
+  // We can't rely solely on MapView.onUserLocationChange — on some devices that
+  // callback never fires until the user moves. Without lat/lng, the dispatch
+  // interval can't send GPS to the server, so the driver is invisible to riders.
+  // This watcher uses high-accuracy GPS to keep lat/lng up to date.
+  useEffect(() => {
+    if (permissionDenied) return;
+    const id = Geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        latRef.current = latitude;
+        lngRef.current = longitude;
+        setLocation(latitude, longitude);
+        if (!locationReady) {
+          setLocationReady(true);
+          mapRef.current?.animateToRegion(
+            { latitude, longitude, latitudeDelta: 0.015, longitudeDelta: 0.015 },
+            700,
+          );
+        }
+        // Push to server immediately if online — don't wait up to 8s for the interval
+        if (isOnline) {
+          socketService.sendGpsUpdate(latitude, longitude);
+        }
+      },
+      () => { /* silent */ },
+      { enableHighAccuracy: true, distanceFilter: 5, maximumAge: 10000, timeout: 20000 },
+    );
+    return () => { Geolocation.clearWatch(id); };
+  }, [permissionDenied, locationReady, setLocation, isOnline]);
 
   // ── On first mount: check server for an active ride (handles app-restart) ────
   useEffect(() => {
@@ -225,17 +258,15 @@ export default function DriverHomeScreen({ navigation }: Props) {
         </View>
       </SafeAreaView>
 
-      {/* Recenter */}
-      {locationReady && (
-        <TouchableOpacity
-          style={styles.recenterBtn}
-          onPress={handleRecenter}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel={t('driver.home.recenterLabel')}>
-          <Text style={styles.recenterIcon}>◎</Text>
-        </TouchableOpacity>
-      )}
+      {/* Recenter — always visible so the driver can tap to jump to current GPS */}
+      <TouchableOpacity
+        style={styles.recenterBtn}
+        onPress={handleRecenter}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={t('driver.home.recenterLabel')}>
+        <Text style={styles.recenterIcon}>📍</Text>
+      </TouchableOpacity>
 
       {/* Bottom hint */}
       <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
