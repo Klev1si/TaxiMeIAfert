@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -27,10 +28,13 @@
         android:value="AIzaSyAYBI5oVv2TnqtysGBsIbWx4kvupAEiGEE"/>
 
       <!-- FCM default notification channel — must match the channel created in
-           MainApplication.kt (HIGH importance so notifications wake the screen) -->
+           MainApplication.kt (HIGH importance so notifications wake the screen).
+           tools:replace overrides the empty default declared by
+           react-native-firebase/messaging's manifest. -->
       <meta-data
         android:name="com.google.firebase.messaging.default_notification_channel_id"
-        android:value="taxiapp_rides"/>
+        android:value="taxiapp_rides"
+        tools:replace="android:value"/>
 
       <!-- Foreground service used by react-native-background-actions for GPS -->
       <service

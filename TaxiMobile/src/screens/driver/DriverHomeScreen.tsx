@@ -7,6 +7,7 @@ import {
   PermissionsAndroid,
   Platform,
   Switch,
+  Alert,
 } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import MapView, { PROVIDER_GOOGLE, UserLocationChangeEvent } from 'react-native-maps';
@@ -207,12 +208,40 @@ export default function DriverHomeScreen({ navigation }: Props) {
 
   // ── Recenter map ─────────────────────────────────────────────────────────────
   const handleRecenter = () => {
+    // Fast path — we already have GPS
     if (latRef.current !== null && lngRef.current !== null) {
       mapRef.current?.animateToRegion(
         { latitude: latRef.current, longitude: lngRef.current, latitudeDelta: 0.015, longitudeDelta: 0.015 },
         500,
       );
+      return;
     }
+    // Slow path — actively fetch position. Try GPS first, then fall back to network.
+    const tryHighAccuracy = () => Geolocation.getCurrentPosition(
+      (pos) => applyFix(pos.coords.latitude, pos.coords.longitude),
+      () => tryLowAccuracy(),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
+    );
+    const tryLowAccuracy = () => Geolocation.getCurrentPosition(
+      (pos) => applyFix(pos.coords.latitude, pos.coords.longitude),
+      (err) => Alert.alert(
+        'Location unavailable',
+        `Could not get GPS. Code ${err.code}: ${err.message ?? 'unknown'}.\n\nMake sure your device's Location is turned ON in settings.`,
+      ),
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 },
+    );
+    const applyFix = (lat: number, lng: number) => {
+      latRef.current = lat;
+      lngRef.current = lng;
+      setLocation(lat, lng);
+      setLocationReady(true);
+      mapRef.current?.animateToRegion(
+        { latitude: lat, longitude: lng, latitudeDelta: 0.015, longitudeDelta: 0.015 },
+        500,
+      );
+      if (isOnline) socketService.sendGpsUpdate(lat, lng);
+    };
+    tryHighAccuracy();
   };
 
   if (permissionDenied) {

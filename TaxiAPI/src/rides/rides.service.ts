@@ -280,6 +280,24 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
           this.logger.warn(
             `Scheduled ride ${ride.id} — no drivers available (${Math.round(msLate / 60000)} min late), will retry`,
           );
+
+          // Notify the client ONCE that no drivers were found yet — only on the
+          // first scheduling attempt, so we don't spam them every 30 s tick.
+          // Uses a Redis flag so the warning is sent at most once per ride.
+          const warnKey = `ride:${ride.id}:no_drivers_warned`;
+          const alreadyWarned = await this.redis.exists(warnKey);
+          if (!alreadyWarned && msLate < 60_000) {
+            const clientUser = await this.getClientUser(ride.clientId);
+            if (clientUser?.fcmToken) {
+              await this.notificationsService.sendToToken(clientUser.fcmToken, {
+                title: '⏳ Still searching for a driver',
+                body:  'No drivers are available yet for your scheduled ride. We\'ll keep trying for the next 10 minutes.',
+                data:  { rideId: ride.id, event: 'no_drivers_yet' },
+              });
+            }
+            // 15 min TTL — long enough to cover the entire 10-min grace window
+            await this.redis.set(warnKey, '1', 'EX', 15 * 60);
+          }
           continue;
         }
 

@@ -196,10 +196,12 @@ export default function ClientHomeScreen({ navigation }: Props) {
     fetchNearestDriversRef.current = fetchNearestDrivers;
   }, [fetchNearestDrivers]);
 
-  // Pickup priority: GPS userRegion → last visible map center → no-op alert
+  // Pickup priority: visible map center (= pin position) → GPS → alert
+  // The center-pin pattern means the user explicitly chose this position by
+  // dragging the map — it should win over a stale GPS fix.
   const pickupOrAlert = (): { lat: number; lng: number } | null => {
-    if (userRegion) return { lat: userRegion.latitude, lng: userRegion.longitude };
     if (mapRegionRef.current) return { lat: mapRegionRef.current.latitude, lng: mapRegionRef.current.longitude };
+    if (userRegion) return { lat: userRegion.latitude, lng: userRegion.longitude };
     Alert.alert(t('client.home.locationUnavailableTitle'), t('client.home.locationUnavailableMsg'));
     return null;
   };
@@ -288,31 +290,41 @@ export default function ClientHomeScreen({ navigation }: Props) {
         </View>
       </SafeAreaView>
 
+      {/* ── Centre pin — drag the map to set your pickup location ──────── */}
+      <View pointerEvents="none" style={styles.centerPinWrap}>
+        <Text style={styles.centerPin}>📍</Text>
+      </View>
+
       {/* ── Recenter button — always visible ───────────────────────────── */}
       <TouchableOpacity
         style={styles.recenterBtn}
         onPress={() => {
           if (userRegion) {
             mapRef.current?.animateToRegion(userRegion, 500);
-          } else {
-            // No GPS yet — try one-shot getCurrentPosition on tap as a manual retry
-            Geolocation.getCurrentPosition(
-              (pos) => {
-                const region: Region = {
-                  latitude:      pos.coords.latitude,
-                  longitude:     pos.coords.longitude,
-                  latitudeDelta: DEFAULT_DELTA,
-                  longitudeDelta: DEFAULT_DELTA,
-                };
-                setUserRegion(region);
-                setLocationReady(true);
-                mapRef.current?.animateToRegion(region, 500);
-                fetchNearestDriversRef.current?.(pos.coords.latitude, pos.coords.longitude);
-              },
-              () => Alert.alert(t('client.home.locationUnavailableTitle'), t('client.home.locationUnavailableMsg')),
-              { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 },
-            );
+            return;
           }
+          // No GPS yet — try high-accuracy first, then network, then show real error
+          const tryHigh = () => Geolocation.getCurrentPosition(
+            (pos) => apply(pos.coords.latitude, pos.coords.longitude),
+            () => tryLow(),
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
+          );
+          const tryLow = () => Geolocation.getCurrentPosition(
+            (pos) => apply(pos.coords.latitude, pos.coords.longitude),
+            (err) => Alert.alert(
+              'Location unavailable',
+              `Could not get GPS. Code ${err.code}: ${err.message ?? 'unknown'}.\n\nYou can still drag the map to set your pickup location, then tap "Request Ride".`,
+            ),
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 },
+          );
+          const apply = (lat: number, lng: number) => {
+            const region: Region = { latitude: lat, longitude: lng, latitudeDelta: DEFAULT_DELTA, longitudeDelta: DEFAULT_DELTA };
+            setUserRegion(region);
+            setLocationReady(true);
+            mapRef.current?.animateToRegion(region, 500);
+            fetchNearestDriversRef.current?.(lat, lng);
+          };
+          tryHigh();
         }}
         activeOpacity={0.8}
         accessibilityRole="button"
@@ -457,6 +469,20 @@ function getStyles(c: ColorPalette) {
     topRight:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
     refreshText: { fontSize: 20, color: c.primary, fontWeight: '700' },
     driverCount: { fontSize: 12, color: c.textSecondary, fontWeight: '500' },
+
+    centerPinWrap: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      marginLeft: -16,   // half of pin width (32px) for visual centering
+      marginTop:  -32,   // shift up so the pin's tip is at the map center
+    },
+    centerPin: {
+      fontSize: 32,
+      textShadowColor: 'rgba(0,0,0,0.3)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
+    },
 
     recenterBtn: {
       position: 'absolute',
