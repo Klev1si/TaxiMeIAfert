@@ -8,6 +8,7 @@ import {
   Platform,
   Switch,
   Alert,
+  Linking,
 } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import MapView, { PROVIDER_GOOGLE, UserLocationChangeEvent } from 'react-native-maps';
@@ -224,10 +225,20 @@ export default function DriverHomeScreen({ navigation }: Props) {
     );
     const tryLowAccuracy = () => Geolocation.getCurrentPosition(
       (pos) => applyFix(pos.coords.latitude, pos.coords.longitude),
-      (err) => Alert.alert(
-        'Location unavailable',
-        `Could not get GPS. Code ${err.code}: ${err.message ?? 'unknown'}.\n\nMake sure your device's Location is turned ON in settings.`,
-      ),
+      (err) => {
+        const isProviderMissing = err.code === 2;
+        const title = isProviderMissing ? 'Turn on Location' : 'Location unavailable';
+        const message = isProviderMissing
+          ? 'Your phone\'s Location is turned off. Drivers MUST have Location enabled — riders can\'t find you without it.\n\nOpen Settings and turn Location ON.'
+          : `Could not get GPS. Code ${err.code}: ${err.message ?? 'unknown'}.\n\nMake sure your device's Location is turned ON in settings.`;
+        Alert.alert(title, message, [
+          { text: 'OK', style: 'cancel' },
+          ...(Platform.OS === 'android' && isProviderMissing ? [{
+            text: 'Open Settings',
+            onPress: () => Linking.sendIntent('android.settings.LOCATION_SOURCE_SETTINGS').catch(() => Linking.openSettings()),
+          }] : []),
+        ]);
+      },
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 },
     );
     const applyFix = (lat: number, lng: number) => {

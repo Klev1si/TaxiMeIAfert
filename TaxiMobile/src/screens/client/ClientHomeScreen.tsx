@@ -9,6 +9,7 @@ import {
   PermissionsAndroid,
   Platform,
   Alert,
+  Linking,
 } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import MapView, { Marker, Region, PROVIDER_GOOGLE, UserLocationChangeEvent } from 'react-native-maps';
@@ -311,10 +312,21 @@ export default function ClientHomeScreen({ navigation }: Props) {
           );
           const tryLow = () => Geolocation.getCurrentPosition(
             (pos) => apply(pos.coords.latitude, pos.coords.longitude),
-            (err) => Alert.alert(
-              'Location unavailable',
-              `Could not get GPS. Code ${err.code}: ${err.message ?? 'unknown'}.\n\nYou can still drag the map to set your pickup location, then tap "Request Ride".`,
-            ),
+            (err) => {
+              // Code 2 = POSITION_UNAVAILABLE — device location services are OFF
+              const isProviderMissing = err.code === 2;
+              const title = isProviderMissing ? 'Turn on Location' : 'Location unavailable';
+              const message = isProviderMissing
+                ? 'Your phone\'s Location is turned off. Open Settings and turn Location ON to find drivers near you.\n\nYou can still drag the map to choose your pickup, then tap "Request Ride".'
+                : `Could not get GPS. Code ${err.code}: ${err.message ?? 'unknown'}.\n\nYou can drag the map to set your pickup, then tap "Request Ride".`;
+              Alert.alert(title, message, [
+                { text: 'OK', style: 'cancel' },
+                ...(Platform.OS === 'android' && isProviderMissing ? [{
+                  text: 'Open Settings',
+                  onPress: () => Linking.sendIntent('android.settings.LOCATION_SOURCE_SETTINGS').catch(() => Linking.openSettings()),
+                }] : []),
+              ]);
+            },
             { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 },
           );
           const apply = (lat: number, lng: number) => {

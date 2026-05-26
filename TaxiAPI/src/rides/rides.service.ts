@@ -209,10 +209,15 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
   private async dispatchScheduledRides(): Promise<void> {
     /** How long after scheduledAt we keep trying before giving up */
     const GRACE_MS = 10 * 60 * 1000; // 10 minutes
+    /** How early before scheduledAt we offer the ride to a driver.
+     *  10 min gives the driver enough time to accept and drive to pickup.
+     *  This matches the client-side 10-min minimum lead time, so a driver is
+     *  offered the ride at the same moment the client books it. */
+    const LEAD_MS = 10 * 60 * 1000; // 10 minutes
 
     const now = new Date();
-    // Include rides whose scheduledAt is in the past or within the next 30 s
-    const windowEnd = new Date(now.getTime() + 30_000);
+    // Dispatch rides whose scheduledAt is in the past OR within the next LEAD_MS
+    const windowEnd = new Date(now.getTime() + LEAD_MS);
 
     const dueRides = await this.rideRepo
       .createQueryBuilder('ride')
@@ -301,17 +306,26 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
           continue;
         }
 
-        // ── 4. First-dispatch nudge to client ─────────────────────────────────
-        // Only fire on the very first attempt (within 60 s of scheduledAt)
-        if (msLate < 60_000) {
+        // ── 4. First-dispatch nudge to client (once per ride) ────────────────
+        // We're dispatching up to LEAD_MS before pickup, so the message should
+        // tell the client we found their driver — not that the ride is starting.
+        const firstNudgeKey = `ride:${ride.id}:first_nudge_sent`;
+        const alreadyNudged = await this.redis.exists(firstNudgeKey);
+        if (!alreadyNudged) {
           const clientUser = await this.getClientUser(ride.clientId);
           if (clientUser) {
+            const minutesUntil = Math.max(0, Math.round(-msLate / 60_000));
+            const bodyText = minutesUntil > 0
+              ? `We found a driver for your ride in ${minutesUntil} min.`
+              : 'Your scheduled ride time has arrived. We\'re connecting you with a driver now.';
             await this.notificationsService.sendToToken(clientUser.fcmToken, {
-              title: '🚕 Finding your driver…',
-              body: 'Your scheduled ride time has arrived. We\'re connecting you with a driver now.',
-              data: { rideId: ride.id, event: 'scheduled_dispatching' },
+              title: '🚕 Driver found for your scheduled ride',
+              body:  bodyText,
+              data:  { rideId: ride.id, event: 'scheduled_dispatching' },
             });
           }
+          // TTL covers the LEAD_MS + grace period
+          await this.redis.set(firstNudgeKey, '1', 'EX', 30 * 60);
         }
 
         // ── 5. Dispatch to the nearest available driver ───────────────────────
