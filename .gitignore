@@ -78,3 +78,5 @@ temp/
 # Docker
 # keep docker-compose.yml but ignore local override
 docker-compose.override.yml
+# Claude Code worktrees
+.claude/worktrees/
