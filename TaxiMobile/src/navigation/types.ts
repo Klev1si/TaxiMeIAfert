@@ -66,6 +66,7 @@ export type ClientProfileStackParamList = {
 export type DriverProfileStackParamList = {
   DriverProfileMain:    undefined;
   DriverSubscription:   undefined;
+  DriverTariff:         undefined;
   Support:              undefined;
   SupportTicket:        { ticketId: string };
 };
@@ -74,7 +75,7 @@ export type DriverProfileStackParamList = {
 export type DriverTabParamList = {
   DriverHome: undefined;
   DriverRideHistory: undefined;
-  DriverEarnings: undefined;
+  /** "Earnings" tab — renamed to use Wallet as the source of truth */
   DriverWallet: undefined;
   DriverExpenses: undefined;
   DriverProfile: undefined;

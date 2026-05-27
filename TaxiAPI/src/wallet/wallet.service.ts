@@ -3,10 +3,12 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Company, Driver } from '../entities';
+import { Company, Driver, Ride } from '../entities';
+import { RideStatus } from '../common/enums';
 import { DriverLedger, LedgerEntryType } from '../entities/driver-ledger.entity';
 
 /** Default driver commission when the driver has no company. */
@@ -41,7 +43,7 @@ export interface DriverBalanceDto {
 }
 
 @Injectable()
-export class WalletService {
+export class WalletService implements OnModuleInit {
   private readonly logger = new Logger(WalletService.name);
 
   constructor(
@@ -51,7 +53,54 @@ export class WalletService {
     private readonly driverRepo: Repository<Driver>,
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
+    @InjectRepository(Ride)
+    private readonly rideRepo: Repository<Ride>,
   ) {}
+
+  /**
+   * On startup, find completed rides that have no matching wallet credit and
+   * insert the missing entries. Runs once per process — safe to re-run because
+   * it filters out rides that already have a credit.
+   */
+  async onModuleInit(): Promise<void> {
+    try { void this.backfillMissingCredits(); }
+    catch (err) { this.logger.error('Wallet backfill scan failed:', err); }
+  }
+
+  async backfillMissingCredits(): Promise<number> {
+    // Find every completed ride with a positive totalFare that has no
+    // corresponding credit entry in the ledger.
+    const orphanRides: Array<{ id: string; driverId: string; totalFare: string }> =
+      await this.rideRepo.query(
+        `SELECT r.id, r.driver_id AS "driverId", r.total_fare AS "totalFare"
+           FROM rides r
+          LEFT JOIN driver_ledger dl
+            ON dl.ride_id   = r.id
+           AND dl.driver_id = r.driver_id
+           AND dl.type      = 'credit'
+          WHERE r.status     = $1
+            AND r.total_fare IS NOT NULL
+            AND r.total_fare > 0
+            AND r.driver_id  IS NOT NULL
+            AND dl.id        IS NULL`,
+        [RideStatus.COMPLETED],
+      );
+
+    if (orphanRides.length === 0) return 0;
+
+    this.logger.log(`Backfilling ${orphanRides.length} missing wallet credits…`);
+    let inserted = 0;
+    for (const r of orphanRides) {
+      try {
+        await this.creditRide(r.driverId, r.id, Number(r.totalFare));
+        inserted++;
+      } catch (err) {
+        this.logger.warn(`Failed to backfill credit for ride ${r.id}: ${err}`);
+      }
+    }
+    this.logger.log(`Wallet backfill complete: ${inserted}/${orphanRides.length} entries inserted`);
+    return inserted;
+  }
 
   // ── Called fire-and-forget from RidesService on ride completion ─────────────
 
@@ -72,16 +121,24 @@ export class WalletService {
         where:  { id: driverId },
         select: ['id', 'companyId'],
       });
-      let commissionPct = DEFAULT_COMMISSION_PCT;
+
+      // Solo drivers (no company) keep 100% of the fare. We store commissionPct
+      // = null so the mobile wallet doesn't render a "(80%)" suffix for them —
+      // there's no one to share with.
+      let commissionPct: number | null = null;
+      let driverShare = totalFare;
+
       if (driver?.companyId) {
+        let pct = DEFAULT_COMMISSION_PCT;
         const company = await this.companyRepo.findOne({
           where:  { id: driver.companyId },
           select: ['driverCommissionPct'],
         });
-        if (company) commissionPct = Number(company.driverCommissionPct);
+        if (company) pct = Number(company.driverCommissionPct);
+        commissionPct = pct;
+        driverShare = Math.round(totalFare * pct) / 100;
       }
 
-      const driverShare = Math.round(totalFare * commissionPct) / 100;
       if (driverShare <= 0) return;
 
       const entry = this.ledgerRepo.create({
@@ -95,6 +152,29 @@ export class WalletService {
       await this.ledgerRepo.save(entry);
     } catch (err) {
       this.logger.error(`Failed to credit driver ${driverId} for ride ${rideId}`, err);
+    }
+  }
+
+  /**
+   * Replace any existing credit entries for this ride with a fresh credit
+   * computed from `newTotalFare`. Used by the "edit fare" flow so a driver
+   * who corrects a wrong/missing fare ends up with the right balance.
+   *
+   * Payout entries are NEVER touched.
+   */
+  async replaceCreditForRide(
+    driverId:      string,
+    rideId:        string,
+    newTotalFare:  number,
+  ): Promise<void> {
+    try {
+      // Wipe any prior credit for this ride. Payouts stay.
+      await this.ledgerRepo.delete({ driverId, rideId, type: 'credit' });
+      if (newTotalFare > 0) {
+        await this.creditRide(driverId, rideId, newTotalFare);
+      }
+    } catch (err) {
+      this.logger.error(`Failed to replace credit for ride ${rideId}`, err);
     }
   }
 

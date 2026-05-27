@@ -13,6 +13,7 @@ import { FindOptionsWhere, In, IsNull, Repository } from 'typeorm';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.module.js';
 import { Client, Company, Driver, PromoCode, Ride, RideStop, Tariff, User } from '../entities/index.js';
+import { DriverLedger } from '../entities/driver-ledger.entity.js';
 import { PromoDiscountType } from '../entities/promo-code.entity.js';
 import { PaymentStatus, RideStatus, UserRole, VehicleType } from '../common/enums/index.js';
 import { GpsService } from '../gps/gps.service.js';
@@ -140,6 +141,9 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
 
     @InjectRepository(RideStop)
     private readonly rideStopRepo: Repository<RideStop>,
+
+    @InjectRepository(DriverLedger)
+    private readonly ledgerRepo: Repository<DriverLedger>,
 
     @Inject(REDIS_CLIENT)
     private readonly redis: Redis,
@@ -1526,6 +1530,59 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // PATCH /rides/:id/fare  (DRIVER only) — fix the fare on a completed ride
+  // so the driver doesn't lose earnings when the original completion entered
+  // a wrong amount, or no amount at all (no tariff configured).
+  // ─────────────────────────────────────────────────────────────────────────────
+  async editRideFare(
+    driverUserId: string,
+    rideId:       string,
+    dto:          { totalFare: number; distanceKm?: number; durationMinutes?: number },
+  ): Promise<RideResponseDto> {
+    const { driver, ride } = await this.resolveDriverRide(driverUserId, rideId);
+
+    // Allow edits on completed rides (the common case) and on rides that got
+    // stuck in_progress — both are scenarios where the driver might have lost
+    // earnings and needs to fix the record.
+    if (
+      ride.status !== RideStatus.COMPLETED &&
+      ride.status !== RideStatus.IN_PROGRESS
+    ) {
+      throw new ForbiddenException(
+        `Cannot edit fare on a ride in status '${ride.status}'. Only completed or in-progress rides can be edited.`,
+      );
+    }
+
+    const newFare = Math.round(dto.totalFare * 100) / 100;
+    if (newFare < 0) throw new BadRequestException('Fare cannot be negative');
+
+    ride.totalFare = newFare;
+    if (dto.distanceKm      != null) ride.distanceKm      = dto.distanceKm;
+    if (dto.durationMinutes != null) ride.durationMinutes = dto.durationMinutes;
+
+    // If the ride was stuck in_progress, finalize it now.
+    if (ride.status === RideStatus.IN_PROGRESS) {
+      ride.status      = RideStatus.COMPLETED;
+      ride.completedAt = new Date();
+    }
+
+    const saved = await this.rideRepo.save(ride);
+
+    // ── Reconcile the wallet credit ─────────────────────────────────────────
+    // Append-only would create confusion ("Why do I see two credits for the
+    // same ride?"), so for this corrective action we delete prior credit
+    // entries for this ride and write a fresh one with the corrected amount.
+    // Payouts are NEVER touched — the driver's payout history stays intact.
+    await this.walletService.replaceCreditForRide(driver.id, rideId, newFare);
+
+    this.logger.log(
+      `Ride ${rideId} fare edited by driver ${driver.id}: → $${newFare.toFixed(2)}`,
+    );
+
+    return this.toDto(saved);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Step 21: POST /rides/:id/pay-cash  (DRIVER only)
   // ─────────────────────────────────────────────────────────────────────────────
   /**
@@ -2198,31 +2255,53 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
 
     const since = periodStart(period);
 
-    const qb = this.rideRepo
-      .createQueryBuilder('r')
-      .where('r.driverId = :driverId', { driverId: driver.id })
-      .andWhere('r.status = :status',  { status: RideStatus.COMPLETED })
-      .andWhere('r.totalFare IS NOT NULL');
+    // Read from the wallet ledger so Earnings always matches Wallet.
+    // Each credit entry has the commissionPct as it was AT THE TIME the ride
+    // completed (snapshotted), so historical accuracy is preserved even if
+    // the company changes their commission later.
+    const creditEntries = await this.ledgerRepo
+      .createQueryBuilder('dl')
+      .leftJoin('rides', 'r', 'r.id = dl.ride_id')
+      .where('dl.driver_id = :driverId', { driverId: driver.id })
+      .andWhere('dl.type = :type', { type: 'credit' })
+      .andWhere(since ? 'dl.created_at >= :since' : '1=1', since ? { since } : {})
+      .select([
+        'dl.amount         AS amount',
+        'dl.commission_pct AS "commissionPct"',
+        'r.total_fare      AS "totalFare"',
+      ])
+      .getRawMany<{ amount: string; commissionPct: string | null; totalFare: string | null }>();
 
-    if (since) qb.andWhere('r.completedAt >= :since', { since });
+    let driverShare = 0;
+    let totalFare   = 0;
+    for (const e of creditEntries) {
+      driverShare += Number(e.amount);
+      // Reconstruct the gross fare from each entry:
+      //   - if commissionPct is set → grossFare = amount / (pct/100)
+      //   - if null (solo driver, 100%) → grossFare = amount
+      //   - fall back to ride's totalFare when the join succeeded
+      if (e.totalFare != null) {
+        totalFare += Number(e.totalFare);
+      } else if (e.commissionPct != null && Number(e.commissionPct) > 0) {
+        totalFare += Number(e.amount) / (Number(e.commissionPct) / 100);
+      } else {
+        totalFare += Number(e.amount); // solo driver = 100% commission
+      }
+    }
 
-    // getMany() returns typed entity objects — no raw-column alias guesswork
-    const rides = await qb.select('r').getMany();
-
-    // Find the commission rate from the driver's company (if any)
-    let commissionPct = 100; // solo driver — keeps everything
+    // For the displayed commission %, use the driver's current company setting
+    // (or 100 for solo). Historical entries may have different pct, but the
+    // displayed value just reflects "what does this driver currently earn per ride".
+    let commissionPct = 100;
     if (driver.companyId) {
       const company = await this.companyRepo.findOne({ where: { id: driver.companyId } });
       if (company) commissionPct = Number(company.driverCommissionPct);
     }
 
-    const totalFare = rides.reduce((s, r) => s + Number(r.totalFare ?? 0), 0);
-    const driverShare = Math.round(totalFare * commissionPct) / 100;
-
     return {
       period,
-      rides:         rides.length,
-      totalFare:     Math.round(totalFare * 100) / 100,
+      rides:         creditEntries.length,
+      totalFare:     Math.round(totalFare   * 100) / 100,
       commissionPct,
       driverShare:   Math.round(driverShare * 100) / 100,
     };

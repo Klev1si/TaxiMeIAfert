@@ -114,6 +114,8 @@ export class AuthController {
         vehicleColor:  driver?.vehicleColor  ?? null,
         vehicleYear:   driver?.vehicleYear   ?? null,
         vehicleType:   driver?.vehicleType   ?? null,
+        // companyId — null = solo driver (manages own tariff + keeps 100%)
+        companyId:     driver?.companyId     ?? null,
       };
     }
     const client = await this.clientRepo.findOne({ where: { userId: user.id } });

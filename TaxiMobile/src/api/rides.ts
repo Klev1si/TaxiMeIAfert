@@ -139,6 +139,14 @@ export const ridesApi = {
     apiClient.post<Ride>(`/rides/${rideId}/complete`, payload ?? {}),
 
   /**
+   * PATCH /rides/:id/fare — Driver fixes the total fare on a completed (or
+   * stuck-in-progress) ride. Re-credits the driver's wallet so they don't lose
+   * earnings when the original completion saved a wrong/zero fare.
+   */
+  editFare: (rideId: string, payload: { totalFare: number; distanceKm?: number; durationMinutes?: number }) =>
+    apiClient.patch<Ride>(`/rides/${rideId}/fare`, payload),
+
+  /**
    * POST /rides/:id/no-show
    * Driver reports passenger didn't show up → fee charged to client.
    * Client reports driver never arrived → free cancellation.

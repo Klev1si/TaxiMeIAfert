@@ -17,11 +17,11 @@ import ActiveDriverRideScreen from '../screens/driver/ActiveDriverRideScreen';
 import RateRideScreen from '../screens/shared/RateRideScreen';
 import RideHistoryScreen from '../screens/shared/RideHistoryScreen';
 import RideDetailScreen from '../screens/shared/RideDetailScreen';
-import EarningsScreen from '../screens/driver/EarningsScreen';
 import DriverExpensesScreen from '../screens/driver/DriverExpensesScreen';
 import DriverProfileScreen from '../screens/driver/DriverProfileScreen';
 import WalletScreen from '../screens/driver/WalletScreen';
 import DriverSubscriptionScreen from '../screens/driver/DriverSubscriptionScreen';
+import DriverTariffScreen from '../screens/driver/DriverTariffScreen';
 import SupportScreen from '../screens/shared/SupportScreen';
 import SupportTicketScreen from '../screens/shared/SupportTicketScreen';
 
@@ -55,6 +55,7 @@ function DriverProfileStack() {
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
       <ProfileStack.Screen name="DriverProfileMain"  component={DriverProfileScreen}       />
       <ProfileStack.Screen name="DriverSubscription" component={DriverSubscriptionScreen}  />
+      <ProfileStack.Screen name="DriverTariff"       component={DriverTariffScreen}        />
       <ProfileStack.Screen name="Support"            component={SupportScreen}             />
       <ProfileStack.Screen name="SupportTicket"      component={SupportTicketScreen}       />
     </ProfileStack.Navigator>
@@ -74,7 +75,6 @@ export default function DriverNavigator() {
           const icons: Record<keyof DriverTabParamList, string> = {
             DriverHome:        'directions-car',
             DriverRideHistory: 'history',
-            DriverEarnings:    'bar-chart',
             DriverWallet:      'account-balance-wallet',
             DriverExpenses:    'receipt-long',
             DriverProfile:     'person',
@@ -84,14 +84,12 @@ export default function DriverNavigator() {
         tabBarLabel:
           route.name === 'DriverHome'        ? 'Home'     :
           route.name === 'DriverRideHistory' ? 'History'  :
-          route.name === 'DriverEarnings'    ? 'Earnings' :
-          route.name === 'DriverWallet'      ? 'Wallet'   :
+          route.name === 'DriverWallet'      ? 'Earnings' :
           route.name === 'DriverExpenses'    ? 'Expenses' :
                                                'Profile',
       })}>
       <Tab.Screen name="DriverHome"        component={DriverHomeStack}      />
       <Tab.Screen name="DriverRideHistory" component={DriverHistoryStack}  />
-      <Tab.Screen name="DriverEarnings"    component={EarningsScreen}       />
       <Tab.Screen name="DriverWallet"      component={WalletScreen}         />
       <Tab.Screen name="DriverExpenses"    component={DriverExpensesScreen}  />
       <Tab.Screen name="DriverProfile"     component={DriverProfileStack}    />

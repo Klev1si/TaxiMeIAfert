@@ -9,6 +9,10 @@ import {
   ActivityIndicator,
   Share,
   Platform,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -18,6 +22,7 @@ import type { ColorPalette } from '../../constants/colors';
 import { ridesApi } from '../../api/rides';
 import type { Ride, RideStatus } from '../../types/api';
 import { useTranslation } from '../../i18n';
+import { useAuthStore } from '../../stores/authStore';
 
 // ── Formatting helpers ────────────────────────────────────────────────────────
 
@@ -129,8 +134,50 @@ export default function RideDetailScreen({ route }: Props) {
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
-  const { ride } = route.params;
   const navigation = useNavigation();
+  const { user } = useAuthStore();
+
+  // Keep ride in local state so we can update it after editing the fare
+  const [ride, setRide] = useState<Ride>(route.params.ride);
+
+  // Edit-fare modal — drivers can fix the totalFare on rides that didn't credit
+  // properly, so they don't lose earnings.
+  const isDriver = user?.role === 'driver';
+  const isOwnRide = isDriver && ride.driverId != null;
+  const [editFareOpen,   setEditFareOpen]   = useState(false);
+  const [editFareValue,  setEditFareValue]  = useState('');
+  const [editFareDist,   setEditFareDist]   = useState('');
+  const [editFareSaving, setEditFareSaving] = useState(false);
+
+  const openEditFare = () => {
+    setEditFareValue(ride.totalFare != null ? String(ride.totalFare) : '');
+    setEditFareDist(ride.distanceKm != null ? String(ride.distanceKm) : '');
+    setEditFareOpen(true);
+  };
+
+  const handleSaveFare = async () => {
+    const newFare = parseFloat(editFareValue);
+    if (!Number.isFinite(newFare) || newFare < 0) {
+      Alert.alert(t('common.validation'), 'Enter a valid fare amount.');
+      return;
+    }
+    const newDist = parseFloat(editFareDist);
+    setEditFareSaving(true);
+    try {
+      const { data } = await ridesApi.editFare(ride.id, {
+        totalFare:  newFare,
+        distanceKm: Number.isFinite(newDist) && newDist > 0 ? newDist : undefined,
+      });
+      setRide(data);
+      setEditFareOpen(false);
+      Alert.alert(t('common.success'), 'Fare updated and your wallet has been re-credited.');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? 'Failed to update fare.';
+      Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
+    } finally {
+      setEditFareSaving(false);
+    }
+  };
 
   const STATUS_LABEL: Record<RideStatus, string> = {
     requested:         t('shared.rideDetail.statusRequested'),
@@ -407,6 +454,37 @@ export default function RideDetailScreen({ route }: Props) {
                 ? <ActivityIndicator size="small" color={colors.primary} />
                 : <Text style={styles.shareReceiptBtnText}>📤  {t('shared.rideDetail.shareReceipt')}</Text>}
             </TouchableOpacity>
+
+            {/* Edit Fare — only for the driver, on completed rides. Used when
+                the original completion saved a wrong/zero fare so the driver
+                doesn't lose earnings. */}
+            {isOwnRide && isCompleted && (
+              <TouchableOpacity
+                style={styles.editFareBtn}
+                onPress={openEditFare}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Edit fare">
+                <Text style={styles.editFareBtnText}>✏️  Edit Fare</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Driver: ride completed but with no fare → prompt to set one */}
+        {isOwnRide && isCompleted && (ride.totalFare == null || ride.totalFare === 0) && (
+          <View style={[styles.card, { borderColor: colors.warning, borderWidth: 1 }]}>
+            <Text style={[styles.sectionTitle, { color: colors.warning }]}>⚠️ Missing fare</Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 12, lineHeight: 18 }}>
+              This ride was completed without a fare, so it wasn't added to your earnings.
+              Tap below to enter the correct amount.
+            </Text>
+            <TouchableOpacity
+              style={styles.editFareBtn}
+              onPress={openEditFare}
+              activeOpacity={0.8}>
+              <Text style={styles.editFareBtnText}>✏️  Set Fare Now</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -466,6 +544,58 @@ export default function RideDetailScreen({ route }: Props) {
         </View>
 
       </ScrollView>
+
+      {/* ── Edit-Fare modal ────────────────────────────────────────────── */}
+      <Modal visible={editFareOpen} transparent animationType="fade" onRequestClose={() => setEditFareOpen(false)}>
+        <Pressable style={styles.editFareBackdrop} onPress={() => setEditFareOpen(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <Pressable style={styles.editFareSheet} onPress={() => {}}>
+              <Text style={styles.editFareTitle}>Edit Fare</Text>
+              <Text style={styles.editFareHint}>
+                Update the total fare for this ride. Your wallet will be re-credited with the corrected amount.
+              </Text>
+
+              <Text style={styles.editFareLabel}>Total fare ($)</Text>
+              <TextInput
+                style={styles.editFareInput}
+                value={editFareValue}
+                onChangeText={setEditFareValue}
+                placeholder="e.g. 12.50"
+                placeholderTextColor={colors.textDisabled}
+                keyboardType="decimal-pad"
+                autoFocus
+              />
+
+              <Text style={styles.editFareLabel}>Distance (km) — optional</Text>
+              <TextInput
+                style={styles.editFareInput}
+                value={editFareDist}
+                onChangeText={setEditFareDist}
+                placeholder="e.g. 5.20"
+                placeholderTextColor={colors.textDisabled}
+                keyboardType="decimal-pad"
+              />
+
+              <View style={styles.editFareActions}>
+                <TouchableOpacity
+                  style={[styles.editFareCancelBtn]}
+                  onPress={() => setEditFareOpen(false)}
+                  disabled={editFareSaving}>
+                  <Text style={styles.editFareCancelText}>{t('common.cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.editFareSaveBtn, editFareSaving && { opacity: 0.5 }]}
+                  onPress={handleSaveFare}
+                  disabled={editFareSaving}>
+                  {editFareSaving
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={styles.editFareSaveText}>{t('common.save')}</Text>}
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -628,6 +758,68 @@ function getStyles(c: ColorPalette) {
       justifyContent: 'center',
     },
     shareReceiptBtnText: { fontSize: 14, fontWeight: '700', color: c.primary },
+
+    // ── Edit fare (driver-only) ──────────────────────────────────────────────
+    editFareBtn: {
+      marginTop: 10,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: c.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    editFareBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+
+    editFareBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 16,
+    },
+    editFareSheet: {
+      backgroundColor: c.background,
+      borderRadius: 16,
+      padding: 20,
+      width: '100%',
+      maxWidth: 420,
+    },
+    editFareTitle: { fontSize: 18, fontWeight: '700', color: c.text, marginBottom: 6 },
+    editFareHint:  { fontSize: 13, color: c.textSecondary, marginBottom: 16, lineHeight: 18 },
+    editFareLabel: {
+      fontSize: 11, fontWeight: '700', color: c.textSecondary,
+      textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, marginTop: 10,
+    },
+    editFareInput: {
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 16,
+      color: c.text,
+    },
+    editFareActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
+    editFareCancelBtn: {
+      flex: 1,
+      height: 44,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    editFareCancelText: { fontSize: 14, fontWeight: '700', color: c.text },
+    editFareSaveBtn: {
+      flex: 1,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: c.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    editFareSaveText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 
     // Info rows
     infoRow: {

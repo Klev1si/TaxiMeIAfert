@@ -7,6 +7,7 @@ import {
   Param,
   ParseFloatPipe,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Request,
@@ -37,6 +38,18 @@ class CompleteRideDto {
   /** Driver-supplied fare override — used when no company tariff is configured */
   @IsNumber() @Min(0) @IsOptional() @Type(() => Number)
   totalFare?: number;
+}
+
+class EditFareDto {
+  /** New total fare for the ride. Must be ≥ 0. */
+  @IsNumber() @Min(0) @Type(() => Number)
+  totalFare: number;
+
+  @IsNumber() @Min(0) @IsOptional() @Type(() => Number)
+  distanceKm?: number;
+
+  @IsNumber() @Min(0) @IsOptional() @Type(() => Number)
+  durationMinutes?: number;
 }
 
 @Controller('rides')
@@ -238,6 +251,27 @@ export class RidesController {
     @Body() dto: CompleteRideDto,
   ): Promise<RideResponseDto> {
     return this.ridesService.completeRide(req.user.id, rideId, dto);
+  }
+
+  // ── PATCH /rides/:id/fare ──────────────────────────────────────────────────
+  /**
+   * Driver edits the total fare on a ride they completed.
+   * Use case: the ride completed without a fare (no tariff configured + driver
+   * forgot to enter one), or the entered fare was wrong. This re-credits the
+   * driver's wallet with the corrected amount so they don't lose the earnings.
+   *
+   * Only the driver who completed the ride may edit it. Allowed for rides in
+   * status COMPLETED or IN_PROGRESS (the latter handles "stuck" rides).
+   */
+  @Patch(':id/fare')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.DRIVER)
+  editRideFare(
+    @Request() req: { user: { id: string } },
+    @Param('id', ParseUUIDPipe) rideId: string,
+    @Body() dto: EditFareDto,
+  ): Promise<RideResponseDto> {
+    return this.ridesService.editRideFare(req.user.id, rideId, dto);
   }
 
   // ── GET /rides/ratings ────────────────────────────────────────────────────

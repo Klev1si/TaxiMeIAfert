@@ -38,6 +38,8 @@ type DriverProfile = {
   vehicleMake: string | null; vehicleModel: string | null;
   vehiclePlate: string | null; vehicleColor: string | null;
   vehicleYear: number | null;
+  /** Null = solo driver (can set own tariff and keeps 100% of fares) */
+  companyId: string | null;
 };
 
 // ── Edit Profile Modal ────────────────────────────────────────────────────────
@@ -729,6 +731,20 @@ export default function DriverProfileScreen() {
             <Text style={styles.actionLabel}>🔒  {t('profile.changePassword')}</Text>
             <Text style={styles.actionChevron}>›</Text>
           </TouchableOpacity>
+
+          {/* "My Tariff" — solo drivers only (companyId is null). Company drivers
+              get their tariff from the company admin, so we hide this row for them. */}
+          {profile?.companyId == null && (
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={() => navigation.navigate('DriverTariff')}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="My Tariff">
+              <Text style={styles.actionLabel}>💲  My Tariff</Text>
+              <Text style={styles.actionChevron}>›</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={styles.actionRow}

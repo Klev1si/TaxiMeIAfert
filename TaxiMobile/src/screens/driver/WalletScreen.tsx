@@ -1,3 +1,10 @@
+/**
+ * WalletScreen — driver earnings + wallet ledger, unified.
+ *
+ * Replaces the old separate "Earnings" and "Wallet" tabs. Source of truth is
+ * the driver_ledger table on the backend, so totals here always match every
+ * other view (admin payouts page, driver detail panel, etc.).
+ */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -5,6 +12,7 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,12 +21,31 @@ import { useColors } from '../../stores/themeStore';
 import type { ColorPalette } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Period filter helpers ─────────────────────────────────────────────────────
 
-function fmt(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString([], {
-    month: 'short', day: 'numeric', year: 'numeric',
-  });
+type Period = 'today' | 'week' | 'month' | 'all';
+
+function periodStart(p: Period): Date | null {
+  const now = new Date();
+  switch (p) {
+    case 'today':
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    case 'week': {
+      // Sunday as the start of the week — matches most regions' calendars
+      const d = new Date(now);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - d.getDay());
+      return d;
+    }
+    case 'month':
+      return new Date(now.getFullYear(), now.getMonth(), 1);
+    case 'all':
+      return null;
+  }
+}
+
+function fmtDate(s: string): string {
+  return new Date(s).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function fmtMoney(n: number): string {
@@ -43,7 +70,7 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
                 : 'Ride earnings')
             : `${t('driver.wallet.payout')}${entry.note ? ` — ${entry.note}` : ''}`}
         </Text>
-        <Text style={styles.rowDate}>{fmt(entry.createdAt)}</Text>
+        <Text style={styles.rowDate}>{fmtDate(entry.createdAt)}</Text>
       </View>
       <Text style={[styles.rowAmount, isCredit ? styles.amtCredit : styles.amtPayout]}>
         {isCredit ? '+' : '−'}{fmtMoney(entry.amount)}
@@ -62,6 +89,7 @@ export default function WalletScreen() {
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error,      setError]      = useState<string | null>(null);
+  const [period,     setPeriod]     = useState<Period>('all');
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
@@ -79,6 +107,26 @@ export default function WalletScreen() {
 
   useEffect(() => { load(); }, [load]);
 
+  // ── Period filtering (client-side over the ledger) ────────────────────────
+  const filtered = useMemo(() => {
+    if (!wallet) return { entries: [] as LedgerEntry[], credits: 0, payouts: 0, rides: 0 };
+    const since = periodStart(period);
+    const entries = since
+      ? wallet.entries.filter(e => new Date(e.createdAt) >= since)
+      : wallet.entries;
+    let credits = 0, payouts = 0, rides = 0;
+    for (const e of entries) {
+      if (e.type === 'credit') { credits += e.amount; rides++; }
+      else                     { payouts += e.amount; }
+    }
+    return {
+      entries,
+      credits: Math.round(credits * 100) / 100,
+      payouts: Math.round(payouts * 100) / 100,
+      rides,
+    };
+  }, [wallet, period]);
+
   if (loading && !wallet) {
     return (
       <SafeAreaView style={styles.center}>
@@ -95,42 +143,76 @@ export default function WalletScreen() {
     );
   }
 
+  const PERIODS: { value: Period; label: string }[] = [
+    { value: 'today', label: t('driver.earnings.periodToday') },
+    { value: 'week',  label: t('driver.earnings.periodWeek') },
+    { value: 'month', label: t('driver.earnings.periodMonth') },
+    { value: 'all',   label: t('driver.earnings.periodAll') },
+  ];
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <FlatList
-        data={wallet?.entries ?? []}
+        data={filtered.entries}
         keyExtractor={item => item.id}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />
         }
         ListHeaderComponent={
           <View>
+            {/* Period selector */}
+            <View style={styles.periodRow}>
+              {PERIODS.map(p => (
+                <TouchableOpacity
+                  key={p.value}
+                  style={[styles.pill, period === p.value && styles.pillActive]}
+                  onPress={() => setPeriod(p.value)}
+                  activeOpacity={0.75}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: period === p.value }}>
+                  <Text style={[styles.pillText, period === p.value && styles.pillTextActive]}>
+                    {p.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             {/* ── Balance card ─────────────────────────────────────────── */}
             <View style={styles.card}>
-              <Text style={styles.cardLabel}>{t('driver.wallet.balanceLabel')}</Text>
+              <Text style={styles.cardLabel}>
+                {period === 'all'
+                  ? t('driver.wallet.balanceLabel')
+                  : `Earned ${PERIODS.find(p => p.value === period)?.label.toLowerCase()}`}
+              </Text>
               <Text style={styles.balanceAmount}>
-                {fmtMoney(wallet?.balance ?? 0)}
+                {fmtMoney(period === 'all' ? (wallet?.balance ?? 0) : filtered.credits)}
               </Text>
 
               <View style={styles.statsRow}>
                 <View style={styles.stat}>
-                  <Text style={styles.statLabel}>{t('driver.wallet.totalEarned')}</Text>
-                  <Text style={[styles.statValue, styles.amtCredit]}>
-                    {fmtMoney(wallet?.totalCredits ?? 0)}
+                  <Text style={styles.statLabel}>
+                    {period === 'all' ? t('driver.wallet.totalEarned') : 'Rides'}
+                  </Text>
+                  <Text style={[styles.statValue, period === 'all' ? styles.amtCredit : { color: '#fff' }]}>
+                    {period === 'all'
+                      ? fmtMoney(wallet?.totalCredits ?? 0)
+                      : String(filtered.rides)}
                   </Text>
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.stat}>
-                  <Text style={styles.statLabel}>{t('driver.wallet.paidOut')}</Text>
+                  <Text style={styles.statLabel}>
+                    {period === 'all' ? t('driver.wallet.paidOut') : 'Payouts'}
+                  </Text>
                   <Text style={[styles.statValue, styles.amtPayout]}>
-                    {fmtMoney(wallet?.totalPayouts ?? 0)}
+                    {fmtMoney(period === 'all' ? (wallet?.totalPayouts ?? 0) : filtered.payouts)}
                   </Text>
                 </View>
               </View>
             </View>
 
             {/* ── Section header ───────────────────────────────────────── */}
-            {(wallet?.entries.length ?? 0) > 0 && (
+            {filtered.entries.length > 0 && (
               <Text style={styles.sectionHeader}>{t('driver.wallet.historyTitle')}</Text>
             )}
           </View>
@@ -160,6 +242,26 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
 
   list: { paddingBottom: 32 },
 
+  // Period selector pills
+  periodRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 8,
+  },
+  pill: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: c.surfaceAlt ?? c.surface,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: c.border,
+  },
+  pillActive: { backgroundColor: c.primary, borderColor: c.primary },
+  pillText:   { fontSize: 12, fontWeight: '700', color: c.text },
+  pillTextActive: { color: '#fff' },
+
   // Balance card
   card: {
     margin: 16,
@@ -173,10 +275,11 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
     elevation: 6,
   },
   cardLabel: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.85)',
     fontSize: 14,
     fontWeight: '500',
     marginBottom: 6,
+    textTransform: 'capitalize',
   },
   balanceAmount: {
     color: '#FFFFFF',
@@ -184,6 +287,7 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -1,
     marginBottom: 20,
+    fontVariant: ['tabular-nums'],
   },
   statsRow: {
     flexDirection: 'row',
@@ -194,7 +298,7 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
   stat:      { flex: 1, alignItems: 'center' },
   divider:   { width: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginHorizontal: 8 },
   statLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 12, marginBottom: 4 },
-  statValue: { fontSize: 18, fontWeight: '700' },
+  statValue: { fontSize: 18, fontWeight: '700', fontVariant: ['tabular-nums'] },
 
   sectionHeader: {
     fontSize: 13,
@@ -215,12 +319,7 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 12,
-  },
+  dot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
   dotCredit: { backgroundColor: c.success },
   dotPayout: { backgroundColor: c.warning },
   rowText:   { flex: 1 },
@@ -228,12 +327,11 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
   rowDate:   { fontSize: 12, color: c.textSecondary, marginTop: 2 },
   rowAmount: { fontSize: 15, fontWeight: '700' },
 
-  amtCredit: { color: c.success },
-  amtPayout: { color: c.warning },
+  amtCredit: { color: '#fff' },
+  amtPayout: { color: '#FBBF24' },
 
   separator: { height: 1, backgroundColor: c.border },
 
-  // Empty state
   empty:        { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 },
   emptyIcon:    { fontSize: 48, marginBottom: 12 },
   emptyText:    { fontSize: 16, fontWeight: '600', color: c.textSecondary, marginBottom: 6 },
