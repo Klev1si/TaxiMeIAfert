@@ -23,6 +23,7 @@ import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { useRideStore } from '../../stores/rideStore';
 import { socketService } from '../../services/socket';
 import { paymentsApi, type SavedPaymentMethod } from '../../api/payments';
+import { ridesApi } from '../../api/rides';
 import { track } from '../../services/analytics';
 import { crash } from '../../services/crashlytics';
 import { Sizes } from '../../constants';
@@ -73,6 +74,22 @@ export default function PayCashScreen({ navigation, route }: Props) {
     track.screen('PayCash');
     track.paymentScreenViewed(rideId);
   }, [rideId]);
+
+  // ── Fallback: fetch ride from server if not in store ────────────────────────
+  // This covers the case where the client opens PayCashScreen from an FCM tap
+  // (cold app launch) and the rideStore is empty — without this, the amount-due
+  // card wouldn't render because activeRide is null.
+  const [fetchedRide, setFetchedRide] = useState<typeof activeRideFromStore>(null);
+  useEffect(() => {
+    if (rideSnapshotRef.current) return;
+    ridesApi.getActiveRide()
+      .then(({ data }) => { if (data && data.id === rideId) setFetchedRide(data); })
+      .catch(() => { /* non-fatal — UI will gracefully show "Fare not finalized yet…" */ });
+  }, [rideId]);
+  // Prefer the fetched ride when the store snapshot was empty
+  if (!rideSnapshotRef.current && fetchedRide) {
+    rideSnapshotRef.current = fetchedRide;
+  }
 
   // ── Load saved cards ─────────────────────────────────────────────────────────
   useEffect(() => {

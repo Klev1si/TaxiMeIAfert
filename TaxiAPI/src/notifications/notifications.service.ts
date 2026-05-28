@@ -31,14 +31,37 @@ export class NotificationsService {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const admin = require('firebase-admin');
     if (admin.apps.length === 0) {
-      const serviceAccountPath = this.config.get<string>('FIREBASE_SERVICE_ACCOUNT');
-      if (serviceAccountPath) {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const serviceAccount = require(serviceAccountPath);
+      const raw = this.config.get<string>('FIREBASE_SERVICE_ACCOUNT');
+      if (raw) {
+        // Accept EITHER a JSON string (recommended on Railway/Heroku — you
+        // paste the full service-account JSON as one env var) OR a file path
+        // (for local dev where the JSON sits on disk).
+        let serviceAccount: object;
+        const trimmed = raw.trim();
+        if (trimmed.startsWith('{')) {
+          try {
+            serviceAccount = JSON.parse(trimmed);
+          } catch (err) {
+            this.logger.error('FIREBASE_SERVICE_ACCOUNT is not valid JSON', err);
+            return;
+          }
+        } else {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          serviceAccount = require(raw);
+        }
         admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+        this.logger.log('Firebase Admin initialized — push notifications enabled');
       } else {
         // Fall back to Application Default Credentials (GCP / Cloud Run)
-        admin.initializeApp({ credential: admin.credential.applicationDefault() });
+        try {
+          admin.initializeApp({ credential: admin.credential.applicationDefault() });
+          this.logger.log('Firebase Admin initialized with default credentials');
+        } catch (err) {
+          this.logger.error(
+            'Firebase Admin failed to initialize. Set FIREBASE_SERVICE_ACCOUNT to the JSON content of your service-account key, or set FIREBASE_MOCK=true.',
+            err,
+          );
+        }
       }
     }
     this.adminApp = admin;
