@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -99,10 +99,12 @@ export class DriverTariffController {
   ) {
     const driver = await this.resolveSoloDriver(req.user.id);
 
+    // TypeORM's findOne `where` clause requires IsNull() for nullable columns
+    // — passing literal `null` is a type error in strict mode.
     const existing = await this.tariffRepo.findOne({
       where: {
         driverId:    driver.id,
-        vehicleType: dto.vehicleType ?? null,
+        vehicleType: dto.vehicleType ?? IsNull(),
         isActive:    true,
       },
     });
