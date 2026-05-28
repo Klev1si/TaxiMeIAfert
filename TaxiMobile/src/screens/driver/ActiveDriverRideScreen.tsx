@@ -76,7 +76,6 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
   // ── Completion modal state ───────────────────────────────────────────────────
   const [completeModalVisible, setCompleteModalVisible] = useState(false);
   const [fareInput, setFareInput]         = useState('');
-  const [distanceInput, setDistanceInput] = useState('');
 
   // ── Chat state ───────────────────────────────────────────────────────────────
   const [chatOpen,    setChatOpen]    = useState(false);
@@ -227,31 +226,16 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
     }
   };
 
-  /** Opens the completion modal and pre-fills distance if coords are available */
+  /** Opens the completion modal. Distance is no longer driver-supplied — the
+   *  backend computes it from the GPS waypoints recorded during the ride. */
   const handleComplete = () => {
-    // Pre-calculate straight-line distance if the ride has a dropoff
-    if (ride?.dropoffLat != null && ride?.dropoffLng != null) {
-      const R = 6371;
-      const dLat = ((ride.dropoffLat - ride.pickupLat) * Math.PI) / 180;
-      const dLng = ((ride.dropoffLng - ride.pickupLng) * Math.PI) / 180;
-      const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos((ride.pickupLat * Math.PI) / 180) *
-          Math.cos((ride.dropoffLat * Math.PI) / 180) *
-          Math.sin(dLng / 2) ** 2;
-      const km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      setDistanceInput(km.toFixed(2));
-    } else {
-      setDistanceInput('');
-    }
     setFareInput('');
     setCompleteModalVisible(true);
   };
 
   /** Called when driver confirms the completion modal */
   const handleConfirmComplete = async () => {
-    const distKm  = distanceInput.trim() ? parseFloat(distanceInput) : undefined;
-    const fare    = fareInput.trim()     ? parseFloat(fareInput)     : undefined;
+    const fare = fareInput.trim() ? parseFloat(fareInput) : undefined;
 
     // If driver has no tariff and gave no fare at all — warn
     if (!ride?.tariffId && fare == null) {
@@ -265,9 +249,11 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
     setCompleteModalVisible(false);
     setBusy(true);
     try {
+      // Distance is intentionally omitted — the backend computes it from the
+      // GPS waypoints recorded during the ride (more accurate than any value
+      // the driver could enter manually).
       const { data: completed } = await ridesApi.completeRide(rideId, {
-        distanceKm:      distKm,
-        totalFare:       fare,
+        totalFare: fare,
       });
       setActiveRide(completed);
 
@@ -680,21 +666,12 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
               {t('driver.activeRide.completeModalSubtitle')}
             </Text>
 
-            {/* Distance */}
-            <Text style={completeStyles.fieldLabel}>
-              {ride?.dropoffLat != null
-                ? t('driver.activeRide.distanceAutoLabel')
-                : t('driver.activeRide.distanceManualLabel')}
-            </Text>
-            <TextInput
-              style={completeStyles.input}
-              value={distanceInput}
-              onChangeText={setDistanceInput}
-              placeholder={t('driver.activeRide.distancePlaceholder')}
-              placeholderTextColor={colors.textDisabled}
-              keyboardType="decimal-pad"
-              returnKeyType="next"
-            />
+            {/* Distance is auto-computed from GPS — driver doesn't enter it */}
+            <View style={completeStyles.tariffNote}>
+              <Text style={completeStyles.tariffNoteText}>
+                📍 Distance will be calculated automatically from your GPS route.
+              </Text>
+            </View>
 
             {/* Fare — only required when no tariff is configured */}
             {!ride?.tariffId && (

@@ -48,6 +48,8 @@ export interface RequestRidePayload {
   vehicleType?: VehicleType;
   /** Optional intermediate stops between pickup and dropoff. Up to 5. */
   stops?: RideStopInput[];
+  /** Optional — dispatch directly to a specific saved/favorite driver. */
+  preferredDriverId?: string;
 }
 
 export interface PromoValidation {

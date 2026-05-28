@@ -403,6 +403,16 @@ export default function ClientProfileScreen() {
 
           <TouchableOpacity
             style={styles.actionRow}
+            onPress={() => navigation.navigate('FavoriteDrivers')}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Saved drivers">
+            <Text style={styles.actionLabel}>⭐  Saved Drivers</Text>
+            <Text style={styles.actionChevron}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionRow}
             onPress={() => navigation.navigate('ManageCards')}
             activeOpacity={0.7}
             accessibilityRole="button"

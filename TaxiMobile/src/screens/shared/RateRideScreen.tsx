@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
+import { clientFavoritesApi } from '../../api/client-favorites';
 import { track } from '../../services/analytics';
 import { maybeRequestReview } from '../../services/inAppReview';
 import { Sizes } from '../../constants';
@@ -27,6 +28,8 @@ import { useTranslation } from '../../i18n';
 interface RateScreenParams {
   rideId: string;
   rateTarget: 'driver' | 'client';
+  /** Required when rateTarget === 'driver' — used by the "save driver" heart toggle. */
+  driverId?: string;
 }
 
 interface RateScreenNavigation {
@@ -47,13 +50,44 @@ export default function RateRideScreen({ navigation, route }: Props) {
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
-  const { rideId, rateTarget } = route.params;
+  const { rideId, rateTarget, driverId } = route.params;
   const { clearAll } = useRideStore();
 
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // Heart toggle — client can save the driver as a favorite from this screen.
+  // Only shown when rating a driver AND driverId is provided.
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [togglingFavorite, setTogglingFavorite] = useState(false);
+
+  // Load current favorite status when the screen opens
+  React.useEffect(() => {
+    if (rateTarget !== 'driver' || !driverId) return;
+    clientFavoritesApi.list()
+      .then(({ data }) => setIsFavorite(data.some(f => f.driverId === driverId)))
+      .catch(() => { /* non-fatal — heart just stays unfilled */ });
+  }, [rateTarget, driverId]);
+
+  const handleToggleFavorite = async () => {
+    if (!driverId) return;
+    setTogglingFavorite(true);
+    const next = !isFavorite;
+    setIsFavorite(next); // optimistic
+    try {
+      if (next) {
+        await clientFavoritesApi.add(driverId);
+      } else {
+        await clientFavoritesApi.remove(driverId);
+      }
+    } catch {
+      setIsFavorite(!next); // revert on error
+      Alert.alert(t('common.error'), 'Could not update saved drivers.');
+    } finally {
+      setTogglingFavorite(false);
+    }
+  };
 
   // Driver-only: track whether cash has been confirmed so the button becomes a tick
   const [cashConfirmed, setCashConfirmed] = useState(false);
@@ -208,6 +242,23 @@ export default function RateRideScreen({ navigation, route }: Props) {
             <Text style={styles.charCount}>{review.length}/300</Text>
           </View>
 
+          {/* ── Save driver as favorite (client only) ──────────────────────── */}
+          {isRatingDriver && driverId && (
+            <TouchableOpacity
+              style={styles.favoriteRow}
+              onPress={handleToggleFavorite}
+              disabled={togglingFavorite}
+              activeOpacity={0.7}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: isFavorite }}
+              accessibilityLabel={isFavorite ? 'Remove from saved drivers' : 'Save this driver'}>
+              <Text style={styles.favoriteIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
+              <Text style={styles.favoriteText}>
+                {isFavorite ? 'Saved to your drivers' : 'Save this driver for next time'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* Buttons */}
           <TouchableOpacity
             style={[styles.submitBtn, (submitting || rating === 0) && styles.submitBtnDisabled]}
@@ -287,6 +338,21 @@ function getStyles(c: ColorPalette) {
       backgroundColor: c.surface,
     },
     charCount: { fontSize: 11, color: c.textDisabled, textAlign: 'right', marginTop: 4 },
+
+    favoriteRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      marginVertical: 12,
+      backgroundColor: c.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    favoriteIcon: { fontSize: 22, marginRight: 10 },
+    favoriteText: { fontSize: 14, fontWeight: '600', color: c.text },
 
     submitBtn: {
       width: '100%',

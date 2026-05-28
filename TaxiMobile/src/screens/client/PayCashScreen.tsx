@@ -99,7 +99,7 @@ export default function PayCashScreen({ navigation, route }: Props) {
       setConfirmed(true);
       setCardState('success');
       setTimeout(() => {
-        navigation.replace('RateRide', { rideId, rateTarget: 'driver' });
+        navigation.replace('RateRide', { rideId, rateTarget: 'driver', driverId: activeRide?.driverId ?? undefined });
       }, 1500);
     });
 
@@ -269,7 +269,7 @@ export default function PayCashScreen({ navigation, route }: Props) {
   // ── Cash: manual proceed ─────────────────────────────────────────────────────
   const handleCashProceed = () => {
     clearAll();
-    navigation.replace('RateRide', { rideId, rateTarget: 'driver' });
+    navigation.replace('RateRide', { rideId, rateTarget: 'driver', driverId: activeRide?.driverId ?? undefined });
   };
 
   const handleSkip = () => {
@@ -321,6 +321,26 @@ export default function PayCashScreen({ navigation, route }: Props) {
               ? t('client.payCash.waitingMsg')
               : t('client.payCash.choosePayment')}
         </Text>
+
+        {/* ── Big amount-due display ───────────────────────────────────────
+            Shown prominently at the top so the client immediately knows
+            how much to pay. Falls back to a clear message when the fare
+            hasn't been finalized yet. */}
+        {!confirmed && cardState !== 'processing' && activeRide && (
+          <View style={styles.amountDueWrap}>
+            <Text style={styles.amountDueLabel}>Amount due</Text>
+            {activeRide.totalFare != null ? (
+              <Text style={styles.amountDueValue}>${Number(activeRide.totalFare).toFixed(2)}</Text>
+            ) : (
+              <Text style={styles.amountPending}>Fare not finalized yet…</Text>
+            )}
+            {activeRide.promoCode && activeRide.discountAmount != null && Number(activeRide.discountAmount) > 0 && (
+              <Text style={styles.amountDiscount}>
+                Includes 🏷️ {activeRide.promoCode} discount −${Number(activeRide.discountAmount).toFixed(2)}
+              </Text>
+            )}
+          </View>
+        )}
 
         {/* Ride summary */}
         {activeRide && cardState !== 'processing' && (
@@ -621,6 +641,43 @@ function getStyles(c: ColorPalette) {
       fontSize: 15, color: c.textSecondary,
       textAlign: 'center', lineHeight: 22,
       marginBottom: 28, paddingHorizontal: 16,
+    },
+
+    amountDueWrap: {
+      width: '100%',
+      backgroundColor: c.primary,
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 16,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    amountDueLabel: {
+      fontSize: 13, fontWeight: '700',
+      color: 'rgba(255,255,255,0.85)',
+      textTransform: 'uppercase',
+      letterSpacing: 1.2,
+      marginBottom: 6,
+    },
+    amountDueValue: {
+      fontSize: 42, fontWeight: '800',
+      color: '#fff',
+      letterSpacing: -1,
+      fontVariant: ['tabular-nums'],
+    },
+    amountPending: {
+      fontSize: 16, fontStyle: 'italic',
+      color: 'rgba(255,255,255,0.85)',
+      marginTop: 4,
+    },
+    amountDiscount: {
+      fontSize: 12, fontWeight: '600',
+      color: 'rgba(255,255,255,0.9)',
+      marginTop: 8,
     },
 
     summaryCard: {

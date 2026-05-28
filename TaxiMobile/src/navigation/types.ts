@@ -30,6 +30,8 @@ export type ClientStackParamList = {
     dropoffLat?: number;
     dropoffLng?: number;
     dropoffAddress?: string;
+    /** Dispatch directly to this saved/favorite driver, if specified */
+    preferredDriverId?: string;
   };
   ActiveRide: {
     rideId: string;
@@ -57,6 +59,7 @@ export type ClientHistoryStackParamList = {
 export type ClientProfileStackParamList = {
   ClientProfileMain: undefined;
   SavedLocations: undefined;
+  FavoriteDrivers: undefined;
   ManageCards: undefined;
   Support: undefined;
   SupportTicket: { ticketId: string };

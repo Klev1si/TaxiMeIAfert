@@ -440,6 +440,9 @@ export default function RideRequestScreen({ navigation, route }: Props) {
         promoCode:      promoResult?.code,
         vehicleType:    vehicleType ?? undefined,
         stops:          stops.length > 0 ? stops.map(s => ({ lat: s.lat, lng: s.lng, address: s.address })) : undefined,
+        // When the client started from a "Saved Driver" → Request Ride flow,
+        // route.params.preferredDriverId routes the ride directly to that driver.
+        preferredDriverId: route.params.preferredDriverId,
       });
       setActiveRide(ride);
 

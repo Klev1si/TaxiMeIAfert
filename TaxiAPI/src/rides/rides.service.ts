@@ -16,7 +16,7 @@ import { Client, Company, Driver, PromoCode, Ride, RideStop, Tariff, User } from
 import { DriverLedger } from '../entities/driver-ledger.entity.js';
 import { PromoDiscountType } from '../entities/promo-code.entity.js';
 import { PaymentStatus, RideStatus, UserRole, VehicleType } from '../common/enums/index.js';
-import { GpsService } from '../gps/gps.service.js';
+import { GpsService, DRIVERS_GEO_KEY } from '../gps/gps.service.js';
 import { GatewayService } from '../gateway/gateway.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { MailerService } from '../mailer/mailer.service.js';
@@ -635,17 +635,42 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     //    For scheduled rides: skip driver search now — the scheduler dispatches later
     let candidates: Array<{ driverId: string; userId: string; lat: number; lng: number }> = [];
     if (!scheduledAt) {
-      candidates = await this.buildCandidateList(
-        dto.pickupLat,
-        dto.pickupLng,
-        radiusKm,
-        [],
-        dto.vehicleType ?? null,
-      );
+      // ── Targeted dispatch — client requested a specific favorite driver ──
+      if (dto.preferredDriverId) {
+        const driver = await this.driverRepo.findOne({
+          where: { id: dto.preferredDriverId, isApproved: true },
+          select: ['id', 'userId'],
+        });
+        if (!driver) {
+          throw new NotFoundException('This driver is not available right now');
+        }
+        // Driver must be online (in the GEO index) and have a current GPS fix.
+        const isOnline = await this.redis.zscore(DRIVERS_GEO_KEY, driver.id);
+        const loc = await this.redis.hgetall(`driver:loc:${driver.id}`);
+        if (isOnline === null || !loc.lat) {
+          throw new NotFoundException(
+            'This driver is currently offline. You can request a regular ride or try again later.',
+          );
+        }
+        candidates = [{
+          driverId: driver.id,
+          userId:   driver.userId,
+          lat:      Number(loc.lat),
+          lng:      Number(loc.lng),
+        }];
+      } else {
+        candidates = await this.buildCandidateList(
+          dto.pickupLat,
+          dto.pickupLng,
+          radiusKm,
+          [],
+          dto.vehicleType ?? null,
+        );
 
-      if (candidates.length === 0) {
-        const typeLabel = dto.vehicleType ? ` (${dto.vehicleType})` : '';
-        throw new NotFoundException(`No${typeLabel} drivers available in your area`);
+        if (candidates.length === 0) {
+          const typeLabel = dto.vehicleType ? ` (${dto.vehicleType})` : '';
+          throw new NotFoundException(`No${typeLabel} drivers available in your area`);
+        }
       }
     }
 

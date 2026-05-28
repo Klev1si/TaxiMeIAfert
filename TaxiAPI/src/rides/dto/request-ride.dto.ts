@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   Min,
   ValidateNested,
@@ -105,4 +106,14 @@ export class RequestRideDto {
   @ValidateNested({ each: true })
   @Type(() => RideStopDto)
   stops?: RideStopDto[];
+
+  /**
+   * Optional — request the ride directly to a specific driver (must be a
+   * favorited driver of the client). If the driver is offline or doesn't
+   * respond within the usual offer window, the request fails so the client
+   * can re-try a normal dispatch.
+   */
+  @IsOptional()
+  @IsUUID()
+  preferredDriverId?: string;
 }

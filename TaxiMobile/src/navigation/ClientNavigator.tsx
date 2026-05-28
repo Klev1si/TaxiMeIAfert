@@ -19,6 +19,7 @@ import RateRideScreen from '../screens/shared/RateRideScreen';
 import RideHistoryScreen from '../screens/shared/RideHistoryScreen';
 import RideDetailScreen from '../screens/shared/RideDetailScreen';
 import SavedLocationsScreen from '../screens/client/SavedLocationsScreen';
+import FavoriteDriversScreen from '../screens/client/FavoriteDriversScreen';
 import ClientProfileScreen from '../screens/client/ClientProfileScreen';
 import ManageCardsScreen from '../screens/client/ManageCardsScreen';
 import SupportScreen from '../screens/shared/SupportScreen';
@@ -61,6 +62,7 @@ function ClientProfileStack() {
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
       <ProfileStack.Screen name="ClientProfileMain" component={ClientProfileScreen} />
       <ProfileStack.Screen name="SavedLocations"    component={SavedLocationsScreen} />
+      <ProfileStack.Screen name="FavoriteDrivers"   component={FavoriteDriversScreen} />
       <ProfileStack.Screen name="ManageCards"       component={ManageCardsScreen} />
       <ProfileStack.Screen name="Support"           component={SupportScreen} />
       <ProfileStack.Screen name="SupportTicket"     component={SupportTicketScreen} />
