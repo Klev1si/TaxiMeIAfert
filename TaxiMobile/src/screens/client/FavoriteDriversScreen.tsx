@@ -36,19 +36,34 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [loadError,  setLoadError]  = useState<string | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
+    setLoadError(null);
     try {
       const { data } = await clientFavoritesApi.list();
       setFavorites(data);
-    } catch {
-      Alert.alert(t('common.error'), 'Could not load your saved drivers.');
+    } catch (err: any) {
+      // Surface the real error to the user instead of silently leaving them
+      // on a blank/spinning screen. Common cases:
+      //   - 404: backend not deployed yet
+      //   - 401: auth token expired — they should sign in again
+      //   - network error: phone offline
+      const status = err?.response?.status;
+      const msg = err?.response?.data?.message ?? err?.message ?? 'Unknown error';
+      setLoadError(
+        status === 404
+          ? 'Saved drivers is not available yet. Please update the app or try again later.'
+          : status === 401
+            ? 'Your session expired. Please sign in again.'
+            : `Could not load saved drivers (${status ?? 'network'}): ${msg}`,
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -165,13 +180,24 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
         }
         contentContainerStyle={favorites.length === 0 ? styles.emptyWrap : styles.list}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>⭐</Text>
-            <Text style={styles.emptyTitle}>No saved drivers yet</Text>
-            <Text style={styles.emptyText}>
-              After a great ride, tap the heart on the rating screen to save the driver here.
-            </Text>
-          </View>
+          loadError ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyIcon}>⚠️</Text>
+              <Text style={styles.emptyTitle}>Could not load</Text>
+              <Text style={styles.emptyText}>{loadError}</Text>
+              <TouchableOpacity onPress={() => load(true)} style={{ marginTop: 16, padding: 12 }}>
+                <Text style={{ color: colors.primary, fontWeight: '700' }}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.empty}>
+              <Text style={styles.emptyIcon}>⭐</Text>
+              <Text style={styles.emptyTitle}>No saved drivers yet</Text>
+              <Text style={styles.emptyText}>
+                After a great ride, tap the heart on the rating screen to save the driver here.
+              </Text>
+            </View>
+          )
         }
         renderItem={({ item }) => (
           <View style={styles.card}>
