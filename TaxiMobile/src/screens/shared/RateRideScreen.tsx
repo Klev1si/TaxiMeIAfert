@@ -50,19 +50,38 @@ export default function RateRideScreen({ navigation, route }: Props) {
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
-  const { rideId, rateTarget, driverId } = route.params;
-  const { clearAll } = useRideStore();
+  const { rideId, rateTarget, driverId: driverIdFromParams } = route.params;
+  const { clearAll, activeRide: activeRideFromStore } = useRideStore();
 
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   // Heart toggle — client can save the driver as a favorite from this screen.
-  // Only shown when rating a driver AND driverId is provided.
+  // Only shown when rating a driver AND we have a driverId (from params, the
+  // ride store, or a server fetch fallback).
   const [isFavorite, setIsFavorite] = useState(false);
   const [togglingFavorite, setTogglingFavorite] = useState(false);
+  const [resolvedDriverId, setResolvedDriverId] = useState<string | null>(
+    driverIdFromParams ?? activeRideFromStore?.driverId ?? null,
+  );
+  const driverId = resolvedDriverId;
 
-  // Load current favorite status when the screen opens
+  // If the driverId wasn't in the navigation params (e.g. user landed here from
+  // an FCM deep-link cold start) fall back to fetching the active ride from
+  // the server so the heart toggle still appears.
+  React.useEffect(() => {
+    if (rateTarget !== 'driver' || resolvedDriverId) return;
+    ridesApi.getActiveRide()
+      .then(({ data }) => {
+        if (data?.driverId && data.id === rideId) {
+          setResolvedDriverId(data.driverId);
+        }
+      })
+      .catch(() => { /* non-fatal — heart just won't appear */ });
+  }, [rateTarget, resolvedDriverId, rideId]);
+
+  // Load current favorite status when the driverId becomes available
   React.useEffect(() => {
     if (rateTarget !== 'driver' || !driverId) return;
     clientFavoritesApi.list()

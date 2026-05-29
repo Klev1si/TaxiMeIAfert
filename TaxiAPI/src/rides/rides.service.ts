@@ -1526,6 +1526,13 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       this.gatewayService.emitToUser(clientUser.id, 'ride_completed', {
         rideId,
         completedAt: saved.completedAt,
+        // Include the final fare so the client's PayCash screen shows the
+        // amount immediately, without needing a follow-up API call.
+        totalFare:    saved.totalFare    != null ? Number(saved.totalFare)    : null,
+        distanceKm:   saved.distanceKm   != null ? Number(saved.distanceKm)   : null,
+        baseFare:     saved.baseFare     != null ? Number(saved.baseFare)     : null,
+        distanceFare: saved.distanceFare != null ? Number(saved.distanceFare) : null,
+        timeFare:     saved.timeFare     != null ? Number(saved.timeFare)     : null,
       });
       await this.notificationsService.sendToToken(clientUser.fcmToken, {
         title: 'Ride completed',

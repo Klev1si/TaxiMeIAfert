@@ -34,7 +34,15 @@ type Props = ClientStackScreenProps<'ActiveRide'>;
 interface DriverEnRouteEvent { rideId: string; driverName: string }
 interface DriverArrivedEvent  { rideId: string; driverName: string; vehiclePlate: string }
 interface RideStartedEvent    { rideId: string }
-interface RideCompletedEvent  { rideId: string; completedAt: string }
+interface RideCompletedEvent {
+  rideId: string;
+  completedAt: string;
+  totalFare?:    number | null;
+  distanceKm?:   number | null;
+  baseFare?:     number | null;
+  distanceFare?: number | null;
+  timeFare?:     number | null;
+}
 interface RideCancelledEvent  { rideId: string; cancelledBy: string; reason: string | null }
 
 interface DriverLocation { lat: number; lng: number; etaMinutes: number | null }
@@ -165,7 +173,17 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
       'ride_completed',
       (e) => {
         if (e.rideId !== rideId) { return; }
-        update({ status: 'completed', completedAt: e.completedAt });
+        // Apply ALL fare fields from the WS payload so PayCash can render
+        // the amount immediately on landing — no extra API call needed.
+        update({
+          status:       'completed',
+          completedAt:  e.completedAt,
+          ...(e.totalFare    !== undefined ? { totalFare:    e.totalFare    } : {}),
+          ...(e.distanceKm   !== undefined ? { distanceKm:   e.distanceKm   } : {}),
+          ...(e.baseFare     !== undefined ? { baseFare:     e.baseFare     } : {}),
+          ...(e.distanceFare !== undefined ? { distanceFare: e.distanceFare } : {}),
+          ...(e.timeFare     !== undefined ? { timeFare:     e.timeFare     } : {}),
+        });
         navigation.replace('PayCash', { rideId });
       },
     );

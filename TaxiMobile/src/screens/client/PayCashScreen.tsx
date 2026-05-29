@@ -75,19 +75,21 @@ export default function PayCashScreen({ navigation, route }: Props) {
     track.paymentScreenViewed(rideId);
   }, [rideId]);
 
-  // ── Fallback: fetch ride from server if not in store ────────────────────────
-  // This covers the case where the client opens PayCashScreen from an FCM tap
-  // (cold app launch) and the rideStore is empty — without this, the amount-due
-  // card wouldn't render because activeRide is null.
+  // ── Fallback: fetch ride from server when totalFare is missing ─────────────
+  // The 'ride_completed' WS event might race ahead of the DB save, OR the
+  // client may have opened this screen via a cold-start FCM tap with an empty
+  // store. In either case we fetch the canonical ride from the server so the
+  // amount-due card always has the real total to display.
   const [fetchedRide, setFetchedRide] = useState<typeof activeRideFromStore>(null);
   useEffect(() => {
-    if (rideSnapshotRef.current) return;
+    // Skip the fetch only if the snapshot already has a totalFare
+    if (rideSnapshotRef.current?.totalFare != null) return;
     ridesApi.getActiveRide()
       .then(({ data }) => { if (data && data.id === rideId) setFetchedRide(data); })
       .catch(() => { /* non-fatal — UI will gracefully show "Fare not finalized yet…" */ });
   }, [rideId]);
-  // Prefer the fetched ride when the store snapshot was empty
-  if (!rideSnapshotRef.current && fetchedRide) {
+  // Prefer fetched data if it has a fare and the snapshot doesn't
+  if (fetchedRide && (rideSnapshotRef.current?.totalFare == null)) {
     rideSnapshotRef.current = fetchedRide;
   }
 

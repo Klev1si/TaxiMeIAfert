@@ -11,9 +11,10 @@
  *  3. Download google-services.json → place at android/app/google-services.json
  *  4. Rebuild: npx react-native run-android
  */
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import apiClient from '../api/client';
 import { notificationNavigate } from '../navigation/navigationRef';
+import { useSnackbarStore } from '../stores/snackbarStore';
 
 // Lazily resolve the messaging module so a missing native build never
 // crashes the JS bundle at import time.
@@ -156,7 +157,10 @@ export async function setupFcm(): Promise<() => void> {
     // 1 & 2 — permission + token
     await registerFcmToken();
 
-    // 3 — foreground messages: show an Alert with a "View" button
+    // 3 — foreground messages: slide up a bottom Snackbar (tappable).
+    // The old Alert.alert dialog was too intrusive — it blocked the screen
+    // and required the user to dismiss it. Now we show a non-blocking toast
+    // that auto-dismisses and is tappable for the "view" action.
     const unsubForeground = messaging().onMessage(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       async (remoteMessage: any) => {
@@ -166,17 +170,14 @@ export async function setupFcm(): Promise<() => void> {
           remoteMessage?.notification?.body ?? 'You have a new notification.';
         const tap = extractTapPayload(remoteMessage);
 
-        Alert.alert(title, body, [
-          { text: 'Dismiss', style: 'cancel' },
-          ...(tap
-            ? [
-                {
-                  text: 'View',
-                  onPress: () => notificationNavigate(tap.event, tap.rideId),
-                },
-              ]
-            : []),
-        ]);
+        useSnackbarStore.getState().show({
+          title,
+          body,
+          onPress: tap
+            ? () => notificationNavigate(tap.event, tap.rideId)
+            : undefined,
+          durationMs: 5000,
+        });
       },
     );
     unsubscribers.push(unsubForeground);

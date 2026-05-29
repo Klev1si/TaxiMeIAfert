@@ -15,6 +15,7 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import OfflineBanner from './src/components/OfflineBanner';
+import SnackbarHost from './src/components/SnackbarHost';
 import UpdateModal from './src/components/UpdateModal';
 import { startConnectivityMonitor } from './src/services/connectivity';
 import { initI18n } from './src/i18n';
@@ -172,6 +173,10 @@ export default function App(): React.JSX.Element {
         {/* Offline banner — rendered above all screens, inside SafeAreaProvider
             so useSafeAreaInsets() works correctly inside the component */}
         <OfflineBanner />
+
+        {/* Bottom snackbar — replaces intrusive Alert.alert() for foreground
+            FCM notifications. Auto-dismisses, tappable for "view" action. */}
+        <SnackbarHost />
 
         {/* Version update modal — rendered on top of everything */}
         {updateState && !updateDismissed && (
