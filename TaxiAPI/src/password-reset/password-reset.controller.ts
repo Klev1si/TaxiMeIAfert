@@ -1,10 +1,10 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { ThrottlerGuard, Throttle } from '@nestjs/throttler';
-import { IsEnum, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsString, MaxLength, MinLength } from 'class-validator';
 import { PasswordResetService, ResetMethod } from './password-reset.service';
 
 class ForgotPasswordDto {
-  @IsEnum(['email', 'sms'] as const)
+  @IsIn(['email', 'sms'])
   method: ResetMethod;
 
   /** Email address or phone (E.164) depending on `method`. */
@@ -13,7 +13,7 @@ class ForgotPasswordDto {
 }
 
 class ResetPasswordDto {
-  @IsEnum(['email', 'sms'] as const)
+  @IsIn(['email', 'sms'])
   method: ResetMethod;
 
   @IsString() @MinLength(3) @MaxLength(255)
