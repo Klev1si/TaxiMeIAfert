@@ -98,15 +98,27 @@ export class PasswordResetService {
     const record: ResetRecord = { code, userId: user.id, attempts: 0, issuedAtMs: Date.now() };
     await this.redis.setex(key, this.TTL_SECONDS, JSON.stringify(record));
 
+    // Fire-and-forget delivery so a slow SMTP/Twilio handshake doesn't keep
+    // the mobile request open for 30+ s (the user would see "connection
+    // lost"). The code is already in Redis — if delivery fails, the user
+    // can retry from the same screen.
     if (method === 'email') {
-      await this.mailer.sendPasswordResetCode(normalized, code);
+      this.mailer.sendPasswordResetCode(normalized, code).catch((err) => {
+        this.logger.error(
+          `Email delivery failed for user ${user.id} (${normalized}): ${err?.message ?? err}`,
+        );
+      });
     } else {
-      await this.phoneVerification.sendRawSms(
+      this.phoneVerification.sendRawSms(
         normalized,
         `TaxiApp password reset code: ${code}. Expires in 10 min. Don't share it.`,
-      );
+      ).catch((err) => {
+        this.logger.error(
+          `SMS delivery failed for user ${user.id} (${normalized}): ${err?.message ?? err}`,
+        );
+      });
     }
-    this.logger.log(`Password reset code sent to ${method} for user ${user.id}`);
+    this.logger.log(`Password reset code dispatched via ${method} for user ${user.id}`);
   }
 
   // ── Verify and reset ───────────────────────────────────────────────────────

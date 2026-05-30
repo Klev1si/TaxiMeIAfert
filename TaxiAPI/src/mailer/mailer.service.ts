@@ -32,6 +32,11 @@ export class MailerService {
           user: config.getOrThrow<string>('SMTP_USER'),
           pass: config.getOrThrow<string>('SMTP_PASS'),
         },
+        // Fail fast instead of letting the mobile request hang for 30+ s
+        // when SMTP credentials are wrong or the host blocks the IP.
+        connectionTimeout: 10_000,
+        greetingTimeout:   10_000,
+        socketTimeout:     15_000,
       });
       this.logger.log('MailerService initialised with SMTP transport');
     } else {
