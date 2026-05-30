@@ -1,7 +1,8 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { ThrottlerGuard, Throttle } from '@nestjs/throttler';
 import { IsIn, IsString, MaxLength, MinLength } from 'class-validator';
-import { PasswordResetService, ResetMethod } from './password-reset.service';
+import { PasswordResetService } from './password-reset.service';
+import type { ResetMethod } from './password-reset.service';
 
 class ForgotPasswordDto {
   @IsIn(['email', 'sms'])
