@@ -16,6 +16,7 @@ import { authApi } from '../../api/auth';
 import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
 import { useTranslation } from '../../i18n';
+import { isValidEmail } from '../../utils/validators';
 import type { ColorPalette } from '../../constants/colors';
 import type { AuthScreenProps } from '../../navigation/types';
 
@@ -29,6 +30,7 @@ export default function RegisterClientScreen({ navigation, route }: Props) {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,6 +38,10 @@ export default function RegisterClientScreen({ navigation, route }: Props) {
   const handleRegister = async () => {
     if (!firstName.trim() || !lastName.trim()) {
       Alert.alert(t('auth.registerClient.missingTitle'), t('auth.registerClient.missingMsg'));
+      return;
+    }
+    if (!isValidEmail(email)) {
+      Alert.alert(t('common.validation'), 'Please enter a valid email address.');
       return;
     }
     if (password.length < 8) {
@@ -51,6 +57,7 @@ export default function RegisterClientScreen({ navigation, route }: Props) {
     try {
       await authApi.registerClient({
         phone,
+        email: email.trim(),
         password,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -119,6 +126,21 @@ export default function RegisterClientScreen({ navigation, route }: Props) {
                 autoCapitalize="words"
                 returnKeyType="next"
                 accessibilityLabel="Last name"
+              />
+            </Field>
+
+            <Field label="Email" colors={colors}>
+              <TextInput
+                style={styles.input}
+                placeholder="you@example.com"
+                placeholderTextColor={colors.textDisabled}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                returnKeyType="next"
+                accessibilityLabel="Email address"
               />
             </Field>
 

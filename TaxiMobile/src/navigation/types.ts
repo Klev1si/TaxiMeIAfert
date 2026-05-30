@@ -10,7 +10,13 @@ export type AuthStackParamList = {
   RegisterClient: { phone: string };
   RegisterDriver: { phone: string };
   RegisterCompany: { phone: string };
+  ForgotPassword: undefined;
+  ResetPassword: { method: 'email' | 'sms'; identifier: string };
 };
+
+// Alias used by the new ForgotPassword/ResetPassword screens — same as AuthScreenProps.
+export type AuthStackScreenProps<T extends keyof AuthStackParamList> =
+  NativeStackScreenProps<AuthStackParamList, T>;
 
 // ── Client tab navigator ──────────────────────────────────────────────────────
 export type ClientTabParamList = {

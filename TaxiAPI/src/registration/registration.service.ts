@@ -41,13 +41,14 @@ export class RegistrationService {
   // Client is auto-approved → returns JWT tokens immediately
   async registerClient(dto: RegisterClientDto): Promise<AuthTokensDto> {
     await this.assertPhoneVerified(dto.phone);
-    await this.assertPhoneAvailable(dto.phone);
+    const email = await this.assertPhoneAndEmailAvailable(dto.phone, dto.email);
 
     const passwordHash = await this.authService.hashPassword(dto.password);
 
     const user = await this.dataSource.transaction(async (em) => {
       const newUser = em.create(User, {
         phone: dto.phone,
+        email,
         passwordHash,
         role: UserRole.CLIENT,
         isPhoneVerified: true,
@@ -75,13 +76,14 @@ export class RegistrationService {
   // Driver requires admin approval → returns pending message
   async registerDriver(dto: RegisterDriverDto): Promise<{ message: string }> {
     await this.assertPhoneVerified(dto.phone);
-    await this.assertPhoneAvailable(dto.phone);
+    const email = await this.assertPhoneAndEmailAvailable(dto.phone, dto.email);
 
     const passwordHash = await this.authService.hashPassword(dto.password);
 
     await this.dataSource.transaction(async (em) => {
       const user = em.create(User, {
         phone: dto.phone,
+        email,
         passwordHash,
         role: UserRole.DRIVER,
         isPhoneVerified: true,
@@ -120,13 +122,14 @@ export class RegistrationService {
     dto: RegisterCompanyDto,
   ): Promise<{ message: string }> {
     await this.assertPhoneVerified(dto.phone);
-    await this.assertPhoneAvailable(dto.phone);
+    const email = await this.assertPhoneAndEmailAvailable(dto.phone, dto.email);
 
     const passwordHash = await this.authService.hashPassword(dto.password);
 
     await this.dataSource.transaction(async (em) => {
       const user = em.create(User, {
         phone: dto.phone,
+        email,
         passwordHash,
         role: UserRole.COMPANY,
         isPhoneVerified: true,
@@ -162,12 +165,29 @@ export class RegistrationService {
     }
   }
 
-  private async assertPhoneAvailable(phone: string): Promise<void> {
-    const existing = await this.userRepo.findOne({ where: { phone } });
+  /** Lowercase + trim so 'Foo@Bar.com' and ' foo@bar.com ' are treated the same. */
+  private normaliseEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
+  /**
+   * Single DB round-trip uniqueness check for phone + email. Returns the
+   * normalised email. Throws a specific ConflictException pointing at the
+   * field that was taken.
+   */
+  private async assertPhoneAndEmailAvailable(phone: string, rawEmail: string): Promise<string> {
+    const email = this.normaliseEmail(rawEmail);
+    const existing = await this.userRepo.findOne({
+      where: [{ phone }, { email }],
+      select: ['id', 'phone', 'email'],
+    });
     if (existing) {
       throw new ConflictException(
-        'An account with this phone number already exists',
+        existing.phone === phone
+          ? 'An account with this phone number already exists'
+          : 'An account with this email already exists',
       );
     }
+    return email;
   }
 }

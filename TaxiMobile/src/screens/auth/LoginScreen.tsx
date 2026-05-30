@@ -128,6 +128,18 @@ export default function LoginScreen({ navigation }: Props) {
                 ? <ActivityIndicator color={colors.textOnPrimary} />
                 : <Text style={styles.btnText}>{t('auth.login.signInBtn')}</Text>}
             </TouchableOpacity>
+
+            {/* Forgot password link — opens the email/SMS reset flow */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ForgotPassword')}
+              activeOpacity={0.7}
+              style={{ alignItems: 'center', marginTop: 12 }}
+              accessibilityRole="button"
+              accessibilityLabel="Forgot password">
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
+                Forgot password?
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.dividerRow}>

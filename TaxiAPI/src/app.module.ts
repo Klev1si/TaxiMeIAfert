@@ -24,6 +24,7 @@ import { AppVersionModule } from './app-version/app-version.module';
 import { DriverDocumentsModule } from './driver-documents/driver-documents.module';
 import { DriverTariffModule } from './driver-tariff/driver-tariff.module';
 import { ClientFavoritesModule } from './client-favorites/client-favorites.module';
+import { PasswordResetModule } from './password-reset/password-reset.module';
 import { WalletModule } from './wallet/wallet.module';
 import { SupportModule } from './support/support.module';
 import {
@@ -167,6 +168,7 @@ import {
     DriverDocumentsModule,
     DriverTariffModule,
     ClientFavoritesModule,
+    PasswordResetModule,
     WalletModule,
     SupportModule,
     HealthModule,

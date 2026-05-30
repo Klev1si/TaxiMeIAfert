@@ -16,6 +16,7 @@ import { authApi } from '../../api/auth';
 import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
 import { useTranslation } from '../../i18n';
+import { isValidEmail } from '../../utils/validators';
 import type { ColorPalette } from '../../constants/colors';
 import type { AuthScreenProps } from '../../navigation/types';
 
@@ -28,6 +29,7 @@ export default function RegisterCompanyScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
 
   const [companyName,     setCompanyName]     = useState('');
+  const [email,           setEmail]           = useState('');
   const [address,         setAddress]         = useState('');
   const [city,            setCity]            = useState('');
   const [password,        setPassword]        = useState('');
@@ -37,6 +39,10 @@ export default function RegisterCompanyScreen({ navigation, route }: Props) {
   const handleRegister = async () => {
     if (!companyName.trim()) {
       Alert.alert(t('auth.registerCompany.missingTitle'), t('auth.registerCompany.missingMsg'));
+      return;
+    }
+    if (!isValidEmail(email)) {
+      Alert.alert(t('common.validation'), 'Please enter a valid email address.');
       return;
     }
     if (password.length < 6) {
@@ -52,6 +58,7 @@ export default function RegisterCompanyScreen({ navigation, route }: Props) {
     try {
       await authApi.registerCompany({
         phone,
+        email: email.trim(),
         password,
         companyName: companyName.trim(),
         address:     address.trim()  || undefined,
@@ -109,6 +116,21 @@ export default function RegisterCompanyScreen({ navigation, route }: Props) {
                 autoCapitalize="words"
                 returnKeyType="next"
                 accessibilityLabel="Company name"
+              />
+            </Field>
+
+            <Field label="Email" colors={colors}>
+              <TextInput
+                style={styles.input}
+                placeholder="admin@acmetaxi.com"
+                placeholderTextColor={colors.textDisabled}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                returnKeyType="next"
+                accessibilityLabel="Email address"
               />
             </Field>
 

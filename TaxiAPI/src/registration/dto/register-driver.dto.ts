@@ -1,4 +1,5 @@
 import {
+  IsEmail,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -21,6 +22,11 @@ export class RegisterDriverDto {
     message: 'phone must be in E.164 format (e.g. +37491123456)',
   })
   phone: string;
+
+  /** Email — required for password reset and important notifications. */
+  @IsEmail({}, { message: 'email must be a valid address' })
+  @MaxLength(255)
+  email: string;
 
   @IsString()
   @IsNotEmpty()

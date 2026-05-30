@@ -9,6 +9,7 @@ export interface LoginPayload {
 
 export interface RegisterClientPayload {
   phone: string;
+  email: string;
   password: string;
   firstName: string;
   lastName: string;
@@ -16,6 +17,7 @@ export interface RegisterClientPayload {
 
 export interface RegisterDriverPayload {
   phone: string;
+  email: string;
   password: string;
   firstName: string;
   lastName: string;
@@ -31,10 +33,25 @@ export interface RegisterDriverPayload {
 
 export interface RegisterCompanyPayload {
   phone: string;
+  email: string;
   password: string;
   companyName: string;
   address?: string;
   city?: string;
+}
+
+export type ResetMethod = 'email' | 'sms';
+
+export interface ForgotPasswordPayload {
+  method:     ResetMethod;
+  identifier: string;
+}
+
+export interface ResetPasswordPayload {
+  method:      ResetMethod;
+  identifier:  string;
+  code:        string;
+  newPassword: string;
 }
 
 export const authApi = {
@@ -69,7 +86,7 @@ export const authApi = {
   /** GET /auth/me — full profile for the current user */
   getMe: () =>
     apiClient.get<{
-      id: string; phone: string; role: string;
+      id: string; phone: string; email: string | null; role: string;
       avatarUrl: string | null;
       firstName: string | null; lastName: string | null; rating: number | null;
       // driver-only
@@ -85,6 +102,18 @@ export const authApi = {
   /** PATCH /auth/fcm-token — register or clear the FCM push token */
   updateFcmToken: (fcmToken: string | null) =>
     apiClient.patch('/auth/fcm-token', { fcmToken }),
+
+  /** PATCH /auth/email — let an existing account add or update their email */
+  setEmail: (email: string) =>
+    apiClient.patch('/auth/email', { email }),
+
+  /** POST /auth/forgot-password — request a reset code via email or SMS */
+  forgotPassword: (payload: ForgotPasswordPayload) =>
+    apiClient.post<void>('/auth/forgot-password', payload),
+
+  /** POST /auth/reset-password — verify code + set new password */
+  resetPassword: (payload: ResetPasswordPayload) =>
+    apiClient.post<void>('/auth/reset-password', payload),
 
   /** PATCH /auth/profile — update firstName / lastName (and vehicleColor for drivers) */
   updateProfile: (payload: { firstName?: string; lastName?: string; vehicleColor?: string }) =>

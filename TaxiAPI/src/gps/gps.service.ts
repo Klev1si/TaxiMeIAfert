@@ -53,12 +53,18 @@ export class GpsService {
     //    GEOADD key longitude latitude member
     await this.redis.geoadd(DRIVERS_GEO_KEY, lng, lat, driverId);
 
-    // 2. Hash for fast single-driver lookup without GEOPOS round-trip
-    await this.redis.hset(`driver:loc:${driverId}`, {
-      lat: String(lat),
-      lng: String(lng),
-      ts: String(Date.now()),
-    });
+    // 2. Hash for fast single-driver lookup without GEOPOS round-trip.
+    //    EX = 90 s TTL: if the driver doesn't send another GPS within
+    //    90 s (app closed, lost connection, battery saver killed the
+    //    process), the hash auto-expires and they are filtered out of
+    //    dispatch by `findNearestDrivers` below.
+    //    Pipelined so HSET + EXPIRE is a single Redis round-trip.
+    const key = `driver:loc:${driverId}`;
+    await this.redis
+      .multi()
+      .hset(key, { lat: String(lat), lng: String(lng), ts: String(Date.now()) })
+      .expire(key, 90)
+      .exec();
 
     // 3. Throttled PostgreSQL update
     const now = Date.now();
@@ -133,12 +139,54 @@ export class GpsService {
       'WITHCOORD',
     )) as Array<[string, string, [string, string]]>;
 
-    return raw.map(([driverId, distStr, [dLngStr, dLatStr]]) => ({
-      driverId,
-      distanceKm: parseFloat(parseFloat(distStr).toFixed(3)),
-      lat: parseFloat(dLatStr),
-      lng: parseFloat(dLngStr),
-    }));
+    if (raw.length === 0) return [];
+
+    // Filter out drivers whose live `driver:loc:*` hash has expired (>90 s
+    // since their last GPS). The GEOADD entry doesn't expire on its own, so
+    // without this filter we would still dispatch to drivers who closed the
+    // app or lost connection minutes ago. We also opportunistically remove
+    // stale entries from the GEO index so they stop matching at all.
+    const driverIds = raw.map(([id]) => id);
+    const pipeline = this.redis.pipeline();
+    driverIds.forEach(id => pipeline.exists(`driver:loc:${id}`));
+    const existsResults = (await pipeline.exec()) ?? [];
+
+    const fresh: Array<{ driverId: string; distanceKm: number; lat: number; lng: number }> = [];
+    const staleIds: string[] = [];
+    raw.forEach(([driverId, distStr, [dLngStr, dLatStr]], idx) => {
+      const r = existsResults[idx];
+      const hashExists = r && !r[0] && r[1] === 1;
+      if (hashExists) {
+        fresh.push({
+          driverId,
+          distanceKm: parseFloat(parseFloat(distStr).toFixed(3)),
+          lat: parseFloat(dLatStr),
+          lng: parseFloat(dLngStr),
+        });
+      } else {
+        staleIds.push(driverId);
+      }
+    });
+
+    if (staleIds.length > 0) {
+      // Clean up GEO entries for drivers whose location TTL expired — fire and
+      // forget. They will re-add themselves when they next send GPS while
+      // genuinely online.
+      void this.redis.zrem(DRIVERS_GEO_KEY, ...staleIds).catch(() => {});
+      // Mark them as offline in the DB so admin dashboards reflect reality.
+      // The `isOnline = true` predicate avoids writing rows that are already
+      // offline — Postgres skips them entirely, no row version churn.
+      void this.driverRepo
+        .createQueryBuilder()
+        .update()
+        .set({ isOnline: false })
+        .whereInIds(staleIds)
+        .andWhere('is_online = true')
+        .execute()
+        .catch(() => {});
+      this.logger.debug(`Pruned ${staleIds.length} stale driver(s) from GEO: ${staleIds.join(', ')}`);
+    }
+    return fresh;
   }
 
   // ── All currently online drivers (for admin live-monitor) ────────────────

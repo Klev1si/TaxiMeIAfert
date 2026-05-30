@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
@@ -101,7 +102,7 @@ export class AuthController {
     if (user.role === 'driver') {
       const driver = await this.driverRepo.findOne({ where: { userId: user.id } });
       return {
-        id: user.id, phone: user.phone, role: user.role,
+        id: user.id, phone: user.phone, email: user.email ?? null, role: user.role,
         avatarUrl: user.avatarUrl ?? null,
         firstName: driver?.firstName ?? null,
         lastName:  driver?.lastName  ?? null,
@@ -120,7 +121,7 @@ export class AuthController {
     }
     const client = await this.clientRepo.findOne({ where: { userId: user.id } });
     return {
-      id: user.id, phone: user.phone, role: user.role,
+      id: user.id, phone: user.phone, email: user.email ?? null, role: user.role,
       avatarUrl: user.avatarUrl ?? null,
       firstName: client?.firstName ?? null,
       lastName:  client?.lastName  ?? null,
@@ -201,6 +202,28 @@ export class AuthController {
     @Body('fcmToken') fcmToken: string,
   ): Promise<void> {
     await this.userRepo.update(user.id, { fcmToken: fcmToken ?? null });
+  }
+
+  // PATCH /auth/email — let an existing account add or update their email
+  // address. Required so legacy accounts (registered before email was
+  // mandatory) can still use Forgot Password.
+  @Patch('email')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async setEmail(
+    @CurrentUser() user: User,
+    @Body('email') rawEmail: string,
+  ): Promise<void> {
+    const email = (rawEmail ?? '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestException('email must be a valid address');
+    }
+    // Uniqueness — don't let two users share the same email.
+    const taken = await this.userRepo.findOne({ where: { email } });
+    if (taken && taken.id !== user.id) {
+      throw new ConflictException('An account with this email already exists');
+    }
+    await this.userRepo.update(user.id, { email });
   }
 
   // ── PATCH /auth/profile ────────────────────────────────────────────────────

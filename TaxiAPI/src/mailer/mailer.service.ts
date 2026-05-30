@@ -40,6 +40,55 @@ export class MailerService {
   }
 
   /**
+   * Send a password-reset 6-digit code to the user.
+   * Errors are caught and logged — but in this case we DO rethrow so the
+   * caller (PasswordResetService) can surface a "could not send" error to
+   * the user, otherwise they'd wait for a code that never arrives.
+   */
+  async sendPasswordResetCode(toEmail: string, code: string): Promise<void> {
+    const subject = `Your TaxiApp password reset code`;
+    const html = this.buildResetCodeHtml(code);
+
+    if (this.mockMode) {
+      this.logger.debug(`[SMTP MOCK] Password reset to ${toEmail} — code: ${code}`);
+      return;
+    }
+
+    if (!this.transporter) throw new Error('SMTP transporter not initialised');
+    await this.transporter.sendMail({
+      from: this.from, to: toEmail, subject, html,
+    });
+    this.logger.debug(`Password reset code sent to ${toEmail}`);
+  }
+
+  private buildResetCodeHtml(code: string): string {
+    return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:32px 0;">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+        <tr><td style="background:#1565C0;padding:24px;text-align:center;color:#fff;">
+          <div style="font-size:22px;font-weight:bold;">🚕 TaxiApp</div>
+          <div style="color:#90CAF9;font-size:13px;margin-top:4px;">Password Reset</div>
+        </td></tr>
+        <tr><td style="padding:32px;text-align:center;">
+          <p style="margin:0 0 16px;font-size:16px;color:#212121;">
+            Use this 6-digit code to reset your password:
+          </p>
+          <div style="font-size:36px;font-weight:bold;color:#1565C0;letter-spacing:8px;margin:24px 0;">${this.esc(code)}</div>
+          <p style="margin:16px 0 0;font-size:13px;color:#9E9E9E;">
+            This code expires in 10 minutes.<br/>
+            If you didn't request a reset, you can safely ignore this email.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+  }
+
+  /**
    * Send a ride receipt email to the client.
    * Errors are caught and logged — a failed email must never break the ride flow.
    */

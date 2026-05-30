@@ -1,4 +1,5 @@
 import {
+  IsEmail,
   IsNotEmpty,
   IsString,
   Matches,
@@ -14,6 +15,11 @@ export class RegisterClientDto {
     message: 'phone must be in E.164 format (e.g. +37491123456)',
   })
   phone: string;
+
+  /** Email — required so the user can reset their password via email. */
+  @IsEmail({}, { message: 'email must be a valid address' })
+  @MaxLength(255)
+  email: string;
 
   @IsString()
   @IsNotEmpty()

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '../stores/authStore';
 import type { RootStackParamList } from './types';
@@ -8,6 +8,8 @@ import DriverNavigator from './DriverNavigator';
 import CompanyNavigator from './CompanyNavigator';
 import AdminNavigator from './AdminNavigator';
 import AppLoadingScreen from '../components/AppLoadingScreen';
+import AddEmailScreen from '../screens/auth/AddEmailScreen';
+import { authApi } from '../api/auth';
 import { setupFcm, clearFcmToken } from '../services/fcm';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -16,9 +18,23 @@ export default function RootNavigator() {
   const { user, isInitialized, initialize } = useAuthStore();
   const fcmCleanupRef = useRef<(() => void) | null>(null);
 
+  // null = not yet checked, true = needs email, false = OK
+  const [needsEmail, setNeedsEmail] = useState<boolean | null>(null);
+
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Whenever the logged-in user changes, fetch their full profile and decide
+  // whether to force the "add your email" prompt (for legacy accounts).
+  useEffect(() => {
+    if (!user) { setNeedsEmail(null); return; }
+    let cancelled = false;
+    authApi.getMe()
+      .then(({ data }) => { if (!cancelled) setNeedsEmail(!data.email); })
+      .catch(() => { if (!cancelled) setNeedsEmail(false); /* fail open */ });
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // Set up FCM when the user logs in; tear it down on logout
   useEffect(() => {
@@ -43,6 +59,13 @@ export default function RootNavigator() {
     // state. Keeps the yellow brand colour on screen so there is no white
     // flash between the native splash and the first real navigator screen.
     return <AppLoadingScreen />;
+  }
+
+  // Legacy account without email — force them to add one before they can
+  // reach any role's home screen. They can only continue once setEmail
+  // succeeds. We don't render the role navigator until the prompt clears.
+  if (user && needsEmail === true) {
+    return <AddEmailScreen onCompleted={() => setNeedsEmail(false)} />;
   }
 
   return (

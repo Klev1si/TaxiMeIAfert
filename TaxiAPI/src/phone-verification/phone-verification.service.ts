@@ -150,28 +150,45 @@ export class PhoneVerificationService {
     return `phone_verified:${phone}`;
   }
 
-  private generateCode(): string {
-    return Math.floor(100_000 + Math.random() * 900_000).toString();
+  /**
+   * Send an arbitrary SMS body to a phone number. Used by the password-reset
+   * flow (and any other one-off transactional SMS) — shares the same Twilio
+   * credentials and mock-mode behaviour as the OTP path.
+   */
+  async sendRawSms(phone: string, body: string): Promise<void> {
+    await this.deliverSms(phone, body, '[DEV SMS]');
+  }
+
+  /** Public so password-reset and other OTP-style flows can share one impl. */
+  generateCode(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   private async deliverCode(phone: string, code: string): Promise<void> {
-    const mock = this.config.get<string>('TWILIO_MOCK');
-    if (mock === 'true') {
-      this.logger.log(`[DEV OTP] ${phone} → code: ${code}`);
+    await this.deliverSms(
+      phone,
+      `Your TaxiApp code is: ${code}. Valid for 5 minutes.`,
+      '[DEV OTP]',
+      `OTP sent to`,
+    );
+  }
+
+  /** Single Twilio path used by deliverCode + sendRawSms — avoids duplicating
+   *  the mock-mode branch and the client construction. */
+  private async deliverSms(phone: string, body: string, mockTag: string, sentLabel = 'SMS sent to'): Promise<void> {
+    if (this.config.get<string>('TWILIO_MOCK') === 'true') {
+      this.logger.log(`${mockTag} ${phone} → ${body}`);
       return;
     }
-
     const client = new Twilio(
       this.config.getOrThrow<string>('TWILIO_ACCOUNT_SID'),
       this.config.getOrThrow<string>('TWILIO_AUTH_TOKEN'),
     );
-
     await client.messages.create({
-      body: `Your TaxiApp code is: ${code}. Valid for 5 minutes.`,
+      body,
       from: this.config.getOrThrow<string>('TWILIO_FROM_NUMBER'),
-      to: phone,
+      to:   phone,
     });
-
-    this.logger.log(`OTP sent to ${phone}`);
+    this.logger.log(`${sentLabel} ${phone}`);
   }
 }
