@@ -72,7 +72,9 @@ export class PasswordResetService {
     // SMS/email send entirely so we don't waste money or alert the wrong
     // person.
     if (!user) {
-      this.logger.debug(`Reset requested for unknown ${method}: ${normalized.slice(0, 6)}…`);
+      // Surfaced at warn level so it shows in Railway's default log view —
+      // makes "I never got the email" debuggable without changing log levels.
+      this.logger.warn(`Reset requested but no account with ${method}: ${normalized}`);
       return;
     }
 
