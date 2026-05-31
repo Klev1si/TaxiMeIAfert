@@ -165,8 +165,15 @@ export class RegistrationService {
     }
   }
 
-  /** Lowercase + trim so 'Foo@Bar.com' and ' foo@bar.com ' are treated the same. */
-  private normaliseEmail(email: string): string {
+  /** Lowercase + trim so 'Foo@Bar.com' and ' foo@bar.com ' are treated the same.
+   *  Returns a clear error instead of crashing if the field is missing — happens
+   *  when an old mobile build (pre-v1.38) submits a registration without email. */
+  private normaliseEmail(email: string | null | undefined): string {
+    if (!email) {
+      throw new BadRequestException(
+        'Email is required. Please update the app to the latest version and try again.',
+      );
+    }
     return email.trim().toLowerCase();
   }
 

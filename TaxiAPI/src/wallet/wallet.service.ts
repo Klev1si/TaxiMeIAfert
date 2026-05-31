@@ -9,25 +9,42 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Company, Driver, Ride } from '../entities';
 import { RideStatus } from '../common/enums';
-import { DriverLedger, LedgerEntryType } from '../entities/driver-ledger.entity';
+import { DriverLedger, LedgerEntryType, LedgerPaymentMethod } from '../entities/driver-ledger.entity';
 
 /** Default driver commission when the driver has no company. */
 const DEFAULT_COMMISSION_PCT = Number(process.env.DRIVER_COMMISSION_PCT ?? 80);
 
+/**
+ * Percentage the platform keeps from each CARD-paid ride. Cash rides are not
+ * touched — the driver collected directly from the passenger, the platform
+ * never handled the money. Covers Stripe processing fees + platform ops.
+ * Default 10%. Set env `PLATFORM_CARD_COMMISSION_PCT=15` to override.
+ */
+const PLATFORM_CARD_COMMISSION_PCT = Number(process.env.PLATFORM_CARD_COMMISSION_PCT ?? 10);
+
 export interface LedgerEntryDto {
-  id:            string;
-  type:          LedgerEntryType;
-  amount:        number;
-  rideId:        string | null;
-  commissionPct: number | null;
-  note:          string | null;
-  createdAt:     Date;
+  id:             string;
+  type:           LedgerEntryType;
+  amount:         number;
+  rideId:         string | null;
+  commissionPct:  number | null;
+  note:           string | null;
+  createdAt:      Date;
+  /** How the underlying ride was paid. Null for legacy entries / payouts. */
+  paymentMethod:  LedgerPaymentMethod | null;
 }
 
 export interface WalletDto {
   driverId:      string;
+  /** Sum of ALL credits (cash + card + pending) — total earnings for display. */
   totalCredits:  number;
+  /** Sum of credits where the driver collected directly (paymentMethod='cash'). */
+  cashCollected: number;
+  /** Sum of card + pending credits — money platform actually owes the driver. */
+  balanceOwed:   number;
+  /** Sum of admin payouts already paid out. */
   totalPayouts:  number;
+  /** balanceOwed − totalPayouts — what the platform still owes after past payouts. */
   balance:       number;
   entries:       LedgerEntryDto[];
 }
@@ -109,9 +126,10 @@ export class WalletService implements OnModuleInit {
    * Swallows errors — a logging failure should never break a ride completion.
    */
   async creditRide(
-    driverId:    string,
-    rideId:      string,
-    totalFare:   number,
+    driverId:      string,
+    rideId:        string,
+    totalFare:     number,
+    paymentMethod: LedgerPaymentMethod = 'pending',
   ): Promise<void> {
     try {
       if (totalFare <= 0) return;
@@ -148,10 +166,54 @@ export class WalletService implements OnModuleInit {
         rideId,
         commissionPct,
         note:          null,
+        paymentMethod,
       });
       await this.ledgerRepo.save(entry);
     } catch (err) {
       this.logger.error(`Failed to credit driver ${driverId} for ride ${rideId}`, err);
+    }
+  }
+
+  /**
+   * Mark the credit entry for a ride with the resolved payment method.
+   * Called when a payment is confirmed (cash by driver, or card by Stripe
+   * webhook).
+   *
+   *  - cash → entry stays at full amount but stops counting toward the
+   *    platform-owed balance (driver collected the money themselves).
+   *  - card → platform takes PLATFORM_CARD_COMMISSION_PCT off the top
+   *    (covers Stripe fee + ops). The credit amount is reduced to the
+   *    driver's net share. Counts toward what the platform still owes.
+   */
+  async markRidePaymentMethod(
+    driverId: string,
+    rideId:   string,
+    method:   LedgerPaymentMethod,
+  ): Promise<void> {
+    try {
+      const patch: Partial<DriverLedger> = { paymentMethod: method };
+
+      if (method === 'card' && PLATFORM_CARD_COMMISSION_PCT > 0) {
+        const entry = await this.ledgerRepo.findOne({
+          where: { driverId, rideId, type: 'credit' },
+        });
+        if (entry) {
+          const gross = Number(entry.amount);
+          const net = Math.round(gross * (1 - PLATFORM_CARD_COMMISSION_PCT / 100) * 100) / 100;
+          patch.amount = net;
+          this.logger.log(
+            `Ride ${rideId} card payment: driver share ${gross.toFixed(2)} → ${net.toFixed(2)} ` +
+            `(${PLATFORM_CARD_COMMISSION_PCT}% platform fee)`,
+          );
+        }
+      }
+
+      await this.ledgerRepo.update(
+        { driverId, rideId, type: 'credit' },
+        patch,
+      );
+    } catch (err) {
+      this.logger.error(`Failed to set paymentMethod=${method} for ride ${rideId}`, err);
     }
   }
 
@@ -231,7 +293,13 @@ export class WalletService implements OnModuleInit {
     limit:      number,
     nonZeroOnly = true,
   ): Promise<{ drivers: DriverBalanceDto[]; total: number }> {
-    // Aggregate per driver in one query
+    // Admin payout view — `credits` excludes cash entries (driver collected
+    // those directly, platform owes nothing for them). NULL paymentMethod is
+    // treated as owed (legacy behaviour preserved for old ledger rows).
+    const owedExpr = `SUM(dl.amount) FILTER (WHERE dl.type = 'credit' AND (dl.payment_method IS NULL OR dl.payment_method <> 'cash'))`;
+    const payExpr  = `SUM(dl.amount) FILTER (WHERE dl.type = 'payout')`;
+    const balExpr  = `(COALESCE(${owedExpr}, 0) - COALESCE(${payExpr}, 0))`;
+
     const rows: Array<{
       driverId:     string;
       firstName:    string;
@@ -241,31 +309,28 @@ export class WalletService implements OnModuleInit {
       payouts:      string;
     }> = await this.ledgerRepo.query(
       `SELECT
-         dl.driver_id   AS "driverId",
-         d.first_name   AS "firstName",
-         d.last_name    AS "lastName",
+         dl.driver_id    AS "driverId",
+         d.first_name    AS "firstName",
+         d.last_name     AS "lastName",
          d.vehicle_plate AS "vehiclePlate",
-         COALESCE(SUM(dl.amount) FILTER (WHERE dl.type = 'credit'), 0) AS credits,
-         COALESCE(SUM(dl.amount) FILTER (WHERE dl.type = 'payout'), 0) AS payouts
+         COALESCE(${owedExpr}, 0) AS credits,
+         COALESCE(${payExpr},  0) AS payouts
        FROM driver_ledger dl
        JOIN drivers d ON d.id = dl.driver_id
        GROUP BY dl.driver_id, d.first_name, d.last_name, d.vehicle_plate
-       ${nonZeroOnly ? 'HAVING (SUM(dl.amount) FILTER (WHERE dl.type = \'credit\') - COALESCE(SUM(dl.amount) FILTER (WHERE dl.type = \'payout\'), 0)) > 0' : ''}
-       ORDER BY (COALESCE(SUM(dl.amount) FILTER (WHERE dl.type = 'credit'), 0)
-                 - COALESCE(SUM(dl.amount) FILTER (WHERE dl.type = 'payout'), 0)) DESC
+       ${nonZeroOnly ? `HAVING ${balExpr} > 0` : ''}
+       ORDER BY ${balExpr} DESC
        LIMIT $1 OFFSET $2`,
       [limit, (page - 1) * limit],
     );
 
-    // Count query (simplified)
     const countRows: Array<{ cnt: string }> = await this.ledgerRepo.query(
-      `SELECT COUNT(DISTINCT driver_id) AS cnt
-       FROM driver_ledger
-       ${nonZeroOnly ? `WHERE driver_id IN (
-         SELECT driver_id FROM driver_ledger
-         GROUP BY driver_id
-         HAVING (SUM(amount) FILTER (WHERE type = 'credit') - COALESCE(SUM(amount) FILTER (WHERE type = 'payout'), 0)) > 0
-       )` : ''}`,
+      `SELECT COUNT(*) AS cnt FROM (
+         SELECT dl.driver_id
+         FROM driver_ledger dl
+         GROUP BY dl.driver_id
+         ${nonZeroOnly ? `HAVING ${balExpr} > 0` : ''}
+       ) sub`,
     );
 
     return {
@@ -289,54 +354,74 @@ export class WalletService implements OnModuleInit {
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
   private async buildWallet(driverId: string, limit: number): Promise<WalletDto> {
-    const [entries, balance] = await Promise.all([
+    const [entries, totals] = await Promise.all([
       this.ledgerRepo.find({
         where: { driverId },
         order: { createdAt: 'DESC' },
         take:  limit,
       }),
-      this.computeBalance(driverId),
+      this.computeTotals(driverId),
     ]);
-
-    const totalCredits = entries
-      .filter(e => e.type === 'credit')
-      .reduce((s, e) => s + Number(e.amount), 0);
-
-    const totalPayouts = entries
-      .filter(e => e.type === 'payout')
-      .reduce((s, e) => s + Number(e.amount), 0);
 
     return {
       driverId,
-      totalCredits: Math.round(totalCredits * 100) / 100,
-      totalPayouts: Math.round(totalPayouts * 100) / 100,
-      balance:      Math.round(balance       * 100) / 100,
+      ...totals,
       entries: entries.map(this.toDto),
     };
   }
 
-  private async computeBalance(driverId: string): Promise<number> {
-    const row: Array<{ balance: string }> = await this.ledgerRepo.query(
+  /**
+   * Compute money totals across the driver's full ledger (not just the
+   * displayed `limit`). Splits credits by payment method so the UI can
+   * distinguish "earnings I already received as cash" from "earnings the
+   * platform still owes me".
+   */
+  private async computeTotals(driverId: string): Promise<{
+    totalCredits:  number; cashCollected: number; balanceOwed: number;
+    totalPayouts:  number; balance:       number;
+  }> {
+    // FILTER WHERE NULL is treated as 'pending' (legacy entries from before
+    // the paymentMethod column existed get counted toward balance).
+    const row: Array<{
+      total_credits: string; cash_credits: string; owed_credits: string; payouts: string;
+    }> = await this.ledgerRepo.query(
       `SELECT
-         COALESCE(SUM(amount) FILTER (WHERE type = 'credit'), 0)
-         - COALESCE(SUM(amount) FILTER (WHERE type = 'payout'), 0)
-         AS balance
+         COALESCE(SUM(amount) FILTER (WHERE type = 'credit'), 0)                                              AS total_credits,
+         COALESCE(SUM(amount) FILTER (WHERE type = 'credit' AND payment_method = 'cash'), 0)                  AS cash_credits,
+         COALESCE(SUM(amount) FILTER (WHERE type = 'credit' AND (payment_method IS NULL OR payment_method <> 'cash')), 0) AS owed_credits,
+         COALESCE(SUM(amount) FILTER (WHERE type = 'payout'), 0)                                              AS payouts
        FROM driver_ledger
        WHERE driver_id = $1`,
       [driverId],
     );
-    return Number(row[0]?.balance ?? 0);
+    const r = row[0] ?? { total_credits: '0', cash_credits: '0', owed_credits: '0', payouts: '0' };
+    const round = (n: number) => Math.round(n * 100) / 100;
+    const totalPayouts = Number(r.payouts);
+    const balanceOwed  = Number(r.owed_credits);
+    return {
+      totalCredits:  round(Number(r.total_credits)),
+      cashCollected: round(Number(r.cash_credits)),
+      balanceOwed:   round(balanceOwed),
+      totalPayouts:  round(totalPayouts),
+      balance:       round(balanceOwed - totalPayouts),
+    };
+  }
+
+  /** Legacy single-number balance used by admin payout flow (= what platform owes). */
+  private async computeBalance(driverId: string): Promise<number> {
+    return (await this.computeTotals(driverId)).balance;
   }
 
   private toDto(entry: DriverLedger): LedgerEntryDto {
     return {
-      id:            entry.id,
-      type:          entry.type,
-      amount:        Number(entry.amount),
-      rideId:        entry.rideId,
-      commissionPct: entry.commissionPct != null ? Number(entry.commissionPct) : null,
-      note:          entry.note,
-      createdAt:     entry.createdAt,
+      id:             entry.id,
+      type:           entry.type,
+      amount:         Number(entry.amount),
+      rideId:         entry.rideId,
+      commissionPct:  entry.commissionPct != null ? Number(entry.commissionPct) : null,
+      note:           entry.note,
+      createdAt:      entry.createdAt,
+      paymentMethod:  entry.paymentMethod ?? null,
     };
   }
 }

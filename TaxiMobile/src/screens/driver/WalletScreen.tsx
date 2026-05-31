@@ -59,15 +59,20 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
   const isCredit = entry.type === 'credit';
+  // Tiny method tag so the driver can tell at a glance which credits the
+  // platform owes them vs which they already collected in cash.
+  const methodIcon = entry.paymentMethod === 'cash' ? '💵'
+    : entry.paymentMethod === 'card' ? '💳'
+    : isCredit ? '⏳' : '';
   return (
     <View style={styles.row}>
       <View style={[styles.dot, isCredit ? styles.dotCredit : styles.dotPayout]} />
       <View style={styles.rowText}>
         <Text style={styles.rowLabel}>
           {isCredit
-            ? (entry.commissionPct != null
+            ? `${methodIcon}  ${entry.commissionPct != null
                 ? t('driver.wallet.rideEarnings', { pct: entry.commissionPct })
-                : 'Ride earnings')
+                : 'Ride earnings'}`
             : `${t('driver.wallet.payout')}${entry.note ? ` — ${entry.note}` : ''}`}
         </Text>
         <Text style={styles.rowDate}>{fmtDate(entry.createdAt)}</Text>
@@ -181,7 +186,7 @@ export default function WalletScreen() {
             <View style={styles.card}>
               <Text style={styles.cardLabel}>
                 {period === 'all'
-                  ? t('driver.wallet.balanceLabel')
+                  ? 'Owed by platform'
                   : `Earned ${PERIODS.find(p => p.value === period)?.label.toLowerCase()}`}
               </Text>
               <Text style={styles.balanceAmount}>
@@ -191,21 +196,21 @@ export default function WalletScreen() {
               <View style={styles.statsRow}>
                 <View style={styles.stat}>
                   <Text style={styles.statLabel}>
-                    {period === 'all' ? t('driver.wallet.totalEarned') : 'Rides'}
+                    {period === 'all' ? '💵 Cash collected' : 'Rides'}
                   </Text>
-                  <Text style={[styles.statValue, period === 'all' ? styles.amtCredit : { color: '#fff' }]}>
+                  <Text style={[styles.statValue, { color: '#fff' }]}>
                     {period === 'all'
-                      ? fmtMoney(wallet?.totalCredits ?? 0)
+                      ? fmtMoney(wallet?.cashCollected ?? 0)
                       : String(filtered.rides)}
                   </Text>
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.stat}>
                   <Text style={styles.statLabel}>
-                    {period === 'all' ? t('driver.wallet.paidOut') : 'Payouts'}
+                    {period === 'all' ? t('driver.wallet.totalEarned') : 'Payouts'}
                   </Text>
-                  <Text style={[styles.statValue, styles.amtPayout]}>
-                    {fmtMoney(period === 'all' ? (wallet?.totalPayouts ?? 0) : filtered.payouts)}
+                  <Text style={[styles.statValue, period === 'all' ? styles.amtCredit : styles.amtPayout]}>
+                    {fmtMoney(period === 'all' ? (wallet?.totalCredits ?? 0) : filtered.payouts)}
                   </Text>
                 </View>
               </View>

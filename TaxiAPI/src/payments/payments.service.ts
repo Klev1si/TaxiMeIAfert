@@ -13,6 +13,7 @@ import { Client, Driver, Ride, User } from '../entities/index.js';
 import { PaymentStatus, RideStatus, UserRole } from '../common/enums/index.js';
 import { GatewayService } from '../gateway/gateway.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import { WalletService } from '../wallet/wallet.service.js';
 
 export interface SavedCard {
   id:       string;
@@ -46,6 +47,7 @@ export class PaymentsService {
     @InjectRepository(User)   private readonly userRepo:   Repository<User>,
     private readonly gatewayService:       GatewayService,
     private readonly notificationsService: NotificationsService,
+    private readonly walletService:        WalletService,
   ) {
     this.stripe = new Stripe(
       this.configService.get<string>('STRIPE_SECRET_KEY') ?? '',
@@ -323,6 +325,13 @@ export class PaymentsService {
 
     ride.paymentStatus = PaymentStatus.PAID;
     await this.rideRepo.save(ride);
+
+    // Mark the driver's wallet entry as 'card' so it counts toward the
+    // platform-owed balance (Stripe routed the money to our account; we
+    // need to forward it to the driver via payout).
+    if (ride.driverId) {
+      void this.walletService.markRidePaymentMethod(ride.driverId, ride.id, 'card');
+    }
 
     const payload = {
       rideId:        ride.id,

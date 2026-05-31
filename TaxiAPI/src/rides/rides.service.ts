@@ -1638,6 +1638,11 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     ride.paymentStatus = PaymentStatus.PAID;
     const saved = await this.rideRepo.save(ride);
 
+    // Mark the driver's wallet entry as cash — it stays in their earnings
+    // history but stops counting toward "what the platform owes me" (because
+    // the driver already collected the cash directly from the client).
+    void this.walletService.markRidePaymentMethod(driver.id, rideId, 'cash');
+
     // Notify client
     const clientUser = await this.getClientUser(ride.clientId);
     if (clientUser) {

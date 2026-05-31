@@ -14,9 +14,21 @@ import { Ride } from './ride.entity';
  *  - 'credit'  — driver's share of a completed ride fare
  *  - 'payout'  — admin-processed payout to the driver (withdrawal)
  *
- * balance = SUM(credits) - SUM(payouts)
+ * balance = SUM(non-cash credits) - SUM(payouts)
+ *   ↑ cash credits are recorded for history but don't count toward the
+ *     "platform owes driver" balance — the driver collected those funds
+ *     directly from the passenger.
  */
 export type LedgerEntryType = 'credit' | 'payout';
+
+/**
+ * How the passenger paid for the ride this credit represents.
+ *  - 'pending' — ride completed but payment not yet confirmed (default)
+ *  - 'cash'    — paid cash to driver directly; platform owes nothing
+ *  - 'card'    — paid via Stripe; money is in platform account, platform owes driver
+ *  - null      — legacy entries from before this column existed (treated as 'pending')
+ */
+export type LedgerPaymentMethod = 'pending' | 'cash' | 'card';
 
 @Entity('driver_ledger')
 export class DriverLedger {
@@ -45,6 +57,11 @@ export class DriverLedger {
   /** Human-readable note (used for payout entries: "Bank transfer Feb 2026"). */
   @Column({ type: 'varchar', length: 300, nullable: true })
   note: string | null;
+
+  /** How the passenger paid for the corresponding ride. See LedgerPaymentMethod
+   *  doc. Only relevant for `credit` entries — `payout` entries leave this NULL. */
+  @Column({ type: 'varchar', name: 'payment_method', length: 10, nullable: true })
+  paymentMethod: LedgerPaymentMethod | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

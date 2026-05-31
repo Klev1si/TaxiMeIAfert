@@ -144,6 +144,7 @@ export type AdminProfileStackScreenProps<T extends keyof AdminProfileStackParamL
 export type CompanyTabParamList = {
   CompanyDashboard:     undefined;
   CompanyDrivers:       undefined;
+  CompanyFinances:      undefined;
   CompanyTariffs:       undefined;
   CompanySubscription:  undefined;
   CompanyProfile:       undefined;

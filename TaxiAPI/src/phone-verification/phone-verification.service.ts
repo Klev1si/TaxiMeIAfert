@@ -184,11 +184,28 @@ export class PhoneVerificationService {
       this.config.getOrThrow<string>('TWILIO_ACCOUNT_SID'),
       this.config.getOrThrow<string>('TWILIO_AUTH_TOKEN'),
     );
-    await client.messages.create({
-      body,
-      from: this.config.getOrThrow<string>('TWILIO_FROM_NUMBER'),
-      to:   phone,
-    });
-    this.logger.log(`${sentLabel} ${phone}`);
+    try {
+      await client.messages.create({
+        body,
+        from: this.config.getOrThrow<string>('TWILIO_FROM_NUMBER'),
+        to:   phone,
+      });
+      this.logger.log(`${sentLabel} ${phone}`);
+    } catch (err: unknown) {
+      const code = (err as { code?: number })?.code;
+      const msg  = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Twilio send failed for ${phone} (code ${code}): ${msg}`);
+
+      // Twilio code 21608 → trial account can't reach an unverified number.
+      // Turn the 500 into a 400 with a message the user can act on.
+      if (code === 21608) {
+        throw new BadRequestException(
+          'This phone number isn\'t verified in our SMS provider. The app owner needs to either verify your number in Twilio\'s console, or upgrade Twilio to a paid plan.',
+        );
+      }
+      // Other Twilio errors → keep the original behaviour (500) so we still
+      // notice them in alerting, but with a cleaner message bubbled up.
+      throw new BadRequestException(`Could not send SMS: ${msg}`);
+    }
   }
 }

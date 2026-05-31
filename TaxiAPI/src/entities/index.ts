@@ -19,3 +19,4 @@ export * from './fraud-event.entity';
 export * from './ride-waypoint.entity';
 export * from './ride-stop.entity';
 export * from './client-favorite-driver.entity';
+export * from './company-settlement.entity';
