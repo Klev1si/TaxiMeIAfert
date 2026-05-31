@@ -18,10 +18,21 @@ export class MailerService {
   private readonly mockMode: boolean;
   private transporter: Transporter | null = null;
   private readonly from: string;
+  /** Brevo HTTP API key. When set, takes precedence over SMTP — bypasses
+   *  port-blocking on cloud hosts (Railway etc.) by using HTTPS. */
+  private readonly brevoApiKey: string | null;
 
   constructor(private readonly config: ConfigService) {
-    this.mockMode = config.get<string>('SMTP_MOCK', 'true') === 'true';
-    this.from     = config.get<string>('SMTP_FROM', 'TaxiApp <noreply@taxiapp.com>');
+    this.mockMode    = config.get<string>('SMTP_MOCK', 'true') === 'true';
+    this.from        = config.get<string>('SMTP_FROM', 'TaxiApp <noreply@taxiapp.com>');
+    this.brevoApiKey = config.get<string>('BREVO_API_KEY') || null;
+
+    if (this.brevoApiKey && !this.mockMode) {
+      this.logger.log(
+        `MailerService initialised with Brevo HTTP API — from=${this.from}`,
+      );
+      return; // Skip SMTP setup — HTTP API will be used
+    }
 
     if (!this.mockMode) {
       this.transporter = nodemailer.createTransport({
@@ -38,9 +49,15 @@ export class MailerService {
         greetingTimeout:   10_000,
         socketTimeout:     15_000,
       });
-      this.logger.log('MailerService initialised with SMTP transport');
+      this.logger.log(
+        `MailerService initialised with SMTP transport — host=${config.get('SMTP_HOST')} ` +
+        `port=${config.get('SMTP_PORT')} user=${config.get('SMTP_USER')?.slice(0, 6)}…`,
+      );
     } else {
-      this.logger.log('MailerService running in MOCK mode — emails logged, not sent');
+      this.logger.warn(
+        `MailerService running in MOCK mode — emails logged, not sent. ` +
+        `(SMTP_MOCK="${config.get('SMTP_MOCK')}" — set this to false to enable real sending.)`,
+      );
     }
   }
 
@@ -53,17 +70,61 @@ export class MailerService {
   async sendPasswordResetCode(toEmail: string, code: string): Promise<void> {
     const subject = `Your TaxiApp password reset code`;
     const html = this.buildResetCodeHtml(code);
+    await this.send(toEmail, subject, html);
+    this.logger.debug(`Password reset code sent to ${toEmail}`);
+  }
 
+  /**
+   * Internal: deliver an email via the best available transport.
+   *   1. mockMode → log only
+   *   2. Brevo HTTP API → POST to api.brevo.com (HTTPS, port 443 — never
+   *      blocked by cloud hosts the way SMTP often is)
+   *   3. SMTP → nodemailer fallback for self-hosted / non-Brevo setups
+   */
+  private async send(to: string, subject: string, html: string): Promise<void> {
     if (this.mockMode) {
-      this.logger.debug(`[SMTP MOCK] Password reset to ${toEmail} — code: ${code}`);
+      this.logger.debug(`[MAIL MOCK] To: ${to} | Subject: ${subject}`);
       return;
     }
 
-    if (!this.transporter) throw new Error('SMTP transporter not initialised');
-    await this.transporter.sendMail({
-      from: this.from, to: toEmail, subject, html,
+    if (this.brevoApiKey) {
+      await this.sendViaBrevoApi(to, subject, html);
+      return;
+    }
+
+    if (!this.transporter) throw new Error('No mail transport configured (set BREVO_API_KEY or SMTP_*)');
+    await this.transporter.sendMail({ from: this.from, to, subject, html });
+  }
+
+  /**
+   * Send via Brevo's HTTPS API. Uses Node's built-in fetch (Node 18+).
+   * Body docs: https://developers.brevo.com/reference/sendtransacemail
+   */
+  private async sendViaBrevoApi(to: string, subject: string, html: string): Promise<void> {
+    // Parse `Name <email>` into separate fields if present, else use as-is.
+    const fromMatch = this.from.match(/^\s*(.+?)\s*<\s*([^>\s]+)\s*>\s*$/);
+    const senderName  = fromMatch ? fromMatch[1].trim() : 'TaxiApp';
+    const senderEmail = fromMatch ? fromMatch[2].trim() : this.from.trim();
+
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept':       'application/json',
+        'api-key':      this.brevoApiKey!,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender:      { name: senderName, email: senderEmail },
+        to:          [{ email: to }],
+        subject,
+        htmlContent: html,
+      }),
     });
-    this.logger.debug(`Password reset code sent to ${toEmail}`);
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Brevo API ${res.status}: ${text.slice(0, 300)}`);
+    }
   }
 
   private buildResetCodeHtml(code: string): string {
@@ -103,19 +164,8 @@ export class MailerService {
     const subject = `Your TaxiApp receipt – ${this.formatDate(data.ride.completedAt ?? new Date())}`;
     const html    = this.buildReceiptHtml(data);
 
-    if (this.mockMode) {
-      this.logger.debug(`[SMTP MOCK] To: ${data.clientEmail} | Subject: ${subject}`);
-      this.logger.debug(`[SMTP MOCK] Fare: $${data.ride.totalFare ?? 'N/A'}`);
-      return;
-    }
-
     try {
-      await this.transporter!.sendMail({
-        from:    this.from,
-        to:      data.clientEmail,
-        subject,
-        html,
-      });
+      await this.send(data.clientEmail, subject, html);
       this.logger.debug(`Receipt sent to ${data.clientEmail} for ride ${data.ride.id}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

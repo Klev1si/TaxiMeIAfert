@@ -60,6 +60,7 @@ export class PasswordResetService {
 
   // ── Send reset code ────────────────────────────────────────────────────────
   async sendResetCode(method: ResetMethod, identifier: string): Promise<void> {
+    this.logger.log(`[reset] sendResetCode called: method=${method}, identifier=${identifier}`);
     const normalized = identifier.trim().toLowerCase();
     if (!normalized) throw new BadRequestException('Email or phone is required');
 
