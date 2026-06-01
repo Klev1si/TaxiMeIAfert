@@ -82,6 +82,39 @@ export class WalletService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     try { void this.backfillMissingCredits(); }
     catch (err) { this.logger.error('Wallet backfill scan failed:', err); }
+    try { void this.backfillPaymentMethods(); }
+    catch (err) { this.logger.error('Payment-method backfill scan failed:', err); }
+  }
+
+  /**
+   * Backfill `payment_method` on credit ledger entries that pre-date the
+   * column (NULL) or were never resolved (`pending`) but where the ride was
+   * actually paid. Without this, the company-finances dashboard hides the
+   * earnings entirely because its query uses
+   * `FILTER (WHERE payment_method IN ('cash','card'))`.
+   *
+   * Heuristic: rides with a Stripe intent ID → 'card', everything else → 'cash'.
+   * Idempotent — only touches rows that still need classification.
+   */
+  async backfillPaymentMethods(): Promise<number> {
+    const rows: Array<{ id: string }> = await this.ledgerRepo.query(
+      `UPDATE driver_ledger dl
+          SET payment_method = CASE
+            WHEN r.stripe_payment_intent_id IS NOT NULL THEN 'card'
+            ELSE 'cash'
+          END
+         FROM rides r
+        WHERE dl.ride_id = r.id
+          AND dl.type    = 'credit'
+          AND (dl.payment_method IS NULL OR dl.payment_method = 'pending')
+          AND r.status         = 'completed'
+          AND r.payment_status = 'paid'
+        RETURNING dl.id`,
+    );
+    if (rows.length > 0) {
+      this.logger.log(`Backfilled payment_method on ${rows.length} legacy ledger entries`);
+    }
+    return rows.length;
   }
 
   async backfillMissingCredits(): Promise<number> {
