@@ -102,12 +102,13 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
 
   const goToRideRequest = (driver: FavoriteDriver, withPreferred: boolean) => {
     // FavoriteDrivers lives in the profile stack. RideRequest lives in the
-    // home stack. Jump up to the tab navigator and switch to the home tab,
-    // then deep-link into RideRequest with the preferred driver id.
+    // home stack. Hop to the Tab navigator (one getParent() from the profile
+    // stack) and tell it to switch to the ClientHome tab → RideRequest screen
+    // with the preferred driver id pre-loaded.
     Geolocation.getCurrentPosition(
       (pos) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const tabNav = (navigation.getParent() as any)?.getParent();
+        const tabNav = navigation.getParent() as any;
         if (!tabNav) {
           Alert.alert(t('common.error'), 'Could not open the ride request screen.');
           return;
