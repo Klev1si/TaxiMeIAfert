@@ -20,6 +20,7 @@ import AdminProfileScreen           from '../screens/admin/AdminProfileScreen';
 import AdminSubscriptionPlansScreen from '../screens/admin/AdminSubscriptionPlansScreen';
 import AdminGlobalTariffsScreen     from '../screens/admin/AdminGlobalTariffsScreen';
 import AdminPayoutsScreen           from '../screens/admin/AdminPayoutsScreen';
+import AdminFinancesScreen          from '../screens/admin/AdminFinancesScreen';
 import AdminAuditLogsScreen         from '../screens/admin/AdminAuditLogsScreen';
 import AdminFraudEventsScreen       from '../screens/admin/AdminFraudEventsScreen';
 
@@ -45,6 +46,7 @@ function AdminProfileNavigator() {
       <ProfileStack.Screen name="AdminPlans"         component={AdminSubscriptionPlansScreen} />
       <ProfileStack.Screen name="AdminGlobalTariffs" component={AdminGlobalTariffsScreen}     />
       <ProfileStack.Screen name="AdminPayouts"       component={AdminPayoutsScreen}           />
+      <ProfileStack.Screen name="AdminFinances"      component={AdminFinancesScreen}          />
       <ProfileStack.Screen name="AdminAuditLogs"    component={AdminAuditLogsScreen}         />
       <ProfileStack.Screen name="AdminFraudEvents"  component={AdminFraudEventsScreen}       />
     </ProfileStack.Navigator>

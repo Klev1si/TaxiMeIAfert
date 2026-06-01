@@ -54,6 +54,15 @@ export class DriverLedger {
   @Column({ type: 'decimal', name: 'commission_pct', precision: 5, scale: 2, nullable: true })
   commissionPct: number | null;
 
+  /**
+   * Gross fare of the ride before any deductions. Stored so the driver/company
+   * UIs can show a transparent 3-way breakdown (driver / company / platform)
+   * without needing to re-join the rides table at display time.
+   * NULL for legacy entries — backfilled at startup from rides.total_fare.
+   */
+  @Column({ type: 'decimal', name: 'gross_fare', precision: 10, scale: 2, nullable: true })
+  grossFare: number | null;
+
   /** Human-readable note (used for payout entries: "Bank transfer Feb 2026"). */
   @Column({ type: 'varchar', length: 300, nullable: true })
   note: string | null;

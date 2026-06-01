@@ -59,6 +59,7 @@ export default function CompanyFinancesScreen() {
     driver: DriverFinance;
     direction: SettlementDirection;
   } | null>(null);
+  const [commissionTarget, setCommissionTarget] = useState<DriverFinance | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
@@ -206,8 +207,45 @@ export default function CompanyFinancesScreen() {
         renderItem={({ item }) => (
           <View style={styles.driverCard}>
             <View style={styles.driverHeader}>
-              <Text style={styles.driverName}>{item.firstName} {item.lastName}</Text>
-              <Text style={styles.driverPlate}>{item.vehiclePlate}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.driverName}>{item.firstName} {item.lastName}</Text>
+                <Text style={styles.driverPlate}>{item.vehiclePlate}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setCommissionTarget(item)}
+                style={[
+                  styles.commissionBadge,
+                  item.hasCommissionOverride && styles.commissionBadgeOverride,
+                ]}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Edit commission for this driver">
+                <Text style={styles.commissionBadgeText}>
+                  ✏️ {item.effectiveCommissionPct}%
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 3-way breakdown */}
+            <View style={styles.miniBreakdown}>
+              <View style={styles.miniBreakdownCol}>
+                <Text style={styles.miniBreakdownLabel}>🚗 Driver</Text>
+                <Text style={[styles.miniBreakdownValue, { color: colors.warning }]}>
+                  {money(item.driverEarning)}
+                </Text>
+              </View>
+              <View style={styles.miniBreakdownCol}>
+                <Text style={styles.miniBreakdownLabel}>🏢 You</Text>
+                <Text style={[styles.miniBreakdownValue, { color: colors.primary }]}>
+                  {money(item.companyEarning)}
+                </Text>
+              </View>
+              <View style={styles.miniBreakdownCol}>
+                <Text style={styles.miniBreakdownLabel}>🌐 Platform</Text>
+                <Text style={[styles.miniBreakdownValue, { color: colors.textSecondary }]}>
+                  {money(item.platformEarning)}
+                </Text>
+              </View>
             </View>
 
             <View style={styles.rowOwed}>
@@ -270,7 +308,113 @@ export default function CompanyFinancesScreen() {
           onDone={() => { setSettleTarget(null); load(true); }}
         />
       )}
+
+      {commissionTarget && summary && (
+        <CommissionModal
+          driver={commissionTarget}
+          companyDefaultPct={summary.driverCommissionPct}
+          onClose={() => setCommissionTarget(null)}
+          onDone={() => { setCommissionTarget(null); load(true); }}
+        />
+      )}
     </SafeAreaView>
+  );
+}
+
+// ── Commission modal ─────────────────────────────────────────────────────────
+function CommissionModal({
+  driver,
+  companyDefaultPct,
+  onClose,
+  onDone,
+}: {
+  driver: DriverFinance;
+  companyDefaultPct: number;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const colors = useColors();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+  const { t } = useTranslation();
+  const [pct,    setPct]    = useState(driver.effectiveCommissionPct.toString());
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async (clear = false) => {
+    if (!clear) {
+      const n = parseFloat(pct);
+      if (!Number.isFinite(n) || n < 0 || n > 100) {
+        Alert.alert(t('common.validation'), 'Enter a number between 0 and 100.');
+        return;
+      }
+    }
+    setSaving(true);
+    try {
+      await companyFinancesApi.setCommission(driver.driverId, clear ? null : parseFloat(pct));
+      onDone();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? 'Could not update commission.';
+      Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Edit commission %</Text>
+            <Text style={styles.modalSub}>
+              {driver.firstName} {driver.lastName} · {driver.vehiclePlate}
+            </Text>
+            <Text style={[styles.modalSub, { marginTop: 0, marginBottom: 8 }]}>
+              Company default: {companyDefaultPct}%
+            </Text>
+
+            <Text style={styles.fieldLabel}>Driver's share (0–100)</Text>
+            <TextInput
+              style={styles.input}
+              value={pct}
+              onChangeText={setPct}
+              keyboardType="decimal-pad"
+              autoFocus
+            />
+            <Text style={[styles.modalSub, { marginTop: 0, marginBottom: 12 }]}>
+              The remainder goes to you. Platform fee (10%) is taken from card
+              rides before this split.
+            </Text>
+
+            <View style={styles.btnRow}>
+              <TouchableOpacity
+                style={[styles.btn, { backgroundColor: colors.border }]}
+                onPress={onClose}>
+                <Text style={[styles.btnText, { color: colors.text }]}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, { backgroundColor: colors.primary, opacity: saving ? 0.5 : 1 }]}
+                onPress={() => handleSave(false)}
+                disabled={saving}>
+                {saving
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.btnText}>Save</Text>}
+              </TouchableOpacity>
+            </View>
+
+            {driver.hasCommissionOverride && (
+              <TouchableOpacity
+                style={{ alignItems: 'center', marginTop: 12, padding: 6 }}
+                onPress={() => handleSave(true)}
+                disabled={saving}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+                  Revert to company default ({companyDefaultPct}%)
+                </Text>
+              </TouchableOpacity>
+            )}
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -468,9 +612,35 @@ function getStyles(c: ColorPalette) {
       padding: 14,
       marginBottom: 10,
     },
-    driverHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+    driverHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
     driverName:   { fontSize: 15, fontWeight: '700', color: c.text },
     driverPlate:  { fontSize: 12, color: c.textSecondary, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+
+    commissionBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 12,
+      backgroundColor: c.surfaceAlt ?? c.surface,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    commissionBadgeOverride: {
+      backgroundColor: c.primary,
+      borderColor: c.primary,
+    },
+    commissionBadgeText: { fontSize: 12, fontWeight: '700', color: c.text },
+
+    miniBreakdown: {
+      flexDirection: 'row',
+      backgroundColor: c.surfaceAlt ?? c.surface,
+      borderRadius: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 8,
+      marginBottom: 10,
+    },
+    miniBreakdownCol:   { flex: 1, alignItems: 'center' },
+    miniBreakdownLabel: { fontSize: 11, color: c.textSecondary, marginBottom: 2 },
+    miniBreakdownValue: { fontSize: 14, fontWeight: '700', fontVariant: ['tabular-nums'] },
 
     rowOwed:   { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
     rowLabel:  { fontSize: 13, color: c.textSecondary },

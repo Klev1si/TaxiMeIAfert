@@ -64,6 +64,13 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
   const methodIcon = entry.paymentMethod === 'cash' ? '💵'
     : entry.paymentMethod === 'card' ? '💳'
     : isCredit ? '⏳' : '';
+
+  // Show the 3-way breakdown for credit entries where we have gross fare.
+  const hasBreakdown =
+    isCredit &&
+    entry.grossFare != null &&
+    (entry.platformFee != null || (entry.companyShare != null && entry.companyShare > 0));
+
   return (
     <View style={styles.row}>
       <View style={[styles.dot, isCredit ? styles.dotCredit : styles.dotPayout]} />
@@ -76,6 +83,41 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
             : `${t('driver.wallet.payout')}${entry.note ? ` — ${entry.note}` : ''}`}
         </Text>
         <Text style={styles.rowDate}>{fmtDate(entry.createdAt)}</Text>
+
+        {hasBreakdown && (
+          <View style={styles.breakdownBlock}>
+            <View style={styles.breakdownLine}>
+              <Text style={styles.breakdownLineLabel}>Gross fare</Text>
+              <Text style={styles.breakdownLineValue}>
+                {fmtMoney(entry.grossFare ?? 0)}
+              </Text>
+            </View>
+            {entry.platformFee != null && entry.platformFee > 0 && (
+              <View style={styles.breakdownLine}>
+                <Text style={styles.breakdownLineLabel}>− 🌐 Platform fee (10%)</Text>
+                <Text style={[styles.breakdownLineValue, { color: colors.textSecondary }]}>
+                  −{fmtMoney(entry.platformFee)}
+                </Text>
+              </View>
+            )}
+            {entry.companyShare != null && entry.companyShare > 0 && (
+              <View style={styles.breakdownLine}>
+                <Text style={styles.breakdownLineLabel}>− 🏢 Company share</Text>
+                <Text style={[styles.breakdownLineValue, { color: colors.textSecondary }]}>
+                  −{fmtMoney(entry.companyShare)}
+                </Text>
+              </View>
+            )}
+            <View style={styles.breakdownLine}>
+              <Text style={[styles.breakdownLineLabel, { fontWeight: '700' }]}>
+                Your earning
+              </Text>
+              <Text style={[styles.breakdownLineValue, { fontWeight: '700', color: colors.success }]}>
+                {fmtMoney(entry.amount)}
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
       <Text style={[styles.rowAmount, isCredit ? styles.amtCredit : styles.amtPayout]}>
         {isCredit ? '+' : '−'}{fmtMoney(entry.amount)}
@@ -331,6 +373,21 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
   rowLabel:  { fontSize: 14, color: c.text, fontWeight: '500' },
   rowDate:   { fontSize: 12, color: c.textSecondary, marginTop: 2 },
   rowAmount: { fontSize: 15, fontWeight: '700' },
+
+  // Per-ride 3-way breakdown (driver / company / platform)
+  breakdownBlock: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: c.border,
+    gap: 2,
+  },
+  breakdownLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  breakdownLineLabel: { fontSize: 12, color: c.textSecondary },
+  breakdownLineValue: { fontSize: 12, color: c.text, fontVariant: ['tabular-nums'] },
 
   amtCredit: { color: '#fff' },
   amtPayout: { color: '#FBBF24' },

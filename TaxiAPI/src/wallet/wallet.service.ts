@@ -25,6 +25,7 @@ const PLATFORM_CARD_COMMISSION_PCT = Number(process.env.PLATFORM_CARD_COMMISSION
 export interface LedgerEntryDto {
   id:             string;
   type:           LedgerEntryType;
+  /** Driver's net share after commission and (for cards) platform fee. */
   amount:         number;
   rideId:         string | null;
   commissionPct:  number | null;
@@ -32,6 +33,12 @@ export interface LedgerEntryDto {
   createdAt:      Date;
   /** How the underlying ride was paid. Null for legacy entries / payouts. */
   paymentMethod:  LedgerPaymentMethod | null;
+  /** Gross fare of the ride (before any deductions). Null for payouts/legacy. */
+  grossFare:      number | null;
+  /** Company's share of the ride (after platform fee). 0 for solo drivers. */
+  companyShare:   number | null;
+  /** Platform fee for card rides (10% of gross). 0 for cash/pending. */
+  platformFee:    number | null;
 }
 
 export interface WalletDto {
@@ -84,6 +91,56 @@ export class WalletService implements OnModuleInit {
     catch (err) { this.logger.error('Wallet backfill scan failed:', err); }
     try { void this.backfillPaymentMethods(); }
     catch (err) { this.logger.error('Payment-method backfill scan failed:', err); }
+    try { void this.backfillGrossFare(); }
+    catch (err) { this.logger.error('Gross-fare backfill scan failed:', err); }
+  }
+
+  /**
+   * Backfill `gross_fare` on credit entries that pre-date the column.
+   * Sources the value from the matching ride's `total_fare`. Idempotent.
+   */
+  async backfillGrossFare(): Promise<number> {
+    const rows: Array<{ id: string }> = await this.ledgerRepo.query(
+      `UPDATE driver_ledger dl
+          SET gross_fare = r.total_fare
+         FROM rides r
+        WHERE dl.ride_id = r.id
+          AND dl.type    = 'credit'
+          AND dl.gross_fare IS NULL
+          AND r.total_fare  IS NOT NULL
+        RETURNING dl.id`,
+    );
+    if (rows.length > 0) {
+      this.logger.log(`Backfilled gross_fare on ${rows.length} legacy ledger entries`);
+    }
+    return rows.length;
+  }
+
+  /**
+   * Look up the effective driver commission % for a driver. Order:
+   *   1. Driver's per-driver override (if a company set one)
+   *   2. Company default `driverCommissionPct`
+   *   3. Solo (no companyId) → null (driver keeps 100%)
+   */
+  private async resolveDriverCommissionPct(
+    driverId: string,
+  ): Promise<{ pct: number | null; hasCompany: boolean }> {
+    const driver = await this.driverRepo.findOne({
+      where:  { id: driverId },
+      select: ['id', 'companyId', 'commissionPctOverride'],
+    });
+    if (!driver?.companyId) return { pct: null, hasCompany: false };
+    if (driver.commissionPctOverride != null) {
+      return { pct: Number(driver.commissionPctOverride), hasCompany: true };
+    }
+    const company = await this.companyRepo.findOne({
+      where:  { id: driver.companyId },
+      select: ['driverCommissionPct'],
+    });
+    return {
+      pct: company ? Number(company.driverCommissionPct) : DEFAULT_COMMISSION_PCT,
+      hasCompany: true,
+    };
   }
 
   /**
@@ -167,25 +224,16 @@ export class WalletService implements OnModuleInit {
     try {
       if (totalFare <= 0) return;
 
-      // Determine commission percentage
-      const driver = await this.driverRepo.findOne({
-        where:  { id: driverId },
-        select: ['id', 'companyId'],
-      });
-
       // Solo drivers (no company) keep 100% of the fare. We store commissionPct
       // = null so the mobile wallet doesn't render a "(80%)" suffix for them —
-      // there's no one to share with.
+      // there's no one to share with. Company drivers respect per-driver
+      // override first, then company default.
+      const { pct } = await this.resolveDriverCommissionPct(driverId);
+
       let commissionPct: number | null = null;
       let driverShare = totalFare;
 
-      if (driver?.companyId) {
-        let pct = DEFAULT_COMMISSION_PCT;
-        const company = await this.companyRepo.findOne({
-          where:  { id: driver.companyId },
-          select: ['driverCommissionPct'],
-        });
-        if (company) pct = Number(company.driverCommissionPct);
+      if (pct != null) {
         commissionPct = pct;
         driverShare = Math.round(totalFare * pct) / 100;
       }
@@ -200,6 +248,7 @@ export class WalletService implements OnModuleInit {
         commissionPct,
         note:          null,
         paymentMethod,
+        grossFare:     Math.round(totalFare * 100) / 100,
       });
       await this.ledgerRepo.save(entry);
     } catch (err) {
@@ -445,16 +494,42 @@ export class WalletService implements OnModuleInit {
     return (await this.computeTotals(driverId)).balance;
   }
 
-  private toDto(entry: DriverLedger): LedgerEntryDto {
+  private toDto = (entry: DriverLedger): LedgerEntryDto => {
+    const amount       = Number(entry.amount);
+    const commissionPct = entry.commissionPct != null ? Number(entry.commissionPct) : null;
+    const grossFare    = entry.grossFare != null ? Number(entry.grossFare) : null;
+
+    // Compute the 3-way breakdown for credit entries when we have enough
+    // info. For payouts (or legacy entries without grossFare), leave them
+    // null and the UI will hide the breakdown.
+    let companyShare: number | null = null;
+    let platformFee:  number | null = null;
+    if (entry.type === 'credit' && grossFare != null) {
+      const isCard      = entry.paymentMethod === 'card';
+      platformFee       = isCard ? Math.round(grossFare * PLATFORM_CARD_COMMISSION_PCT) / 100 : 0;
+      const afterFee    = grossFare - platformFee;
+      // Solo: no company share → all of afterFee goes to driver (matches stored amount).
+      // Company: driver gets pct% of afterFee, company gets the rest.
+      if (commissionPct != null && commissionPct < 100) {
+        const companyPct = 100 - commissionPct;
+        companyShare = Math.round(afterFee * companyPct) / 100;
+      } else {
+        companyShare = 0;
+      }
+    }
+
     return {
       id:             entry.id,
       type:           entry.type,
-      amount:         Number(entry.amount),
+      amount,
       rideId:         entry.rideId,
-      commissionPct:  entry.commissionPct != null ? Number(entry.commissionPct) : null,
+      commissionPct,
       note:           entry.note,
       createdAt:      entry.createdAt,
       paymentMethod:  entry.paymentMethod ?? null,
+      grossFare,
+      companyShare,
+      platformFee,
     };
-  }
+  };
 }

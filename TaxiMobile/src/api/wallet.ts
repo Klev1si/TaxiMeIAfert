@@ -6,6 +6,7 @@ export type LedgerPaymentMethod = 'pending' | 'cash' | 'card';
 export interface LedgerEntry {
   id:             string;
   type:           LedgerEntryType;
+  /** Driver's net share after commission and (for cards) platform fee. */
   amount:         number;
   rideId:         string | null;
   commissionPct:  number | null;
@@ -13,6 +14,12 @@ export interface LedgerEntry {
   createdAt:      string;
   /** Null for payouts and legacy credits. */
   paymentMethod:  LedgerPaymentMethod | null;
+  /** Gross ride fare before deductions. Null for payouts / legacy. */
+  grossFare:      number | null;
+  /** Company's share (0 for solo drivers, null for payouts/legacy). */
+  companyShare:   number | null;
+  /** Platform fee (10% of gross on cards, 0 for cash, null for payouts/legacy). */
+  platformFee:    number | null;
 }
 
 export interface WalletData {

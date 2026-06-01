@@ -49,7 +49,7 @@ export type ClientStackParamList = {
     vehicleColor?: string | null;
   };
   PayCash: { rideId: string };
-  RateRide: { rideId: string; rateTarget: 'driver' };
+  RateRide: { rideId: string; rateTarget: 'driver'; driverId?: string };
   RideHistory: undefined;
   RideDetail: { ride: Ride };
   SavedLocations: undefined;
@@ -133,6 +133,7 @@ export type AdminProfileStackParamList = {
   AdminPlans:           undefined;
   AdminGlobalTariffs:   undefined;
   AdminPayouts:         undefined;
+  AdminFinances:        undefined;
   AdminAuditLogs:       undefined;
   AdminFraudEvents:     undefined;
 };

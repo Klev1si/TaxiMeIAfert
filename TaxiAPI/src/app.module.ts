@@ -26,6 +26,7 @@ import { DriverTariffModule } from './driver-tariff/driver-tariff.module';
 import { ClientFavoritesModule } from './client-favorites/client-favorites.module';
 import { PasswordResetModule } from './password-reset/password-reset.module';
 import { CompanyFinancesModule } from './company-finances/company-finances.module';
+import { AdminFinancesModule } from './admin-finances/admin-finances.module';
 import { WalletModule } from './wallet/wallet.module';
 import { SupportModule } from './support/support.module';
 import {
@@ -173,6 +174,7 @@ import {
     ClientFavoritesModule,
     PasswordResetModule,
     CompanyFinancesModule,
+    AdminFinancesModule,
     WalletModule,
     SupportModule,
     HealthModule,

@@ -53,6 +53,17 @@ export interface DriverFinanceDto {
   cardOwedToDriver: number;
   /** Sum of expenses (fuel, repairs, etc.) the driver logged in this period. */
   expensesTotal:   number;
+  // ── 3-way breakdown for this driver's rides in the period ─────────────────
+  /** Driver's total earning (cash share + card share after platform fee). */
+  driverEarning:   number;
+  /** Company's total revenue from this driver (cash share + card share). */
+  companyEarning:  number;
+  /** Platform fee taken from this driver's card rides (10% of card gross). */
+  platformEarning: number;
+  /** Effective driver commission % used for this driver (override or default). */
+  effectiveCommissionPct: number;
+  /** True when a per-driver override is set (vs. company default). */
+  hasCommissionOverride:  boolean;
 }
 
 export interface CompanySummaryDto {
@@ -109,17 +120,19 @@ export class CompanyFinancesService {
   async getDrivers(userId: string, period: FinancePeriod): Promise<DriverFinanceDto[]> {
     const company = await this.resolveCompany(userId);
     const since   = periodStart(period);
-    const driverPct   = Number(company.driverCommissionPct) / 100;
-    const companyPct  = 1 - driverPct;
-    const platformPct = PLATFORM_CARD_COMMISSION_PCT / 100;
+    const companyDefaultPct = Number(company.driverCommissionPct);
+    const platformPct       = PLATFORM_CARD_COMMISSION_PCT / 100;
 
     // Sum rides per driver, split by cash/card via driver_ledger.payment_method.
+    // Also select the driver's commission_pct_override so per-driver splits are
+    // possible without a second roundtrip.
     const rideTotals = await this.rideRepo.query(
       `SELECT
-         d.id            AS "driverId",
-         d.first_name    AS "firstName",
-         d.last_name     AS "lastName",
-         d.vehicle_plate AS "vehiclePlate",
+         d.id                       AS "driverId",
+         d.first_name               AS "firstName",
+         d.last_name                AS "lastName",
+         d.vehicle_plate            AS "vehiclePlate",
+         d.commission_pct_override  AS "overridePct",
          COALESCE(SUM(r.total_fare) FILTER (WHERE dl.payment_method = 'cash'), 0)::numeric AS cash_total,
          COALESCE(SUM(r.total_fare) FILTER (WHERE dl.payment_method = 'card'), 0)::numeric AS card_total
        FROM drivers d
@@ -133,10 +146,11 @@ export class CompanyFinancesService {
         AND dl.driver_id = d.id
         AND dl.type = 'credit'
        WHERE d.company_id = $2
-       GROUP BY d.id, d.first_name, d.last_name, d.vehicle_plate`,
+       GROUP BY d.id, d.first_name, d.last_name, d.vehicle_plate, d.commission_pct_override`,
       since ? [RideStatus.COMPLETED, company.id, since] : [RideStatus.COMPLETED, company.id],
     ) as Array<{
       driverId: string; firstName: string; lastName: string; vehiclePlate: string;
+      overridePct: string | null;
       cash_total: string; card_total: string;
     }>;
 
@@ -173,8 +187,21 @@ export class CompanyFinancesService {
     return rideTotals.map(row => {
       const cashTotal = Number(row.cash_total);
       const cardTotal = Number(row.card_total);
-      const cashOwed  = cashTotal * companyPct;                          // driver collected cash, owes company this much
-      const cardOwed  = cardTotal * (1 - platformPct) * driverPct;       // company owes driver this much
+      const hasOverride = row.overridePct != null;
+      const effectivePct = hasOverride
+        ? Number(row.overridePct)
+        : companyDefaultPct;
+      const driverFrac  = effectivePct / 100;
+      const companyFrac = 1 - driverFrac;
+
+      const cashOwed  = cashTotal * companyFrac;                       // driver collected cash, owes company this
+      const cardAfter = cardTotal * (1 - platformPct);
+      const cardOwed  = cardAfter * driverFrac;                        // company owes driver this from card
+      // Earnings (gross, ignoring settlements):
+      const driverEarning   = cashTotal * driverFrac + cardAfter * driverFrac;
+      const companyEarning  = cashTotal * companyFrac + cardAfter * companyFrac;
+      const platformEarning = cardTotal * platformPct;
+
       return {
         driverId:          row.driverId,
         firstName:         row.firstName,
@@ -185,32 +212,67 @@ export class CompanyFinancesService {
         cardTotal:         round(cardTotal),
         cardOwedToDriver:  round(cardOwed  - (settledCardOut.get(row.driverId) ?? 0)),
         expensesTotal:     round(expensesByDriver.get(row.driverId) ?? 0),
+        driverEarning:     round(driverEarning),
+        companyEarning:    round(companyEarning),
+        platformEarning:   round(platformEarning),
+        effectiveCommissionPct: round(effectivePct),
+        hasCommissionOverride:  hasOverride,
       };
     });
+  }
+
+  /**
+   * Set or clear a driver's commission override. Pass `null` to revert to
+   * the company default. Driver must belong to the calling user's company.
+   */
+  async setDriverCommission(
+    userId:   string,
+    driverId: string,
+    pct:      number | null,
+  ): Promise<{ effectivePct: number; hasOverride: boolean }> {
+    const company = await this.resolveCompany(userId);
+    const driver  = await this.driverRepo.findOne({ where: { id: driverId } });
+    if (!driver || driver.companyId !== company.id) {
+      throw new NotFoundException('Driver not found in your company');
+    }
+    if (pct != null && (pct < 0 || pct > 100)) {
+      throw new NotFoundException('Commission percentage must be between 0 and 100');
+    }
+    driver.commissionPctOverride = pct != null ? Math.round(pct * 100) / 100 : null;
+    await this.driverRepo.save(driver);
+    return {
+      effectivePct: pct ?? Number(company.driverCommissionPct),
+      hasOverride:  pct != null,
+    };
   }
 
   /** Aggregated totals across all drivers. */
   async getSummary(userId: string, period: FinancePeriod): Promise<CompanySummaryDto> {
     const drivers = await this.getDrivers(userId, period);
     const company = await this.resolveCompany(userId);
-    const driverPct   = Number(company.driverCommissionPct) / 100;
-    const companyPct  = 1 - driverPct;
+    const companyDefaultDriverPct = Number(company.driverCommissionPct);
     const platformPct = PLATFORM_CARD_COMMISSION_PCT / 100;
 
+    // Aggregate from the per-driver DTOs so per-driver commission overrides
+    // are reflected in the totals — sum the company/driver shares as we
+    // iterate rather than re-applying a single company-wide split.
     let cashTotal = 0, cardTotal = 0, cashOwed = 0, cardOwed = 0, expenses = 0;
+    let cashRevenue = 0, cardRevenue = 0, cardDriverShare = 0;
     for (const d of drivers) {
       cashTotal += d.cashCollected;
       cardTotal += d.cardTotal;
       cashOwed  += d.cashOwedToCompany;
       cardOwed  += d.cardOwedToDriver;
       expenses  += d.expensesTotal;
+      const driverFrac  = d.effectiveCommissionPct / 100;
+      const companyFrac = 1 - driverFrac;
+      const dCardAfter  = d.cardTotal * (1 - platformPct);
+      cashRevenue     += d.cashCollected * companyFrac;
+      cardRevenue     += dCardAfter * companyFrac;
+      cardDriverShare += dCardAfter * driverFrac;
     }
     const round = (n: number) => Math.round(n * 100) / 100;
-    const cashRevenue   = cashTotal * companyPct;
-    const platformFee   = cardTotal * platformPct;
-    const cardAfterFee  = cardTotal - platformFee;
-    const cardRevenue   = cardAfterFee * companyPct;
-    const cardDriver    = cardAfterFee * driverPct;
+    const platformFee = cardTotal * platformPct;
     return {
       cashRevenue:           round(cashRevenue),
       cardRevenue:           round(cardRevenue),
@@ -219,10 +281,10 @@ export class CompanyFinancesService {
       cardOwedToDrivers:     round(cardOwed),
       cardGross:             round(cardTotal),
       platformFee:           round(platformFee),
-      cardDriverShare:       round(cardDriver),
+      cardDriverShare:       round(cardDriverShare),
       driverExpenses:        round(expenses),
-      companyCommissionPct:  round(companyPct  * 100),
-      driverCommissionPct:   round(driverPct   * 100),
+      companyCommissionPct:  round(100 - companyDefaultDriverPct),
+      driverCommissionPct:   round(companyDefaultDriverPct),
       platformCommissionPct: round(platformPct * 100),
     };
   }

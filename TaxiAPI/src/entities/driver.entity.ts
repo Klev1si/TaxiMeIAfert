@@ -26,6 +26,15 @@ export class Driver {
   @Column({ type: 'varchar', name: 'company_id', nullable: true })
   companyId: string | null;
 
+  /**
+   * Optional override for this driver's commission percentage. When NULL
+   * (the default) the driver's company-wide `driverCommissionPct` is used.
+   * Lets a company give star drivers a higher cut without bumping everyone.
+   * Solo drivers (no companyId) ignore this field — they always keep 100%.
+   */
+  @Column({ type: 'decimal', name: 'commission_pct_override', precision: 5, scale: 2, nullable: true })
+  commissionPctOverride: number | null;
+
   @Column({ type: 'varchar', name: 'first_name', length: 80 })
   firstName: string;
 

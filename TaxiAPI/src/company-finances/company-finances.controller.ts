@@ -2,14 +2,17 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { IsIn, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -28,6 +31,13 @@ class SettleDto {
 
   @IsOptional() @IsString() @MaxLength(300)
   note?: string;
+}
+
+class CommissionDto {
+  /** Driver's commission % (0-100). Set to null to revert to company default. */
+  @ValidateIf(o => o.pct !== null)
+  @IsNumber() @Min(0) @Max(100) @Type(() => Number)
+  pct: number | null;
 }
 
 @Controller('company/finances')
@@ -62,5 +72,19 @@ export class CompanyFinancesController {
     @Body() dto: SettleDto,
   ) {
     return this.svc.settle(req.user.id, driverId, dto.direction, dto.amount, dto.note);
+  }
+
+  /**
+   * PATCH /company/finances/drivers/:id/commission
+   * Set or clear (`pct: null`) a per-driver commission override.
+   */
+  @Patch('drivers/:id/commission')
+  @HttpCode(HttpStatus.OK)
+  setCommission(
+    @Request() req: { user: { id: string } },
+    @Param('id', ParseUUIDPipe) driverId: string,
+    @Body() dto: CommissionDto,
+  ) {
+    return this.svc.setDriverCommission(req.user.id, driverId, dto.pct);
   }
 }
