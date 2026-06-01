@@ -24,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/dashboard/plans',        label: 'Plans',        icon: '📋', adminOnly: true },
   { to: '/dashboard/promo-codes',  label: 'Promo Codes',  icon: '🏷️', adminOnly: true },
   { to: '/dashboard/payouts',      label: 'Payouts',      icon: '💸', adminOnly: true },
+  { to: '/dashboard/platform-finances', label: 'Platform Finances', icon: '📊', adminOnly: true },
   { to: '/dashboard/support',      label: 'Support',      icon: '🎫', adminOnly: true },
   { to: '/dashboard/fraud',        label: 'Fraud',        icon: '🛡️', adminOnly: true },
   { to: '/dashboard/audit-logs',   label: 'Audit Logs',   icon: '🔍', adminOnly: true },

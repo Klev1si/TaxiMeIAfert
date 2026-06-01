@@ -18,6 +18,7 @@ import SubscriptionPage from './pages/SubscriptionPage';
 import PromoCodesPage from './pages/PromoCodesPage';
 import AuditLogsPage from './pages/AuditLogsPage';
 import PayoutsPage from './pages/PayoutsPage';
+import PlatformFinancesPage from './pages/PlatformFinancesPage';
 import SupportPage from './pages/SupportPage';
 import HealthPage from './pages/HealthPage';
 import FraudPage from './pages/FraudPage';
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="/dashboard/promo-codes"  element={<PromoCodesPage />} />
             <Route path="/dashboard/audit-logs"   element={<AuditLogsPage />} />
             <Route path="/dashboard/payouts"      element={<PayoutsPage />} />
+            <Route path="/dashboard/platform-finances" element={<PlatformFinancesPage />} />
             <Route path="/dashboard/support"      element={<SupportPage />} />
             <Route path="/dashboard/health"       element={<HealthPage />} />
             <Route path="/dashboard/fraud"        element={<FraudPage />} />

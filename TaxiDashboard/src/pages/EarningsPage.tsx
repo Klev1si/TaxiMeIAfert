@@ -5,28 +5,36 @@ import apiClient from '../api/client';
 
 type Period = 'today' | 'week' | 'month' | 'all';
 
-interface DriverRow {
-  driverId:     string;
-  firstName:    string | null;
-  lastName:     string | null;
-  rides:        number;
-  totalFare:    number;
-  driverShare:  number;
-  companyShare: number;
+interface DriverFinance {
+  driverId:          string;
+  firstName:         string;
+  lastName:          string;
+  vehiclePlate:      string;
+  cashCollected:     number;
+  cashOwedToCompany: number;
+  cardTotal:         number;
+  cardOwedToDriver:  number;
+  expensesTotal:     number;
+  driverEarning:     number;
+  companyEarning:    number;
+  platformEarning:   number;
+  effectiveCommissionPct: number;
+  hasCommissionOverride:  boolean;
 }
 
-interface EarningsSummary {
-  rides:        number;
-  totalFare:    number;
-  driverShare:  number;
-  companyShare: number;
-}
-
-interface EarningsResponse {
-  period:        string;
-  commissionPct: number;
-  summary:       EarningsSummary;
-  perDriver:     DriverRow[];
+interface CompanySummary {
+  cashRevenue:           number;
+  cardRevenue:           number;
+  totalRevenue:          number;
+  cashOwedByDrivers:     number;
+  cardOwedToDrivers:     number;
+  cardGross:             number;
+  platformFee:           number;
+  cardDriverShare:       number;
+  driverExpenses:        number;
+  companyCommissionPct:  number;
+  driverCommissionPct:   number;
+  platformCommissionPct: number;
 }
 
 const PERIODS: { label: string; value: Period }[] = [
@@ -36,26 +44,36 @@ const PERIODS: { label: string; value: Period }[] = [
   { label: 'All time',   value: 'all'   },
 ];
 
+const fmt = (n: number) => `$${n.toFixed(2)}`;
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function EarningsPage() {
-  const [period,      setPeriod]      = useState<Period>('week');
-  const [data,        setData]        = useState<EarningsResponse | null>(null);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState<string | null>(null);
+  const [period,   setPeriod]   = useState<Period>('week');
+  const [summary,  setSummary]  = useState<CompanySummary | null>(null);
+  const [drivers,  setDrivers]  = useState<DriverFinance[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState<string | null>(null);
 
-  // Commission editor
-  const [editComm,    setEditComm]    = useState(false);
-  const [commInput,   setCommInput]   = useState('');
-  const [commSaving,  setCommSaving]  = useState(false);
-  const [commError,   setCommError]   = useState<string | null>(null);
+  // Default-commission editor (whole company)
+  const [editDefault,     setEditDefault]     = useState(false);
+  const [defaultInput,    setDefaultInput]    = useState('');
+  const [defaultSaving,   setDefaultSaving]   = useState(false);
+  const [defaultError,    setDefaultError]    = useState<string | null>(null);
+
+  // Per-driver commission editor
+  const [perDriverTarget, setPerDriverTarget] = useState<DriverFinance | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get<EarningsResponse>(`/company/earnings?period=${period}`);
-      setData(res.data);
+      const [sumRes, drvRes] = await Promise.all([
+        apiClient.get<CompanySummary>(`/company/finances/summary?period=${period}`),
+        apiClient.get<DriverFinance[]>(`/company/finances/drivers?period=${period}`),
+      ]);
+      setSummary(sumRes.data);
+      setDrivers(drvRes.data);
     } catch {
       setError('Failed to load earnings data.');
     } finally {
@@ -65,32 +83,30 @@ export default function EarningsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const openCommEditor = () => {
-    setCommInput(String(data?.commissionPct ?? 70));
-    setCommError(null);
-    setEditComm(true);
+  // ── Company default commission ─────────────────────────────────────────
+  const openDefaultEditor = () => {
+    setDefaultInput(String(summary?.driverCommissionPct ?? 70));
+    setDefaultError(null);
+    setEditDefault(true);
   };
-
-  const saveCommission = async () => {
-    const pct = parseFloat(commInput);
+  const saveDefault = async () => {
+    const pct = parseFloat(defaultInput);
     if (isNaN(pct) || pct < 0 || pct > 100) {
-      setCommError('Enter a value between 0 and 100.');
+      setDefaultError('Enter a value between 0 and 100.');
       return;
     }
-    setCommSaving(true);
-    setCommError(null);
+    setDefaultSaving(true);
+    setDefaultError(null);
     try {
       await apiClient.patch('/company/commission', { driverCommissionPct: pct });
-      setEditComm(false);
-      load(); // re-fetch with new commission
+      setEditDefault(false);
+      load();
     } catch {
-      setCommError('Failed to save. Please try again.');
+      setDefaultError('Failed to save. Please try again.');
     } finally {
-      setCommSaving(false);
+      setDefaultSaving(false);
     }
   };
-
-  const fmt = (n: number) => `$${n.toFixed(2)}`;
 
   return (
     <div className="space-y-6">
@@ -101,10 +117,10 @@ export default function EarningsPage() {
           <p className="text-sm text-gray-500 mt-1">Revenue breakdown for your fleet</p>
         </div>
         <button
-          onClick={openCommEditor}
+          onClick={openDefaultEditor}
           className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
         >
-          ⚙️ Set Commission
+          ⚙️ Set Default Commission
         </button>
       </div>
 
@@ -125,7 +141,6 @@ export default function EarningsPage() {
         ))}
       </div>
 
-      {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center h-48">
           <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -137,49 +152,90 @@ export default function EarningsPage() {
             Retry
           </button>
         </div>
-      ) : data ? (
+      ) : summary ? (
         <>
           {/* Summary cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <SummaryCard
-              label="Total fare"
-              value={fmt(data.summary.totalFare)}
-              sub={`${data.summary.rides} ride${data.summary.rides !== 1 ? 's' : ''}`}
+              label="Total revenue"
+              value={fmt(summary.totalRevenue)}
+              sub={`${drivers.length} driver${drivers.length === 1 ? '' : 's'}`}
               color="indigo"
             />
             <SummaryCard
-              label={`Driver share (${data.commissionPct}%)`}
-              value={fmt(data.summary.driverShare)}
-              sub="paid to drivers"
+              label="💵 Cash revenue"
+              value={fmt(summary.cashRevenue)}
+              sub="company share of cash"
               color="green"
             />
             <SummaryCard
-              label={`Company share (${(100 - data.commissionPct).toFixed(0)}%)`}
-              value={fmt(data.summary.companyShare)}
-              sub="your revenue"
+              label="💳 Card revenue"
+              value={fmt(summary.cardRevenue)}
+              sub={`after ${summary.platformCommissionPct}% platform fee`}
               color="yellow"
             />
             <SummaryCard
-              label="Completed rides"
-              value={String(data.summary.rides)}
-              sub="with fare data"
+              label="📋 Driver expenses"
+              value={fmt(summary.driverExpenses)}
+              sub="fuel, repairs, etc."
               color="slate"
             />
+          </div>
+
+          {/* Card breakdown card */}
+          {summary.cardGross > 0 && (
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                Card payment breakdown — {fmt(summary.cardGross)} gross
+              </p>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>🌐 Platform fee ({summary.platformCommissionPct}%)</span>
+                  <span className="font-bold text-gray-500">−{fmt(summary.platformFee)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>🏢 You ({summary.companyCommissionPct}% of remainder)</span>
+                  <span className="font-bold text-indigo-700">+{fmt(summary.cardRevenue)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>🚗 Drivers ({summary.driverCommissionPct}% of remainder)</span>
+                  <span className="font-bold text-yellow-700">+{fmt(summary.cardDriverShare)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Outstanding cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-green-50 border border-green-200 rounded-xl px-5 py-4">
+              <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Drivers owe you</p>
+              <p className="text-2xl font-extrabold text-green-900 mt-1">
+                {fmt(summary.cashOwedByDrivers)}
+              </p>
+              <p className="text-xs text-green-600 mt-0.5">cash to collect</p>
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-5 py-4">
+              <p className="text-xs font-semibold text-yellow-700 uppercase tracking-wide">You owe drivers</p>
+              <p className="text-2xl font-extrabold text-yellow-900 mt-1">
+                {fmt(summary.cardOwedToDrivers)}
+              </p>
+              <p className="text-xs text-yellow-600 mt-0.5">card share to pay</p>
+            </div>
           </div>
 
           {/* Commission callout */}
           <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-indigo-800">
-                Current commission: drivers keep <span className="text-lg">{data.commissionPct}%</span>,
-                company keeps <span className="text-lg">{(100 - data.commissionPct).toFixed(0)}%</span>
+                Default commission: drivers keep <span className="text-lg">{summary.driverCommissionPct}%</span>,
+                you keep <span className="text-lg">{summary.companyCommissionPct}%</span>
               </p>
               <p className="text-xs text-indigo-600 mt-0.5">
-                Applies to all fares calculated from tariffs.
+                Click ✏️ on any driver row to give them a custom rate.
               </p>
             </div>
             <button
-              onClick={openCommEditor}
+              onClick={openDefaultEditor}
               className="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800 underline"
             >
               Change
@@ -187,12 +243,12 @@ export default function EarningsPage() {
           </div>
 
           {/* Per-driver table */}
-          {data.perDriver.length === 0 ? (
+          {drivers.length === 0 ? (
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-10 text-center">
               <p className="text-4xl mb-3">💰</p>
               <p className="text-gray-600 font-medium">No earnings data yet</p>
               <p className="text-gray-400 text-sm mt-1">
-                Earnings appear here once drivers complete rides with fares calculated from tariffs.
+                Earnings appear here once drivers complete rides with fares.
               </p>
             </div>
           ) : (
@@ -204,48 +260,60 @@ export default function EarningsPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
                     <tr>
-                      <th className="px-6 py-3 text-left">Driver</th>
-                      <th className="px-6 py-3 text-right">Rides</th>
-                      <th className="px-6 py-3 text-right">Total fare</th>
-                      <th className="px-6 py-3 text-right">Driver share</th>
-                      <th className="px-6 py-3 text-right">Company share</th>
+                      <th className="px-4 py-3 text-left">Driver</th>
+                      <th className="px-4 py-3 text-center">Comm %</th>
+                      <th className="px-4 py-3 text-right">🚗 Driver</th>
+                      <th className="px-4 py-3 text-right">🏢 You</th>
+                      <th className="px-4 py-3 text-right">🌐 Platform</th>
+                      <th className="px-4 py-3 text-right">Cash owed</th>
+                      <th className="px-4 py-3 text-right">Card owed</th>
+                      <th className="px-4 py-3 text-right">Expenses</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {data.perDriver.map(row => (
+                    {drivers.map(row => (
                       <tr key={row.driverId} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-gray-900">
-                          {row.firstName && row.lastName
-                            ? `${row.firstName} ${row.lastName}`
-                            : <span className="text-gray-400 italic">Unknown driver</span>}
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-gray-900">{row.firstName} {row.lastName}</div>
+                          <div className="font-mono text-xs text-gray-400">{row.vehiclePlate}</div>
                         </td>
-                        <td className="px-6 py-4 text-right text-gray-600">{row.rides}</td>
-                        <td className="px-6 py-4 text-right font-semibold text-gray-900">
-                          {fmt(row.totalFare)}
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => setPerDriverTarget(row)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition-colors ${
+                              row.hasCommissionOverride
+                                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            ✏️ {row.effectiveCommissionPct}%
+                          </button>
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <span className="inline-block bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-md">
-                            {fmt(row.driverShare)}
+                        <td className="px-4 py-3 text-right">
+                          <span className="inline-block bg-yellow-100 text-yellow-800 font-semibold px-2 py-0.5 rounded-md tabular-nums">
+                            {fmt(row.driverEarning)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <span className="inline-block bg-yellow-100 text-yellow-700 font-semibold px-2 py-0.5 rounded-md">
-                            {fmt(row.companyShare)}
+                        <td className="px-4 py-3 text-right">
+                          <span className="inline-block bg-indigo-100 text-indigo-800 font-semibold px-2 py-0.5 rounded-md tabular-nums">
+                            {fmt(row.companyEarning)}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-500 tabular-nums">
+                          {fmt(row.platformEarning)}
+                        </td>
+                        <td className="px-4 py-3 text-right text-green-700 font-semibold tabular-nums">
+                          {fmt(row.cashOwedToCompany)}
+                        </td>
+                        <td className="px-4 py-3 text-right text-yellow-700 font-semibold tabular-nums">
+                          {fmt(row.cardOwedToDriver)}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-600 tabular-nums">
+                          {row.expensesTotal > 0 ? fmt(row.expensesTotal) : '—'}
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                  {/* Totals row */}
-                  <tfoot className="bg-gray-50 border-t-2 border-gray-200 font-bold">
-                    <tr>
-                      <td className="px-6 py-3 text-gray-700">Total</td>
-                      <td className="px-6 py-3 text-right text-gray-700">{data.summary.rides}</td>
-                      <td className="px-6 py-3 text-right text-gray-900">{fmt(data.summary.totalFare)}</td>
-                      <td className="px-6 py-3 text-right text-green-700">{fmt(data.summary.driverShare)}</td>
-                      <td className="px-6 py-3 text-right text-yellow-700">{fmt(data.summary.companyShare)}</td>
-                    </tr>
-                  </tfoot>
                 </table>
               </div>
             </div>
@@ -253,18 +321,17 @@ export default function EarningsPage() {
         </>
       ) : null}
 
-      {/* Commission modal */}
-      {editComm && (
+      {/* Default-commission modal */}
+      {editDefault && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Set Driver Commission</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Set default commission</h3>
             <p className="text-sm text-gray-500 mb-5">
-              Enter the percentage of each fare that drivers keep.
-              The remainder goes to your company.
+              Applies to all drivers who don't have a custom override.
             </p>
 
             <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
-              Driver commission %
+              Driver share %
             </label>
             <div className="flex items-center gap-2 mb-1">
               <input
@@ -272,50 +339,158 @@ export default function EarningsPage() {
                 min={0}
                 max={100}
                 step={0.5}
-                value={commInput}
-                onChange={e => setCommInput(e.target.value)}
+                value={defaultInput}
+                onChange={e => setDefaultInput(e.target.value)}
                 className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 placeholder="e.g. 70"
               />
               <span className="text-gray-500 font-bold text-sm">%</span>
             </div>
 
-            {commInput !== '' && !isNaN(parseFloat(commInput)) && (
+            {defaultInput !== '' && !isNaN(parseFloat(defaultInput)) && (
               <p className="text-xs text-gray-400 mb-4">
-                Drivers keep <strong>{parseFloat(commInput).toFixed(1)}%</strong> →
-                Company keeps <strong>{(100 - parseFloat(commInput)).toFixed(1)}%</strong>
+                Drivers keep <strong>{parseFloat(defaultInput).toFixed(1)}%</strong> →
+                Company keeps <strong>{(100 - parseFloat(defaultInput)).toFixed(1)}%</strong>
               </p>
             )}
 
-            {commError && (
-              <p className="text-sm text-red-600 mb-4">{commError}</p>
+            {defaultError && (
+              <p className="text-sm text-red-600 mb-4">{defaultError}</p>
             )}
 
             <div className="flex gap-3">
               <button
-                onClick={() => setEditComm(false)}
+                onClick={() => setEditDefault(false)}
                 className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50"
-                disabled={commSaving}
+                disabled={defaultSaving}
               >
                 Cancel
               </button>
               <button
-                onClick={saveCommission}
-                disabled={commSaving}
+                onClick={saveDefault}
+                disabled={defaultSaving}
                 className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60"
               >
-                {commSaving ? 'Saving…' : 'Save'}
+                {defaultSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Per-driver commission modal */}
+      {perDriverTarget && summary && (
+        <PerDriverCommissionModal
+          driver={perDriverTarget}
+          companyDefaultPct={summary.driverCommissionPct}
+          onClose={() => setPerDriverTarget(null)}
+          onDone={() => { setPerDriverTarget(null); load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Per-driver commission modal ─────────────────────────────────────────────
+function PerDriverCommissionModal({
+  driver, companyDefaultPct, onClose, onDone,
+}: {
+  driver: DriverFinance;
+  companyDefaultPct: number;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [input,   setInput]   = useState(String(driver.effectiveCommissionPct));
+  const [saving,  setSaving]  = useState(false);
+  const [err,     setErr]     = useState<string | null>(null);
+
+  const save = async (clear = false) => {
+    if (!clear) {
+      const n = parseFloat(input);
+      if (isNaN(n) || n < 0 || n > 100) {
+        setErr('Enter a value between 0 and 100.');
+        return;
+      }
+    }
+    setSaving(true);
+    setErr(null);
+    try {
+      await apiClient.patch(`/company/finances/drivers/${driver.driverId}/commission`, {
+        pct: clear ? null : parseFloat(input),
+      });
+      onDone();
+    } catch {
+      setErr('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+        <h3 className="text-lg font-bold text-gray-900 mb-1">Edit commission</h3>
+        <p className="text-sm text-gray-500">
+          {driver.firstName} {driver.lastName} · <span className="font-mono">{driver.vehiclePlate}</span>
+        </p>
+        <p className="text-xs text-gray-400 mb-5">
+          Company default: {companyDefaultPct}%
+        </p>
+
+        <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+          Driver's share (0–100)
+        </label>
+        <div className="flex items-center gap-2 mb-2">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={0.5}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            autoFocus
+          />
+          <span className="text-gray-500 font-bold text-sm">%</span>
+        </div>
+        <p className="text-xs text-gray-400 mb-4">
+          The remainder goes to you. Platform fee (10%) is taken from card rides before this split.
+        </p>
+
+        {err && <p className="text-sm text-red-600 mb-3">{err}</p>}
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => save(false)}
+            disabled={saving}
+            className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+
+        {driver.hasCommissionOverride && (
+          <button
+            onClick={() => save(true)}
+            disabled={saving}
+            className="w-full mt-3 text-xs text-gray-500 hover:text-gray-700 underline disabled:opacity-60"
+          >
+            Revert to company default ({companyDefaultPct}%)
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-
 function SummaryCard({
   label, value, sub, color,
 }: {
