@@ -42,6 +42,8 @@ interface RideCompletedEvent {
   baseFare?:     number | null;
   distanceFare?: number | null;
   timeFare?:     number | null;
+  /** Included so the rate screen can show the ❤️ save toggle without a follow-up fetch. */
+  driverId?:     string | null;
 }
 interface RideCancelledEvent  { rideId: string; cancelledBy: string; reason: string | null }
 
@@ -183,6 +185,7 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
           ...(e.baseFare     !== undefined ? { baseFare:     e.baseFare     } : {}),
           ...(e.distanceFare !== undefined ? { distanceFare: e.distanceFare } : {}),
           ...(e.timeFare     !== undefined ? { timeFare:     e.timeFare     } : {}),
+          ...(e.driverId     !== undefined ? { driverId:     e.driverId     } : {}),
         });
         navigation.replace('PayCash', { rideId });
       },

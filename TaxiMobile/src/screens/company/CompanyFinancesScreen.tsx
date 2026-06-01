@@ -135,6 +135,50 @@ export default function CompanyFinancesScreen() {
               </View>
             </View>
 
+            {/* Card payment breakdown — shows the split for transparency */}
+            {summary && summary.cardGross > 0 && (
+              <View style={styles.breakdownCard}>
+                <Text style={styles.breakdownTitle}>
+                  Card payment breakdown · {money(summary.cardGross)} gross
+                </Text>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>
+                    🌐 Platform fee ({summary.platformCommissionPct}%)
+                  </Text>
+                  <Text style={[styles.breakdownAmount, { color: colors.textSecondary }]}>
+                    −{money(summary.platformFee)}
+                  </Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>
+                    🏢 You ({summary.companyCommissionPct}% of remainder)
+                  </Text>
+                  <Text style={[styles.breakdownAmount, { color: colors.primary }]}>
+                    +{money(summary.cardRevenue)}
+                  </Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>
+                    🚗 Drivers ({summary.driverCommissionPct}% of remainder)
+                  </Text>
+                  <Text style={[styles.breakdownAmount, { color: colors.warning }]}>
+                    +{money(summary.cardDriverShare)}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Driver expenses card */}
+            {summary && summary.driverExpenses > 0 && (
+              <View style={styles.expensesCard}>
+                <Text style={styles.breakdownTitle}>📋 Driver expenses this period</Text>
+                <Text style={styles.expensesAmount}>{money(summary.driverExpenses)}</Text>
+                <Text style={styles.expensesHint}>
+                  Fuel, repairs, etc. logged by your drivers
+                </Text>
+              </View>
+            )}
+
             {/* Outstanding cards */}
             <View style={styles.owedRow}>
               <View style={[styles.owedCard, { backgroundColor: colors.successLight ?? '#D1FAE5' }]}>
@@ -186,6 +230,14 @@ export default function CompanyFinancesScreen() {
                 {money(item.cardOwedToDriver)}
               </Text>
             </View>
+            {item.expensesTotal > 0 && (
+              <View style={styles.rowOwed}>
+                <Text style={styles.rowLabel}>📋 Expenses logged</Text>
+                <Text style={[styles.rowAmount, { color: colors.textSecondary }]}>
+                  {money(item.expensesTotal)}
+                </Text>
+              </View>
+            )}
 
             <View style={styles.btnRow}>
               <TouchableOpacity
@@ -355,6 +407,47 @@ function getStyles(c: ColorPalette) {
     divider:   { width: 1, backgroundColor: 'rgba(255,255,255,0.25)', marginHorizontal: 8 },
     statLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 12 },
     statValue: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+    breakdownCard: {
+      backgroundColor: c.surface,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    breakdownTitle: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: c.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 8,
+    },
+    breakdownRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 4,
+    },
+    breakdownLabel:  { fontSize: 13, color: c.text },
+    breakdownAmount: { fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
+
+    expensesCard: {
+      backgroundColor: c.surface,
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    expensesAmount: {
+      fontSize: 22,
+      fontWeight: '800',
+      color: c.text,
+      marginTop: 4,
+      fontVariant: ['tabular-nums'],
+    },
+    expensesHint:   { fontSize: 11, color: c.textSecondary, marginTop: 2 },
 
     owedRow:  { flexDirection: 'row', gap: 10, marginBottom: 24 },
     owedCard: { flex: 1, borderRadius: 12, padding: 14 },

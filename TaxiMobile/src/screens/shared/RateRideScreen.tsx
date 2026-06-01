@@ -68,15 +68,15 @@ export default function RateRideScreen({ navigation, route }: Props) {
   const driverId = resolvedDriverId;
 
   // If the driverId wasn't in the navigation params (e.g. user landed here from
-  // an FCM deep-link cold start) fall back to fetching the active ride from
-  // the server so the heart toggle still appears.
+  // an FCM deep-link cold start, or the store was cleared on payment), fall
+  // back to fetching the ride by ID. We use getRideById (not getActiveRide)
+  // because by the time the user is rating, the ride is COMPLETED and
+  // getActiveRide returns null for completed rides.
   React.useEffect(() => {
     if (rateTarget !== 'driver' || resolvedDriverId) return;
-    ridesApi.getActiveRide()
+    ridesApi.getRideById(rideId)
       .then(({ data }) => {
-        if (data?.driverId && data.id === rideId) {
-          setResolvedDriverId(data.driverId);
-        }
+        if (data?.driverId) setResolvedDriverId(data.driverId);
       })
       .catch(() => { /* non-fatal — heart just won't appear */ });
   }, [rateTarget, resolvedDriverId, rideId]);

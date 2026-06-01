@@ -6,7 +6,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Company, Driver, Ride } from '../entities';
+import { Company, Driver, Expense, Ride } from '../entities';
 import {
   CompanySettlement,
   SettlementDirection,
@@ -51,6 +51,8 @@ export interface DriverFinanceDto {
   cardTotal:       number;
   /** Driver's share of card rides the company still owes (after settlements). */
   cardOwedToDriver: number;
+  /** Sum of expenses (fuel, repairs, etc.) the driver logged in this period. */
+  expensesTotal:   number;
 }
 
 export interface CompanySummaryDto {
@@ -64,6 +66,22 @@ export interface CompanySummaryDto {
   cashOwedByDrivers:  number;
   /** Total card share still owed to drivers, after settlements. */
   cardOwedToDrivers:  number;
+  // ── Card-payment breakdown (transparency on where the money goes) ───────
+  /** Gross sum of card-paid ride fares (before any deductions). */
+  cardGross:          number;
+  /** 10% (configurable) that the platform deducted from card rides. */
+  platformFee:        number;
+  /** Driver share of card rides (the 70% × 90% portion in 70/30 split). */
+  cardDriverShare:    number;
+  /** Sum of driver-logged expenses (fuel, repairs, etc.) for the period. */
+  driverExpenses:     number;
+  // ── Percentages so the UI doesn't have to derive them ───────────────────
+  /** Company's commission percentage (e.g. 30 in a 70/30 split). */
+  companyCommissionPct: number;
+  /** Driver's commission percentage (e.g. 70). */
+  driverCommissionPct:  number;
+  /** Platform's commission percentage on card rides (e.g. 10). */
+  platformCommissionPct: number;
 }
 
 @Injectable()
@@ -72,6 +90,7 @@ export class CompanyFinancesService {
     @InjectRepository(Company)            private readonly companyRepo: Repository<Company>,
     @InjectRepository(Driver)             private readonly driverRepo: Repository<Driver>,
     @InjectRepository(Ride)               private readonly rideRepo: Repository<Ride>,
+    @InjectRepository(Expense)            private readonly expenseRepo: Repository<Expense>,
     @InjectRepository(CompanySettlement)  private readonly settleRepo: Repository<CompanySettlement>,
   ) {}
 
@@ -133,6 +152,22 @@ export class CompanyFinancesService {
       map.set(s.driverId, (map.get(s.driverId) ?? 0) + Number(s.amount));
     }
 
+    // Expenses per driver in the same period — fuel, repairs, etc. Logged
+    // by the drivers themselves on their Expenses screen.
+    const driverIds = rideTotals.map(r => r.driverId);
+    const expensesByDriver = new Map<string, number>();
+    if (driverIds.length > 0) {
+      const qb = this.expenseRepo
+        .createQueryBuilder('e')
+        .select('e.driver_id', 'driverId')
+        .addSelect('COALESCE(SUM(e.amount), 0)', 'total')
+        .where('e.driver_id IN (:...ids)', { ids: driverIds })
+        .groupBy('e.driver_id');
+      if (since) qb.andWhere('e.expense_date >= :since', { since });
+      const rows = await qb.getRawMany<{ driverId: string; total: string }>();
+      for (const r of rows) expensesByDriver.set(r.driverId, Number(r.total));
+    }
+
     const round = (n: number) => Math.round(n * 100) / 100;
 
     return rideTotals.map(row => {
@@ -149,6 +184,7 @@ export class CompanyFinancesService {
         cashOwedToCompany: round(cashOwed  - (settledCashIn.get(row.driverId)  ?? 0)),
         cardTotal:         round(cardTotal),
         cardOwedToDriver:  round(cardOwed  - (settledCardOut.get(row.driverId) ?? 0)),
+        expensesTotal:     round(expensesByDriver.get(row.driverId) ?? 0),
       };
     });
   }
@@ -161,22 +197,33 @@ export class CompanyFinancesService {
     const companyPct  = 1 - driverPct;
     const platformPct = PLATFORM_CARD_COMMISSION_PCT / 100;
 
-    let cashTotal = 0, cardTotal = 0, cashOwed = 0, cardOwed = 0;
+    let cashTotal = 0, cardTotal = 0, cashOwed = 0, cardOwed = 0, expenses = 0;
     for (const d of drivers) {
       cashTotal += d.cashCollected;
       cardTotal += d.cardTotal;
       cashOwed  += d.cashOwedToCompany;
       cardOwed  += d.cardOwedToDriver;
+      expenses  += d.expensesTotal;
     }
     const round = (n: number) => Math.round(n * 100) / 100;
-    const cashRevenue = cashTotal * companyPct;
-    const cardRevenue = cardTotal * (1 - platformPct) * companyPct;
+    const cashRevenue   = cashTotal * companyPct;
+    const platformFee   = cardTotal * platformPct;
+    const cardAfterFee  = cardTotal - platformFee;
+    const cardRevenue   = cardAfterFee * companyPct;
+    const cardDriver    = cardAfterFee * driverPct;
     return {
-      cashRevenue:       round(cashRevenue),
-      cardRevenue:       round(cardRevenue),
-      totalRevenue:      round(cashRevenue + cardRevenue),
-      cashOwedByDrivers: round(cashOwed),
-      cardOwedToDrivers: round(cardOwed),
+      cashRevenue:           round(cashRevenue),
+      cardRevenue:           round(cardRevenue),
+      totalRevenue:          round(cashRevenue + cardRevenue),
+      cashOwedByDrivers:     round(cashOwed),
+      cardOwedToDrivers:     round(cardOwed),
+      cardGross:             round(cardTotal),
+      platformFee:           round(platformFee),
+      cardDriverShare:       round(cardDriver),
+      driverExpenses:        round(expenses),
+      companyCommissionPct:  round(companyPct  * 100),
+      driverCommissionPct:   round(driverPct   * 100),
+      platformCommissionPct: round(platformPct * 100),
     };
   }
 

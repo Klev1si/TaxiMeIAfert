@@ -1533,6 +1533,10 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         baseFare:     saved.baseFare     != null ? Number(saved.baseFare)     : null,
         distanceFare: saved.distanceFare != null ? Number(saved.distanceFare) : null,
         timeFare:     saved.timeFare     != null ? Number(saved.timeFare)     : null,
+        // Include driverId so the RateRide screen can show the ❤️ "save driver"
+        // toggle even after the ride store has been cleared (getActiveRide
+        // returns null for completed rides, so this is the canonical source).
+        driverId:     saved.driverId ?? null,
       });
       await this.notificationsService.sendToToken(clientUser.fcmToken, {
         title: 'Ride completed',
@@ -2219,6 +2223,34 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     }
 
     return null;
+  }
+
+  /**
+   * Fetch a ride by ID — for the calling user (client or driver), regardless
+   * of status. 404 if the ride doesn't exist or doesn't belong to the caller.
+   */
+  async getRideById(
+    userId: string,
+    role:   UserRole,
+    rideId: string,
+  ): Promise<RideResponseDto> {
+    const ride = await this.rideRepo.findOne({ where: { id: rideId } });
+    if (!ride) throw new NotFoundException('Ride not found');
+
+    if (role === UserRole.CLIENT) {
+      const client = await this.clientRepo.findOne({ where: { userId }, select: ['id'] });
+      if (!client || ride.clientId !== client.id) {
+        throw new NotFoundException('Ride not found');
+      }
+    } else if (role === UserRole.DRIVER) {
+      const driver = await this.driverRepo.findOne({ where: { userId }, select: ['id'] });
+      if (!driver || ride.driverId !== driver.id) {
+        throw new NotFoundException('Ride not found');
+      }
+    }
+
+    await this.attachStops([ride]);
+    return this.toDto(ride);
   }
 
   /**

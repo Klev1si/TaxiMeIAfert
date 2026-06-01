@@ -104,6 +104,10 @@ export const ridesApi = {
       params: { lat, lng, radius, limit, vehicleType },
     }),
 
+  /** GET /rides/:id — fetch any ride the caller owns (works for completed/cancelled too) */
+  getRideById: (rideId: string) =>
+    apiClient.get<Ride>(`/rides/${rideId}`),
+
   /** GET /rides/active — returns the caller's active ride or null (used on app restart) */
   getActiveRide: () =>
     apiClient.get<Ride | null>('/rides/active'),

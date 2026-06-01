@@ -12,14 +12,23 @@ export interface DriverFinance {
   cashOwedToCompany: number;
   cardTotal:         number;
   cardOwedToDriver:  number;
+  expensesTotal:     number;
 }
 
 export interface CompanySummary {
-  cashRevenue:        number;
-  cardRevenue:        number;
-  totalRevenue:       number;
-  cashOwedByDrivers:  number;
-  cardOwedToDrivers:  number;
+  cashRevenue:           number;
+  cardRevenue:           number;
+  totalRevenue:          number;
+  cashOwedByDrivers:     number;
+  cardOwedToDrivers:     number;
+  // Card breakdown for transparency
+  cardGross:             number;
+  platformFee:           number;
+  cardDriverShare:       number;
+  driverExpenses:        number;
+  companyCommissionPct:  number;
+  driverCommissionPct:   number;
+  platformCommissionPct: number;
 }
 
 export const companyFinancesApi = {

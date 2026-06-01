@@ -127,6 +127,22 @@ export class RidesController {
     return this.ridesService.getActiveRide(req.user.id, req.user.role);
   }
 
+  // ── GET /rides/:id ────────────────────────────────────────────────────────
+  /**
+   * Fetch any ride the caller owns (client or driver). Unlike /active, this
+   * works for completed/cancelled rides too — used by the RateRide screen
+   * to re-hydrate the ride after the store has been cleared on payment.
+   */
+  @Get(':id')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.CLIENT, UserRole.DRIVER)
+  getRideById(
+    @Request() req: { user: { id: string; role: UserRole } },
+    @Param('id', ParseUUIDPipe) rideId: string,
+  ): Promise<RideResponseDto> {
+    return this.ridesService.getRideById(req.user.id, req.user.role, rideId);
+  }
+
   // ── GET /rides/history ────────────────────────────────────────────────────
   /**
    * Returns paginated ride history for the authenticated user.
