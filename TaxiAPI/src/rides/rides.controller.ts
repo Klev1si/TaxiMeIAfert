@@ -127,22 +127,6 @@ export class RidesController {
     return this.ridesService.getActiveRide(req.user.id, req.user.role);
   }
 
-  // ── GET /rides/:id ────────────────────────────────────────────────────────
-  /**
-   * Fetch any ride the caller owns (client or driver). Unlike /active, this
-   * works for completed/cancelled rides too — used by the RateRide screen
-   * to re-hydrate the ride after the store has been cleared on payment.
-   */
-  @Get(':id')
-  @HttpCode(HttpStatus.OK)
-  @Roles(UserRole.CLIENT, UserRole.DRIVER)
-  getRideById(
-    @Request() req: { user: { id: string; role: UserRole } },
-    @Param('id', ParseUUIDPipe) rideId: string,
-  ): Promise<RideResponseDto> {
-    return this.ridesService.getRideById(req.user.id, req.user.role, rideId);
-  }
-
   // ── GET /rides/history ────────────────────────────────────────────────────
   /**
    * Returns paginated ride history for the authenticated user.
@@ -317,6 +301,26 @@ export class RidesController {
     @Query('period') period = 'all',
   ) {
     return this.ridesService.getDriverEarnings(req.user.id, period);
+  }
+
+  // ── GET /rides/:id ────────────────────────────────────────────────────────
+  /**
+   * Fetch any ride the caller owns (client or driver). Unlike /active, this
+   * works for completed/cancelled rides too — used by the RateRide screen
+   * to re-hydrate the ride after the store has been cleared on payment.
+   *
+   * Declared AFTER all static-path GETs (active, history, ratings, earnings)
+   * because NestJS matches in declaration order and the UUID pipe would
+   * otherwise reject those words with HTTP 400.
+   */
+  @Get(':id')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.CLIENT, UserRole.DRIVER)
+  getRideById(
+    @Request() req: { user: { id: string; role: UserRole } },
+    @Param('id', ParseUUIDPipe) rideId: string,
+  ): Promise<RideResponseDto> {
+    return this.ridesService.getRideById(req.user.id, req.user.role, rideId);
   }
 
   // ── POST /rides/:id/pay-cash ───────────────────────────────────────────────
