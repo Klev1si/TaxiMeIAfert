@@ -783,11 +783,18 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     ride.acceptedAt = new Date();
 
     // Auto-assign a tariff so fare can be calculated on complete.
-    // Uses selectActiveTariff() which prefers a matching night tariff when
-    // the current UTC hour falls inside the tariff's nightStartHour–nightEndHour
-    // window, otherwise falls back to the regular day tariff.
+    // Resolution order (high → low):
+    //   1. Solo driver's personal tariff (driverId set on tariff)
+    //   2. Company tariff (driver belongs to a company)
+    //   3. Global / admin platform tariff (companyId=null)
+    // Within the chosen pool: vehicle-type match → night-window match → day.
     {
-      const tariff = await this.selectActiveTariff(driver.companyId, new Date());
+      const tariff = await this.selectActiveTariff(
+        driver.companyId,
+        new Date(),
+        driver.vehicleType ?? null,
+        driver.id,
+      );
       if (tariff) {
         ride.tariffId = tariff.id;
         this.logger.debug(
