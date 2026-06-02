@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
+import { authApi } from '../../api/auth';
 import { companyApi } from '../../api/company';
 import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
@@ -27,6 +28,31 @@ export default function CompanyProfileScreen() {
   const { t } = useTranslation();
   const { user, logout } = useAuthStore();
   const [commissionModal, setCommissionModal] = useState(false);
+
+  // Company info — fetched from /auth/me since the auth store only carries the
+  // bare User row. Refreshed each time the edit modal closes successfully.
+  const [info, setInfo] = useState<{
+    companyName: string | null; address: string | null; city: string | null;
+    logoUrl: string | null; isApproved: boolean;
+  } | null>(null);
+  const [infoModal, setInfoModal] = useState(false);
+
+  const loadInfo = async () => {
+    try {
+      const { data } = await authApi.getMe();
+      // The /auth/me response for companies includes the company-specific fields.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const d = data as any;
+      setInfo({
+        companyName: d.companyName ?? null,
+        address:     d.address     ?? null,
+        city:        d.city        ?? null,
+        logoUrl:     d.logoUrl     ?? null,
+        isApproved:  !!d.isApproved,
+      });
+    } catch { /* network blip — show fallback */ }
+  };
+  useEffect(() => { loadInfo(); }, []);
 
   const handleLogout = () => {
     Alert.alert(t('company.profile.logoutTitle'), t('company.profile.logoutConfirm'), [
@@ -48,6 +74,30 @@ export default function CompanyProfileScreen() {
           <Row label={t('company.profile.phoneLabel')} value={user?.phone ?? '—'} />
           <Divider />
           <Row label={t('company.profile.userIdLabel')} value={(user?.id ?? '—').slice(0, 18) + '…'} mono />
+        </View>
+
+        {/* ── Company info card ── */}
+        <Text style={styles.sectionLabel}>Company info</Text>
+        <View style={styles.card}>
+          <Row label="Name"    value={info?.companyName ?? '—'} />
+          <Divider />
+          <Row label="Address" value={info?.address     ?? '—'} />
+          <Divider />
+          <Row label="City"    value={info?.city        ?? '—'} />
+          <Divider />
+          <Row
+            label="Approved"
+            value={info ? (info.isApproved ? '✓ Yes' : '⏳ Pending') : '—'}
+          />
+          <Divider />
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => setInfoModal(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Edit company info">
+            <Text style={styles.actionLabel}>✏️  Edit company info</Text>
+            <Text style={styles.actionChevron}>›</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── Settings ── */}
@@ -92,7 +142,160 @@ export default function CompanyProfileScreen() {
         visible={commissionModal}
         onClose={() => setCommissionModal(false)}
       />
+
+      {infoModal && info && (
+        <CompanyInfoModal
+          initial={info}
+          onClose={() => setInfoModal(false)}
+          onSaved={() => { setInfoModal(false); loadInfo(); }}
+        />
+      )}
     </SafeAreaView>
+  );
+}
+
+// ── CompanyInfoModal ──────────────────────────────────────────────────────────
+function CompanyInfoModal({
+  initial, onClose, onSaved,
+}: {
+  initial: {
+    companyName: string | null; address: string | null; city: string | null;
+    logoUrl: string | null; isApproved: boolean;
+  };
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const colors = useColors();
+  const cmStyles = useMemo(() => getCmStylesStyles(colors), [colors]);
+  const { t } = useTranslation();
+  const [name,    setName]    = useState(initial.companyName ?? '');
+  const [address, setAddress] = useState(initial.address     ?? '');
+  const [city,    setCity]    = useState(initial.city        ?? '');
+  const [logoUrl, setLogoUrl] = useState(initial.logoUrl     ?? '');
+  const [saving,  setSaving]  = useState(false);
+
+  const nameChanged = name.trim() !== (initial.companyName ?? '');
+
+  const submit = async () => {
+    setSaving(true);
+    try {
+      await authApi.updateProfile({
+        companyName: name.trim() || undefined,
+        address:     address.trim() ? address.trim() : '',
+        city:        city.trim()    ? city.trim()    : '',
+        logoUrl:     logoUrl.trim() ? logoUrl.trim() : '',
+      });
+      onSaved();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? 'Failed to update company info.';
+      Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSave = () => {
+    if (!name.trim()) {
+      Alert.alert(t('common.validation'), 'Company name is required.');
+      return;
+    }
+    if (nameChanged && initial.isApproved) {
+      Alert.alert(
+        'Re-approval required',
+        'Changing the company name revokes your approved status. An admin will need to re-approve you.\n\nContinue?',
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: 'Save anyway', style: 'destructive', onPress: submit },
+        ],
+      );
+    } else {
+      submit();
+    }
+  };
+
+  return (
+    <Modal visible animationType="slide" presentationStyle="formSheet" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <SafeAreaView style={cmStyles.safe}>
+          <View style={cmStyles.header}>
+            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Cancel">
+              <Text style={cmStyles.cancel}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+            <Text style={cmStyles.title}>Company info</Text>
+            <TouchableOpacity onPress={handleSave} disabled={saving} accessibilityRole="button" accessibilityLabel="Save">
+              {saving
+                ? <ActivityIndicator size="small" color={colors.primary} />
+                : <Text style={cmStyles.save}>{t('common.save')}</Text>}
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={{ padding: 24, gap: 8 }}>
+            <Text style={cmStyles.description}>
+              Address, city, and logo are safe self-edits. Changing the company
+              name will require admin re-approval.
+            </Text>
+
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              Company name
+            </Text>
+            <TextInput
+              style={cmStyles.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="Acme Taxi LLC"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="words"
+              maxLength={150}
+            />
+            {nameChanged && initial.isApproved && (
+              <Text style={{ fontSize: 12, color: '#92400E' }}>
+                ⚠ Saving will revoke your approval until an admin re-approves.
+              </Text>
+            )}
+
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              Address
+            </Text>
+            <TextInput
+              style={cmStyles.input}
+              value={address}
+              onChangeText={setAddress}
+              placeholder="Street, building, etc."
+              placeholderTextColor={colors.textSecondary}
+              maxLength={300}
+            />
+
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              City
+            </Text>
+            <TextInput
+              style={cmStyles.input}
+              value={city}
+              onChangeText={setCity}
+              placeholder="e.g. Pristina"
+              placeholderTextColor={colors.textSecondary}
+              maxLength={100}
+            />
+
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              Logo URL
+            </Text>
+            <TextInput
+              style={cmStyles.input}
+              value={logoUrl}
+              onChangeText={setLogoUrl}
+              placeholder="https://…"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="none"
+              maxLength={500}
+            />
+            <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: -2 }}>
+              Paste a public image URL — file upload isn't supported yet for company logos.
+            </Text>
+          </ScrollView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 

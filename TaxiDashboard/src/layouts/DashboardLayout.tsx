@@ -20,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/dashboard/tariffs',   label: 'Tariffs',      icon: '💰' },
   { to: '/dashboard/earnings',     label: 'Earnings',     icon: '💵', companyOnly: true },
   { to: '/dashboard/subscription', label: 'Subscription', icon: '💳', companyOnly: true },
+  { to: '/dashboard/profile',      label: 'Profile',      icon: '🏢', companyOnly: true },
   { to: '/dashboard/companies',    label: 'Companies',    icon: '🏢', adminOnly: true },
   { to: '/dashboard/plans',        label: 'Plans',        icon: '📋', adminOnly: true },
   { to: '/dashboard/promo-codes',  label: 'Promo Codes',  icon: '🏷️', adminOnly: true },

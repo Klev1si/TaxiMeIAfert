@@ -51,9 +51,14 @@ function EditProfileModal({
   onSaved,
 }: {
   visible: boolean;
-  initial: { firstName: string; lastName: string; vehicleColor: string };
+  initial: {
+    firstName: string; lastName: string; vehicleColor: string;
+    vehicleMake: string; vehicleModel: string; vehicleYear: string;
+    isApproved: boolean;
+  };
   onClose: () => void;
-  onSaved: (firstName: string, lastName: string, vehicleColor: string) => void;
+  /** Called with the full updated driver profile returned by the API. */
+  onSaved: (updated: Partial<DriverProfile>) => void;
 }) {
   const colors = useColors();
   const modalStyles = useMemo(() => getModalStyles(colors), [colors]);
@@ -61,6 +66,9 @@ function EditProfileModal({
   const [firstName,    setFirstName]    = useState(initial.firstName);
   const [lastName,     setLastName]     = useState(initial.lastName);
   const [vehicleColor, setVehicleColor] = useState(initial.vehicleColor);
+  const [vehicleMake,  setVehicleMake]  = useState(initial.vehicleMake);
+  const [vehicleModel, setVehicleModel] = useState(initial.vehicleModel);
+  const [vehicleYear,  setVehicleYear]  = useState(initial.vehicleYear);
   const [saving,       setSaving]       = useState(false);
 
   useEffect(() => {
@@ -68,27 +76,73 @@ function EditProfileModal({
       setFirstName(initial.firstName);
       setLastName(initial.lastName);
       setVehicleColor(initial.vehicleColor);
+      setVehicleMake(initial.vehicleMake);
+      setVehicleModel(initial.vehicleModel);
+      setVehicleYear(initial.vehicleYear);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
+
+  // Highlight which fields revoke approval so the driver isn't surprised.
+  const vehicleChanged =
+    vehicleMake.trim()  !== initial.vehicleMake  ||
+    vehicleModel.trim() !== initial.vehicleModel ||
+    vehicleYear.trim()  !== initial.vehicleYear;
 
   const handleSave = async () => {
     const fn = firstName.trim();
     const ln = lastName.trim();
     const vc = vehicleColor.trim();
+    const vmk = vehicleMake.trim();
+    const vmd = vehicleModel.trim();
+    const vyStr = vehicleYear.trim();
     if (!fn) { Alert.alert(t('common.validation'), t('driver.profile.firstNameRequired')); return; }
-    setSaving(true);
-    try {
-      await authApi.updateProfile({
-        firstName: fn,
-        lastName: ln || undefined,
-        vehicleColor: vc || undefined,
-      });
-      onSaved(fn, ln, vc);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message ?? t('driver.profile.saveFailMsg');
-      Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
-    } finally {
-      setSaving(false);
+    if (vmk && vmk.length < 2)  { Alert.alert(t('common.validation'), 'Vehicle make is too short.'); return; }
+    if (vmd && vmd.length < 1)  { Alert.alert(t('common.validation'), 'Vehicle model is required.'); return; }
+    let vy: number | undefined;
+    if (vyStr) {
+      vy = parseInt(vyStr, 10);
+      const thisYear = new Date().getFullYear();
+      if (!Number.isFinite(vy) || vy < 1900 || vy > thisYear + 1) {
+        Alert.alert(t('common.validation'), `Vehicle year must be between 1900 and ${thisYear + 1}.`);
+        return;
+      }
+    }
+
+    const doSave = async () => {
+      setSaving(true);
+      try {
+        const { data } = await authApi.updateProfile({
+          firstName: fn,
+          lastName:  ln || undefined,
+          vehicleColor: vc || undefined,
+          vehicleMake:  vmk || undefined,
+          vehicleModel: vmd || undefined,
+          vehicleYear:  vy,
+        });
+        onSaved(data as Partial<DriverProfile>);
+      } catch (err: any) {
+        const msg = err?.response?.data?.message ?? t('driver.profile.saveFailMsg');
+        Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    if (vehicleChanged && initial.isApproved) {
+      // Confirm before re-approval-revoking action.
+      Alert.alert(
+        'Re-approval required',
+        'Changing vehicle make, model, or year revokes your approved status. ' +
+        'You won\'t be able to accept rides until an admin re-approves you.\n\n' +
+        'Continue?',
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: 'Save anyway', style: 'destructive', onPress: doSave },
+        ],
+      );
+    } else {
+      await doSave();
     }
   };
 
@@ -133,9 +187,57 @@ function EditProfileModal({
               placeholder={t('driver.profile.vehicleColorPlaceholder')}
               placeholderTextColor={colors.textDisabled}
               autoCapitalize="words"
-              returnKeyType="done"
+              returnKeyType="next"
               maxLength={40}
-              accessibilityLabel={t('driver.profile.vehicleColorLabel')}
+            />
+
+            <View style={{
+              marginTop: 4, marginBottom: 8,
+              padding: 10, borderRadius: 8,
+              backgroundColor: vehicleChanged ? '#FEF3C7' : colors.surfaceAlt ?? colors.surface,
+              borderWidth: 1, borderColor: vehicleChanged ? '#F59E0B' : colors.border,
+            }}>
+              <Text style={{ fontSize: 11, color: vehicleChanged ? '#92400E' : colors.textSecondary }}>
+                {vehicleChanged
+                  ? '⚠ Saving will revoke your approval until an admin re-approves you.'
+                  : 'ⓘ Changing make / model / year requires admin re-approval before you can accept rides.'}
+              </Text>
+            </View>
+
+            <Text style={modalStyles.label}>Vehicle make</Text>
+            <TextInput
+              style={modalStyles.input}
+              value={vehicleMake}
+              onChangeText={setVehicleMake}
+              placeholder="e.g. Toyota"
+              placeholderTextColor={colors.textDisabled}
+              autoCapitalize="words"
+              returnKeyType="next"
+              maxLength={60}
+            />
+
+            <Text style={modalStyles.label}>Vehicle model</Text>
+            <TextInput
+              style={modalStyles.input}
+              value={vehicleModel}
+              onChangeText={setVehicleModel}
+              placeholder="e.g. Corolla"
+              placeholderTextColor={colors.textDisabled}
+              autoCapitalize="words"
+              returnKeyType="next"
+              maxLength={60}
+            />
+
+            <Text style={modalStyles.label}>Vehicle year</Text>
+            <TextInput
+              style={modalStyles.input}
+              value={vehicleYear}
+              onChangeText={setVehicleYear}
+              placeholder="e.g. 2020"
+              placeholderTextColor={colors.textDisabled}
+              keyboardType="number-pad"
+              returnKeyType="done"
+              maxLength={4}
             />
 
             <View style={modalStyles.row}>
@@ -368,8 +470,10 @@ export default function DriverProfileScreen() {
     );
   };
 
-  const handleProfileSaved = (firstName: string, lastName: string, vehicleColor: string) => {
-    setProfile(prev => prev ? { ...prev, firstName, lastName, vehicleColor: vehicleColor || null } : prev);
+  const handleProfileSaved = (updated: Partial<DriverProfile>) => {
+    // Merge the new fields returned by the API into the existing profile so
+    // re-approval revocation, vehicle changes, etc. are reflected immediately.
+    setProfile(prev => prev ? { ...prev, ...updated } : prev);
     setEditVisible(false);
   };
 
@@ -809,6 +913,10 @@ export default function DriverProfileScreen() {
           firstName:    profile?.firstName    ?? '',
           lastName:     profile?.lastName     ?? '',
           vehicleColor: profile?.vehicleColor ?? '',
+          vehicleMake:  profile?.vehicleMake  ?? '',
+          vehicleModel: profile?.vehicleModel ?? '',
+          vehicleYear:  profile?.vehicleYear != null ? String(profile.vehicleYear) : '',
+          isApproved:   profile?.isApproved  ?? false,
         }}
         onClose={() => setEditVisible(false)}
         onSaved={handleProfileSaved}

@@ -115,8 +115,22 @@ export const authApi = {
   resetPassword: (payload: ResetPasswordPayload) =>
     apiClient.post<void>('/auth/reset-password', payload),
 
-  /** PATCH /auth/profile — update firstName / lastName (and vehicleColor for drivers) */
-  updateProfile: (payload: { firstName?: string; lastName?: string; vehicleColor?: string }) =>
+  /** PATCH /auth/profile — update editable fields for the current role. */
+  updateProfile: (payload: {
+    // Client + driver
+    firstName?:    string;
+    lastName?:     string;
+    // Driver only
+    vehicleColor?: string;
+    vehicleMake?:  string;
+    vehicleModel?: string;
+    vehicleYear?:  number;
+    // Company only
+    companyName?:  string;
+    address?:      string;
+    city?:         string;
+    logoUrl?:      string;
+  }) =>
     apiClient.patch('/auth/profile', payload),
 
   /** PATCH /auth/change-password — verifies current password then saves new one */

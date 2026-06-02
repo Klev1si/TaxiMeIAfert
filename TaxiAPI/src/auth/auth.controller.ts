@@ -25,8 +25,9 @@ import { unlinkSync, mkdirSync, existsSync } from 'fs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
-  IsString, IsOptional, MaxLength, MinLength, IsNotEmpty,
+  IsString, IsOptional, MaxLength, MinLength, IsNotEmpty, IsInt, Min, Max,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -34,7 +35,7 @@ import { AuthTokensDto } from './dto/auth-tokens.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
-import { Client, Driver, User } from '../entities';
+import { Client, Company, Driver, User } from '../entities';
 
 // ── Avatar upload config ──────────────────────────────────────────────────────
 const AVATARS_DIR = join(process.cwd(), 'uploads', 'avatars');
@@ -75,6 +76,33 @@ class UpdateProfileDto {
   /** Drivers only — update vehicle colour without requiring admin re-approval */
   @IsString() @MaxLength(40) @IsOptional()
   vehicleColor?: string;
+
+  /**
+   * Drivers only — vehicle make/model/year edits revoke `isApproved`. The
+   * driver must wait for admin re-approval before they can accept rides.
+   */
+  @IsString() @IsNotEmpty() @MaxLength(60) @IsOptional()
+  vehicleMake?: string;
+
+  @IsString() @IsNotEmpty() @MaxLength(60) @IsOptional()
+  vehicleModel?: string;
+
+  @IsInt() @Min(1900) @Max(new Date().getFullYear() + 1) @IsOptional() @Type(() => Number)
+  vehicleYear?: number;
+
+  // ── Company-only fields ───────────────────────────────────────────────────
+  /** Company name — changing this revokes `isApproved` until admin re-approves. */
+  @IsString() @IsNotEmpty() @MaxLength(150) @IsOptional()
+  companyName?: string;
+
+  @IsString() @MaxLength(300) @IsOptional()
+  address?: string;
+
+  @IsString() @MaxLength(100) @IsOptional()
+  city?: string;
+
+  @IsString() @MaxLength(500) @IsOptional()
+  logoUrl?: string;
 }
 
 class ChangePasswordDto {
@@ -89,10 +117,11 @@ class ChangePasswordDto {
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    @InjectRepository(Client) private readonly clientRepo: Repository<Client>,
-    @InjectRepository(Driver) private readonly driverRepo: Repository<Driver>,
-    @InjectRepository(User)   private readonly userRepo: Repository<User>,
-    @InjectRepository(Ride)   private readonly rideRepo:   Repository<Ride>,
+    @InjectRepository(Client)  private readonly clientRepo:  Repository<Client>,
+    @InjectRepository(Driver)  private readonly driverRepo:  Repository<Driver>,
+    @InjectRepository(Company) private readonly companyRepo: Repository<Company>,
+    @InjectRepository(User)    private readonly userRepo:    Repository<User>,
+    @InjectRepository(Ride)    private readonly rideRepo:    Repository<Ride>,
   ) {}
 
   // GET /auth/me — returns profile for the authenticated user
@@ -117,6 +146,20 @@ export class AuthController {
         vehicleType:   driver?.vehicleType   ?? null,
         // companyId — null = solo driver (manages own tariff + keeps 100%)
         companyId:     driver?.companyId     ?? null,
+      };
+    }
+    if (user.role === 'company') {
+      const company = await this.companyRepo.findOne({ where: { userId: user.id } });
+      return {
+        id: user.id, phone: user.phone, email: user.email ?? null, role: user.role,
+        avatarUrl: user.avatarUrl ?? null,
+        companyName: company?.name    ?? null,
+        address:     company?.address ?? null,
+        city:        company?.city    ?? null,
+        logoUrl:     company?.logoUrl ?? null,
+        isApproved:  company?.isApproved ?? false,
+        driverCommissionPct: company?.driverCommissionPct != null
+          ? Number(company.driverCommissionPct) : null,
       };
     }
     const client = await this.clientRepo.findOne({ where: { userId: user.id } });
@@ -237,17 +280,41 @@ export class AuthController {
     @CurrentUser() user: User,
     @Body() dto: UpdateProfileDto,
   ) {
+    // ── Driver ────────────────────────────────────────────────────────────
     if (user.role === 'driver') {
       const driver = await this.driverRepo.findOne({ where: { userId: user.id } });
       if (!driver) throw new BadRequestException('Driver profile not found');
 
-      if (dto.firstName !== undefined) driver.firstName = dto.firstName.trim();
-      if (dto.lastName  !== undefined) driver.lastName  = dto.lastName.trim();
-      if (dto.vehicleColor !== undefined) driver.vehicleColor = dto.vehicleColor.trim() || null;
+      if (dto.firstName     !== undefined) driver.firstName    = dto.firstName.trim();
+      if (dto.lastName      !== undefined) driver.lastName     = dto.lastName.trim();
+      if (dto.vehicleColor  !== undefined) driver.vehicleColor = dto.vehicleColor.trim() || null;
+
+      // Vehicle-identifying fields trigger admin re-approval. We compare
+      // trimmed strings so a no-op edit (e.g., same value retyped) doesn't
+      // unnecessarily block the driver from accepting rides.
+      let needsReapproval = false;
+      if (dto.vehicleMake !== undefined) {
+        const v = dto.vehicleMake.trim();
+        if (v !== driver.vehicleMake) { driver.vehicleMake = v; needsReapproval = true; }
+      }
+      if (dto.vehicleModel !== undefined) {
+        const v = dto.vehicleModel.trim();
+        if (v !== driver.vehicleModel) { driver.vehicleModel = v; needsReapproval = true; }
+      }
+      if (dto.vehicleYear !== undefined) {
+        const v = dto.vehicleYear;
+        if (v !== driver.vehicleYear) { driver.vehicleYear = v; needsReapproval = true; }
+      }
+      if (needsReapproval && driver.isApproved) {
+        driver.isApproved = false;
+        // If they're online, force them offline so dispatch stops sending rides.
+        driver.isOnline = false;
+      }
       await this.driverRepo.save(driver);
 
       return {
-        id: user.id, phone: user.phone, role: user.role,
+        id: user.id, phone: user.phone, email: user.email ?? null, role: user.role,
+        avatarUrl: user.avatarUrl ?? null,
         firstName:   driver.firstName,
         lastName:    driver.lastName,
         rating:      driver.rating != null ? Number(driver.rating) : null,
@@ -258,10 +325,45 @@ export class AuthController {
         vehiclePlate: driver.vehiclePlate,
         vehicleColor: driver.vehicleColor,
         vehicleYear:  driver.vehicleYear,
+        vehicleType:  driver.vehicleType,
+        companyId:    driver.companyId,
       };
     }
 
-    // Client or company
+    // ── Company ───────────────────────────────────────────────────────────
+    if (user.role === 'company') {
+      const company = await this.companyRepo.findOne({ where: { userId: user.id } });
+      if (!company) throw new BadRequestException('Company profile not found');
+
+      let needsReapproval = false;
+      if (dto.companyName !== undefined) {
+        const v = dto.companyName.trim();
+        if (v !== company.name) { company.name = v; needsReapproval = true; }
+      }
+      if (dto.address !== undefined) company.address = dto.address.trim() || null;
+      if (dto.city    !== undefined) company.city    = dto.city.trim()    || null;
+      if (dto.logoUrl !== undefined) company.logoUrl = dto.logoUrl.trim() || null;
+
+      if (needsReapproval && company.isApproved) {
+        company.isApproved = false;
+        company.approvedAt = null;
+      }
+      await this.companyRepo.save(company);
+
+      return {
+        id: user.id, phone: user.phone, email: user.email ?? null, role: user.role,
+        avatarUrl: user.avatarUrl ?? null,
+        companyName: company.name,
+        address:     company.address,
+        city:        company.city,
+        logoUrl:     company.logoUrl,
+        isApproved:  company.isApproved,
+        driverCommissionPct: company.driverCommissionPct != null
+          ? Number(company.driverCommissionPct) : null,
+      };
+    }
+
+    // ── Client ────────────────────────────────────────────────────────────
     const client = await this.clientRepo.findOne({ where: { userId: user.id } });
     if (!client) throw new BadRequestException('Client profile not found');
 
@@ -270,7 +372,8 @@ export class AuthController {
     await this.clientRepo.save(client);
 
     return {
-      id: user.id, phone: user.phone, role: user.role,
+      id: user.id, phone: user.phone, email: user.email ?? null, role: user.role,
+      avatarUrl: user.avatarUrl ?? null,
       firstName: client.firstName,
       lastName:  client.lastName,
       rating:    client.rating != null ? Number(client.rating) : null,
