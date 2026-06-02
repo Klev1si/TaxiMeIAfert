@@ -19,7 +19,8 @@ import { useAuthStore } from '../../stores/authStore';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
 import { savedLocationsApi, type SavedLocation } from '../../api/saved-locations';
-import { useColors } from '../../stores/themeStore';
+import { useColors, useTheme } from '../../stores/themeStore';
+import { DARK_MAP_STYLE } from '../../constants/mapStyles';
 import { useTranslation } from '../../i18n';
 import type { ColorPalette } from '../../constants/colors';
 import type { NearestDriver } from '../../types/api';
@@ -34,6 +35,7 @@ export default function ClientHomeScreen({ navigation }: Props) {
   const { user } = useAuthStore();
   const { activeRide, nearestDrivers, setNearestDrivers, setActiveRide } = useRideStore();
   const colors = useColors();
+  const { isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
 
@@ -247,6 +249,7 @@ export default function ClientHomeScreen({ navigation }: Props) {
         ref={mapRef}
         style={styles.map}
         provider={PROVIDER_GOOGLE}
+        customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
         showsUserLocation
         showsMyLocationButton={false}
         onUserLocationChange={handleUserLocationChange}

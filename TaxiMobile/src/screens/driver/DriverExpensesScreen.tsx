@@ -466,7 +466,7 @@ function getStyles(c: ColorPalette) {
     paddingTop: 56,
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: c.white,
+    backgroundColor: c.surface,
     borderBottomWidth: 1,
     borderBottomColor: c.border,
   },
@@ -490,7 +490,7 @@ function getStyles(c: ColorPalette) {
   // Filter pills
   pillRow: {
     maxHeight: 48,
-    backgroundColor: c.white,
+    backgroundColor: c.surface,
   },
   pillRowContent: {
     paddingHorizontal: 12,
@@ -503,7 +503,7 @@ function getStyles(c: ColorPalette) {
     borderColor: c.border,
     paddingHorizontal: 12,
     paddingVertical: 4,
-    backgroundColor: c.white,
+    backgroundColor: c.surface,
   },
   pillActive: {
     backgroundColor: c.primary,
@@ -572,7 +572,7 @@ function getStyles(c: ColorPalette) {
     marginBottom: 8,
   },
   expenseCard: {
-    backgroundColor: c.white,
+    backgroundColor: c.surface,
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
@@ -646,7 +646,7 @@ function getStyles(c: ColorPalette) {
     paddingTop: Platform.OS === 'ios' ? 56 : 20,
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: c.white,
+    backgroundColor: c.surface,
     borderBottomWidth: 1,
     borderBottomColor: c.border,
   },
@@ -680,7 +680,7 @@ function getStyles(c: ColorPalette) {
     letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: c.white,
+    backgroundColor: c.surface,
     borderWidth: 1,
     borderColor: c.border,
     borderRadius: 10,
@@ -696,7 +696,7 @@ function getStyles(c: ColorPalette) {
 
   // Type selector
   typeSelector: {
-    backgroundColor: c.white,
+    backgroundColor: c.surface,
     borderWidth: 1,
     borderColor: c.border,
     borderRadius: 10,
@@ -716,7 +716,7 @@ function getStyles(c: ColorPalette) {
     lineHeight: 22,
   },
   typeList: {
-    backgroundColor: c.white,
+    backgroundColor: c.surface,
     borderWidth: 1,
     borderColor: c.border,
     borderRadius: 10,

@@ -16,7 +16,8 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
 import { socketService } from '../../services/socket';
-import { useColors } from '../../stores/themeStore';
+import { useColors, useTheme } from '../../stores/themeStore';
+import { DARK_MAP_STYLE } from '../../constants/mapStyles';
 import { useTranslation } from '../../i18n';
 import type { ColorPalette } from '../../constants/colors';
 import CancelRideModal from '../../components/CancelRideModal';
@@ -83,6 +84,7 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
   const { rideId, driverName, vehicleMake, vehicleModel, vehiclePlate, vehicleColor } = route.params;
   const { activeRide, clearAll } = useRideStore();
   const colors = useColors();
+  const { isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
   const STATUS_COLOR = useMemo(() => getStatusColor(colors), [colors]);
@@ -371,6 +373,7 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
         ref={mapRef}
         style={styles.map}
         provider={PROVIDER_GOOGLE}
+        customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
         showsUserLocation
         initialRegion={{
           latitude: ride.pickupLat,

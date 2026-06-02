@@ -9,8 +9,10 @@ import {
   TextInput,
   FlatList,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
+  ScrollView,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import MapView, {
@@ -31,7 +33,8 @@ import {
   NEARBY_CATEGORIES,
   type PlaceResult,
 } from '../../services/geocoding';
-import { useColors } from '../../stores/themeStore';
+import { useColors, useTheme } from '../../stores/themeStore';
+import { DARK_MAP_STYLE } from '../../constants/mapStyles';
 import { useTranslation } from '../../i18n';
 import type { ColorPalette } from '../../constants/colors';
 import type { WsRideAccepted, WsRideCancelled } from '../../types/api';
@@ -80,6 +83,7 @@ export default function RideRequestScreen({ navigation, route }: Props) {
 
   const { setActiveRide, setIsSearching, isSearching, clearAll } = useRideStore();
   const colors = useColors();
+  const { isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
 
@@ -432,9 +436,38 @@ export default function RideRequestScreen({ navigation, route }: Props) {
       },
     );
 
+    // Polling fallback — if the WS event is missed (socket reconnect, app
+    // backgrounded, network blip), poll the active ride every 4 s and
+    // navigate forward the moment we see the ride has been accepted by a
+    // driver. Keeps the "Searching…" UI from being stuck forever.
+    const poll = setInterval(async () => {
+      try {
+        const { data } = await ridesApi.getActiveRide();
+        if (!data) return;
+        // Anything past REQUESTED means a driver accepted (or beyond).
+        const liveStatuses = ['accepted', 'driving_to_pickup', 'in_progress'];
+        if (liveStatuses.includes(data.status)) {
+          setIsSearching(false);
+          navigation.replace('ActiveRide', {
+            rideId:       data.id,
+            driverName:   undefined, // ActiveRide will refetch full details
+            vehicleMake:  undefined,
+            vehicleModel: undefined,
+            vehiclePlate: undefined,
+            vehicleColor: undefined,
+          });
+        } else if (data.status === 'cancelled') {
+          setIsSearching(false);
+          clearAll();
+          navigation.goBack();
+        }
+      } catch { /* network blip — try again next tick */ }
+    }, 4000);
+
     return () => {
       unsubAccepted();
       unsubCancelled();
+      clearInterval(poll);
     };
   }, [isSearching, navigation, setIsSearching, clearAll]);
 
@@ -538,7 +571,8 @@ export default function RideRequestScreen({ navigation, route }: Props) {
         provider={PROVIDER_GOOGLE}
         initialRegion={pickupRegion}
         onPress={handleMapPress}
-        showsUserLocation>
+        showsUserLocation
+        customMapStyle={isDark ? DARK_MAP_STYLE : undefined}>
 
         {/* Pickup marker */}
         <Marker
@@ -608,7 +642,14 @@ export default function RideRequestScreen({ navigation, route }: Props) {
       {/* Bottom card */}
       {!isSearching && (
         <SafeAreaView edges={['bottom']} style={styles.bottomArea}>
-          <View style={styles.bottomCard}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ width: '100%' }}>
+          <ScrollView
+            style={styles.bottomCard}
+            contentContainerStyle={{ paddingBottom: 8 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
 
             {/* Pickup row */}
             <View style={styles.locationRow}>
@@ -1115,7 +1156,8 @@ export default function RideRequestScreen({ navigation, route }: Props) {
                 </Text>
               )}
             </TouchableOpacity>
-          </View>
+          </ScrollView>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       )}
 
@@ -1233,7 +1275,7 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
   cancelBtnText: { fontSize: 15, fontWeight: '700', color: c.error },
 
   // Bottom card
-  bottomArea: { position: 'absolute', bottom: 0, left: 0, right: 0 },
+  bottomArea: { position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '80%' },
   bottomCard: {
     marginHorizontal: 16,
     marginBottom: 12,

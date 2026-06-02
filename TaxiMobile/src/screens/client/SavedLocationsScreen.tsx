@@ -10,6 +10,7 @@ import { savedLocationsApi, type SavedLocation } from '../../api/saved-locations
 import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
 import { useTranslation } from '../../i18n';
+import { searchPlaces, type PlaceResult } from '../../services/geocoding';
 import type { ColorPalette } from '../../constants/colors';
 
 // ── Label quick-suggestions ───────────────────────────────────────────────────
@@ -84,6 +85,33 @@ function EditModal({ visible, initial, onClose, onSaved }: EditModalProps) {
     );
   };
 
+  // ── Address-search fallback (for when GPS fails / is denied) ──────────────
+  const [searchResults, setSearchResults] = useState<PlaceResult[]>([]);
+  const [searching,     setSearching]     = useState(false);
+
+  const doAddressSearch = async () => {
+    const q = address.trim();
+    if (q.length < 2) {
+      Alert.alert(t('common.validation'), 'Type at least 2 characters in the address field, then tap "Find on map".');
+      return;
+    }
+    setSearching(true);
+    const results = await searchPlaces(q);
+    setSearching(false);
+    setSearchResults(results);
+    if (results.length === 0) {
+      Alert.alert('No matches', 'No places found for that address. Try a different spelling.');
+    }
+  };
+
+  const pickSearchResult = (r: PlaceResult) => {
+    setLat(r.lat);
+    setLng(r.lng);
+    setAddress(r.shortLabel);
+    setGpsState('done');
+    setSearchResults([]);
+  };
+
   const handleSave = async () => {
     const trimmedLabel = label.trim();
     if (!trimmedLabel)  { Alert.alert(t('common.validation'), t('client.savedLocations.labelRequired')); return; }
@@ -115,8 +143,11 @@ function EditModal({ visible, initial, onClose, onSaved }: EditModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={modal.backdrop} onPress={onClose}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
           <Pressable style={modal.sheet} onPress={() => {}}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
             <Text style={modal.title}>{isEdit ? t('client.savedLocations.editTitle') : t('client.savedLocations.addTitle')}</Text>
 
             {/* Label suggestions */}
@@ -193,6 +224,43 @@ function EditModal({ visible, initial, onClose, onSaved }: EditModalProps) {
               <Text style={modal.gpsError}>{t('client.savedLocations.gpsErrorMsg')}</Text>
             )}
 
+            {/* Address-search fallback — works when GPS is off / denied */}
+            <TouchableOpacity
+              style={[modal.gpsBtn, { marginTop: 8, opacity: searching ? 0.6 : 1 }]}
+              onPress={doAddressSearch}
+              disabled={searching}
+              accessibilityRole="button"
+              accessibilityLabel="Find this address on the map">
+              {searching
+                ? <ActivityIndicator color={colors.primary} size="small" />
+                : <Text style={modal.gpsBtnText}>🔍 Find address on the map</Text>}
+            </TouchableOpacity>
+            {searchResults.length > 0 && (
+              <View style={{
+                marginTop: 6, borderRadius: 10,
+                borderWidth: 1, borderColor: colors.border,
+                backgroundColor: colors.surface,
+                maxHeight: 200,
+              }}>
+                <ScrollView keyboardShouldPersistTaps="handled">
+                  {searchResults.map((r, idx) => (
+                    <TouchableOpacity
+                      key={`${r.lat},${r.lng},${idx}`}
+                      style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}
+                      onPress={() => pickSearchResult(r)}
+                      activeOpacity={0.7}>
+                      <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>
+                        📍 {r.shortLabel}
+                      </Text>
+                      <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 2 }} numberOfLines={1}>
+                        {r.displayName}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
             <View style={modal.actions}>
               <TouchableOpacity
                 style={modal.btnCancel}
@@ -215,6 +283,7 @@ function EditModal({ visible, initial, onClose, onSaved }: EditModalProps) {
                   : <Text style={modal.btnSaveText}>{t('common.save')}</Text>}
               </TouchableOpacity>
             </View>
+          </ScrollView>
           </Pressable>
         </KeyboardAvoidingView>
       </Pressable>
@@ -440,6 +509,7 @@ function getModalStyles(c: ColorPalette) { return StyleSheet.create({
   sheet: {
     backgroundColor: c.background, borderRadius: 20,
     padding: 24, width: '100%', maxWidth: 420,
+    maxHeight: '85%',
   },
   title: {
     fontSize: 18, fontWeight: '800', color: c.text,
