@@ -29,6 +29,7 @@ import { crash } from '../../services/crashlytics';
 import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
 import { useTranslation } from '../../i18n';
+import { isStripeConfigured } from '../../config';
 import type { ColorPalette } from '../../constants/colors';
 import type { WsPaymentConfirmed } from '../../types/api';
 import type { ClientStackScreenProps } from '../../navigation/types';
@@ -538,13 +539,13 @@ export default function PayCashScreen({ navigation, route }: Props) {
 
               ) : method === 'saved_card' ? (
                 <TouchableOpacity
-                  style={[styles.primaryBtn, styles.cardBtn, isCardBusy && styles.btnDisabled]}
+                  style={[styles.primaryBtn, styles.cardBtn, (isCardBusy || !isStripeConfigured) && styles.btnDisabled]}
                   onPress={handleSavedCardPay}
-                  disabled={isCardBusy}
+                  disabled={isCardBusy || !isStripeConfigured}
                   activeOpacity={0.85}
                   accessibilityRole="button"
                   accessibilityLabel={cardState === 'failed' ? 'Retry card payment' : 'Pay now with saved card'}
-                  accessibilityState={{ disabled: isCardBusy }}>
+                  accessibilityState={{ disabled: isCardBusy || !isStripeConfigured }}>
                   {isCardBusy
                     ? <ActivityIndicator color="#FFFFFF" />
                     : <Text style={styles.cardBtnText}>
@@ -554,19 +555,24 @@ export default function PayCashScreen({ navigation, route }: Props) {
 
               ) : (
                 <TouchableOpacity
-                  style={[styles.primaryBtn, styles.cardBtn, isCardBusy && styles.btnDisabled]}
+                  style={[styles.primaryBtn, styles.cardBtn, (isCardBusy || !isStripeConfigured) && styles.btnDisabled]}
                   onPress={handleCardPay}
-                  disabled={isCardBusy}
+                  disabled={isCardBusy || !isStripeConfigured}
                   activeOpacity={0.85}
                   accessibilityRole="button"
                   accessibilityLabel={cardState === 'failed' ? 'Retry card payment' : 'Pay by card'}
-                  accessibilityState={{ disabled: isCardBusy }}>
+                  accessibilityState={{ disabled: isCardBusy || !isStripeConfigured }}>
                   {isCardBusy
                     ? <ActivityIndicator color="#FFFFFF" />
                     : <Text style={styles.cardBtnText}>
                         {cardState === 'failed' ? t('client.payCash.retryCardBtn') : t('client.payCash.payByCardBtn')}
                       </Text>}
                 </TouchableOpacity>
+              )}
+              {!isStripeConfigured && (
+                <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center', marginTop: 6, paddingHorizontal: 16 }}>
+                  💡 Card payments are not enabled in this build. Cash works as usual.
+                </Text>
               )}
 
               <TouchableOpacity

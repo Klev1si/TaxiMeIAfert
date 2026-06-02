@@ -45,4 +45,22 @@ const Config = {
   STRIPE_PUBLISHABLE_KEY: RNConfig.STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder',
 };
 
+/**
+ * True when the Stripe publishable key looks real (right prefix + reasonable
+ * length). When false, the PayCash screen hides the "Pay with Card" option
+ * and shows a friendly note instead of a cryptic "Invalid API Key" Stripe
+ * error. Update .env.production with a real key from
+ * Stripe Dashboard → Developers → API keys to enable card payments.
+ */
+export const isStripeConfigured: boolean = (() => {
+  const key = Config.STRIPE_PUBLISHABLE_KEY;
+  if (!key) return false;
+  if (!key.startsWith('pk_test_') && !key.startsWith('pk_live_')) return false;
+  // Placeholders we ship in the repo: pk_test_placeholder, pk_live_YOUR_…
+  if (key.includes('placeholder')) return false;
+  if (key.includes('YOUR_')) return false;
+  if (key.length < 40) return false; // real Stripe keys are ~100+ chars
+  return true;
+})();
+
 export default Config;

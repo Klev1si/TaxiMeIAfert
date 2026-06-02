@@ -22,6 +22,7 @@ import { paymentsApi, type SavedPaymentMethod } from '../../api/payments';
 import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
 import { useTranslation } from '../../i18n';
+import { isStripeConfigured } from '../../config';
 import type { ColorPalette } from '../../constants/colors';
 
 const BRAND_ICONS: Record<string, string> = {
@@ -193,17 +194,22 @@ export default function ManageCardsScreen() {
       {/* Add Card button */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.addBtn, adding && styles.addBtnDisabled]}
+          style={[styles.addBtn, (adding || !isStripeConfigured) && styles.addBtnDisabled]}
           onPress={handleAddCard}
-          disabled={adding}
+          disabled={adding || !isStripeConfigured}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Add new card"
-          accessibilityState={{ disabled: adding }}>
+          accessibilityState={{ disabled: adding || !isStripeConfigured }}>
           {adding
             ? <ActivityIndicator color="#fff" />
             : <Text style={styles.addBtnText}>＋  {t('client.manageCards.addCardBtn')}</Text>}
         </TouchableOpacity>
+        {!isStripeConfigured && (
+          <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center', marginTop: 8, paddingHorizontal: 16 }}>
+            💡 Card payments are not enabled in this build. Contact your administrator if you'd like to add a card.
+          </Text>
+        )}
       </View>
 
     </SafeAreaView>
