@@ -20,9 +20,14 @@ export default function RootNavigator() {
 
   // null = not yet checked, true = needs email, false = OK
   const [needsEmail, setNeedsEmail] = useState<boolean | null>(null);
+  // Forces the branded splash to stay on-screen long enough for the entry
+  // animation to play through, even when AsyncStorage rehydrates instantly.
+  const [minSplashElapsed, setMinSplashElapsed] = useState(false);
 
   useEffect(() => {
     initialize();
+    const t = setTimeout(() => setMinSplashElapsed(true), 2400);
+    return () => clearTimeout(t);
   }, [initialize]);
 
   // Whenever the logged-in user changes, fetch their full profile and decide
@@ -54,10 +59,12 @@ export default function RootNavigator() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);     // only re-run when the logged-in user actually changes
 
-  if (!isInitialized) {
+  if (!isInitialized || !minSplashElapsed) {
     // Show a branded JS loading screen while AsyncStorage rehydrates auth
-    // state. Keeps the yellow brand colour on screen so there is no white
-    // flash between the native splash and the first real navigator screen.
+    // state, AND keep it on-screen for at least 2.4 s so the splash entry
+    // animation always gets to play through. Keeps the yellow brand colour
+    // visible so there is no white flash between the native splash and
+    // the first real navigator screen.
     return <AppLoadingScreen />;
   }
 
