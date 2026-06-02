@@ -24,6 +24,13 @@ import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
 import type { FareEstimate, VehicleType } from '../../api/rides';
 import { socketService } from '../../services/socket';
+import {
+  reverseGeocode,
+  searchPlaces,
+  nearbyByCategory,
+  NEARBY_CATEGORIES,
+  type PlaceResult,
+} from '../../services/geocoding';
 import { useColors } from '../../stores/themeStore';
 import { useTranslation } from '../../i18n';
 import type { ColorPalette } from '../../constants/colors';
@@ -35,15 +42,41 @@ type Props = ClientStackScreenProps<'RideRequest'>;
 
 const DELTA = 0.015;
 
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
+/** Map a Nominatim category string ("amenity/cafe") to an emoji. */
+function iconForCategory(category?: string): string {
+  if (!category) return '📍';
+  if (category.includes('cafe'))        return '☕';
+  if (category.includes('restaurant') || category.includes('food')) return '🍽';
+  if (category.includes('fast_food'))   return '🍔';
+  if (category.includes('bar') || category.includes('pub')) return '🍺';
+  if (category.includes('supermarket') || category.includes('grocery') || category.includes('shop'))
+                                        return '🛒';
+  if (category.includes('pharmacy'))    return '💊';
+  if (category.includes('hospital') || category.includes('clinic')) return '🏥';
+  if (category.includes('atm') || category.includes('bank')) return '🏧';
+  if (category.includes('hotel') || category.includes('hostel')) return '🏨';
+  if (category.includes('fuel') || category.includes('gas'))     return '⛽';
+  if (category.startsWith('highway'))   return '🛣';
+  if (category.startsWith('place'))     return '📌';
+  return '📍';
 }
 
 export default function RideRequestScreen({ navigation, route }: Props) {
-  const { pickupLat, pickupLng, pickupAddress, dropoffLat, dropoffLng, dropoffAddress } = route.params;
+  const { pickupLat, pickupLng, pickupAddress: pickupAddressParam, dropoffLat, dropoffLng, dropoffAddress } = route.params;
+  // Resolved pickup address — starts as the route param; if absent we
+  // reverse-geocode on mount so the UI never shows raw coordinates.
+  const [pickupAddress, setPickupAddress] = useState<string | undefined>(pickupAddressParam);
+
+  useEffect(() => {
+    if (pickupAddressParam) return;
+    let cancelled = false;
+    void (async () => {
+      const addr = await reverseGeocode(pickupLat, pickupLng);
+      if (!cancelled && addr) setPickupAddress(addr);
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { setActiveRide, setIsSearching, isSearching, clearAll } = useRideStore();
   const colors = useColors();
@@ -67,28 +100,17 @@ export default function RideRequestScreen({ navigation, route }: Props) {
    */
   const [editingStopIdx, setEditingStopIdx] = useState<number | null>(null);
   const [stopSearchQuery,   setStopSearchQuery]   = useState('');
-  const [stopSearchResults, setStopSearchResults] = useState<NominatimResult[]>([]);
+  const [stopSearchResults, setStopSearchResults] = useState<PlaceResult[]>([]);
   const [stopSearchLoading, setStopSearchLoading] = useState(false);
   const stopSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchStopAddresses = useCallback(async (q: string) => {
-    if (q.trim().length < 3) { setStopSearchResults([]); return; }
+    if (q.trim().length < 2) { setStopSearchResults([]); return; }
     setStopSearchLoading(true);
-    try {
-      const url =
-        `https://nominatim.openstreetmap.org/search` +
-        `?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=0`;
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'TaxiApp/1.0 (contact@taxiapp.com)' },
-      });
-      const json: NominatimResult[] = await res.json();
-      setStopSearchResults(json);
-    } catch {
-      setStopSearchResults([]);
-    } finally {
-      setStopSearchLoading(false);
-    }
-  }, []);
+    const results = await searchPlaces(q, pickupLat, pickupLng);
+    setStopSearchResults(results);
+    setStopSearchLoading(false);
+  }, [pickupLat, pickupLng]);
 
   useEffect(() => {
     if (stopSearchTimeout.current) { clearTimeout(stopSearchTimeout.current); }
@@ -97,16 +119,21 @@ export default function RideRequestScreen({ navigation, route }: Props) {
     return () => { if (stopSearchTimeout.current) { clearTimeout(stopSearchTimeout.current); } };
   }, [stopSearchQuery, fetchStopAddresses]);
 
-  const selectStopResult = (item: NominatimResult) => {
-    const lat = parseFloat(item.lat);
-    const lng = parseFloat(item.lon);
-    const address = item.display_name;
+  /** Quick-tap category (Cafes, Markets, …) — fires an immediate nearby search. */
+  const pickCategory = async (slug: string) => {
+    setStopSearchLoading(true);
+    const results = await nearbyByCategory(slug, pickupLat, pickupLng);
+    setStopSearchResults(results);
+    setStopSearchLoading(false);
+  };
+
+  const selectStopResult = (item: PlaceResult) => {
     setStops(prev => {
       if (editingStopIdx === -1) {
-        return [...prev, { lat, lng, address }];
+        return [...prev, { lat: item.lat, lng: item.lng, address: item.shortLabel }];
       }
       const updated = [...prev];
-      updated[editingStopIdx!] = { lat, lng, address };
+      updated[editingStopIdx!] = { lat: item.lat, lng: item.lng, address: item.shortLabel };
       return updated;
     });
     setEditingStopIdx(null);
@@ -114,7 +141,7 @@ export default function RideRequestScreen({ navigation, route }: Props) {
     setStopSearchResults([]);
     Keyboard.dismiss();
     mapRef.current?.animateToRegion({
-      latitude: lat, longitude: lng,
+      latitude: item.lat, longitude: item.lng,
       latitudeDelta: DELTA, longitudeDelta: DELTA,
     }, 400);
   };
@@ -315,29 +342,18 @@ export default function RideRequestScreen({ navigation, route }: Props) {
 
   // ── Address search (Nominatim / OpenStreetMap) ───────────────────────────────
   const [searchQuery,   setSearchQuery]   = useState('');
-  const [searchResults, setSearchResults] = useState<NominatimResult[]>([]);
+  const [searchResults, setSearchResults] = useState<PlaceResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchAddresses = useCallback(async (q: string) => {
-    if (q.trim().length < 3) { setSearchResults([]); return; }
+    if (q.trim().length < 2) { setSearchResults([]); return; }
     setSearchLoading(true);
-    try {
-      const url =
-        `https://nominatim.openstreetmap.org/search` +
-        `?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=0`;
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'TaxiApp/1.0 (contact@taxiapp.com)' },
-      });
-      const json: NominatimResult[] = await res.json();
-      setSearchResults(json);
-    } catch {
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  }, []);
+    const results = await searchPlaces(q, pickupLat, pickupLng);
+    setSearchResults(results);
+    setSearchLoading(false);
+  }, [pickupLat, pickupLng]);
 
   // Debounce search 500 ms after keystroke
   useEffect(() => {
@@ -347,18 +363,23 @@ export default function RideRequestScreen({ navigation, route }: Props) {
     return () => { if (searchTimeout.current) { clearTimeout(searchTimeout.current); } };
   }, [searchQuery, fetchAddresses]);
 
-  const selectResult = (item: NominatimResult) => {
-    const lat = parseFloat(item.lat);
-    const lng = parseFloat(item.lon);
-    const address = item.display_name;
-    setDropoff({ lat, lng, address });
+  /** Quick-tap category for the destination search. */
+  const pickDropoffCategory = async (slug: string) => {
+    setSearchLoading(true);
+    const results = await nearbyByCategory(slug, pickupLat, pickupLng);
+    setSearchResults(results);
+    setSearchLoading(false);
+  };
+
+  const selectResult = (item: PlaceResult) => {
+    setDropoff({ lat: item.lat, lng: item.lng, address: item.shortLabel });
     setSearchQuery('');
     setSearchResults([]);
     setSearchFocused(false);
     Keyboard.dismiss();
     // Snap map to the selected location
     mapRef.current?.animateToRegion({
-      latitude: lat, longitude: lng,
+      latitude: item.lat, longitude: item.lng,
       latitudeDelta: DELTA, longitudeDelta: DELTA,
     }, 500);
   };
@@ -421,8 +442,20 @@ export default function RideRequestScreen({ navigation, route }: Props) {
   const handleMapPress = (e: MapPressEvent) => {
     if (isSearching || requesting) { return; }
     const { latitude, longitude } = e.nativeEvent.coordinate;
-    // Tapping the map always clears any saved-location address label
+    // Set the dropoff right away (UX feels instant), then resolve a street
+    // name in the background and patch the address in. Falls back to coords
+    // if Nominatim is slow / offline.
     setDropoff({ lat: latitude, lng: longitude });
+    void (async () => {
+      const addr = await reverseGeocode(latitude, longitude);
+      if (addr) {
+        setDropoff(prev => prev
+          && prev.lat === latitude
+          && prev.lng === longitude
+          ? { ...prev, address: addr }
+          : prev);
+      }
+    })();
   };
 
   // ── Request ride ─────────────────────────────────────────────────────────────
@@ -629,11 +662,27 @@ export default function RideRequestScreen({ navigation, route }: Props) {
                   </TouchableOpacity>
                 </View>
 
+                {/* Quick category chips for stop editor */}
+                {editingStopIdx === i && !stopSearchQuery.trim() && stopSearchResults.length === 0 && (
+                  <View style={styles.categoriesWrap}>
+                    <View style={styles.categoriesRow}>
+                      {NEARBY_CATEGORIES.map(c => (
+                        <TouchableOpacity
+                          key={c.slug}
+                          style={styles.categoryChip}
+                          onPress={() => pickCategory(c.slug)}
+                          activeOpacity={0.7}>
+                          <Text style={styles.categoryChipText}>{c.icon} {c.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
                 {/* Stop search results */}
                 {editingStopIdx === i && stopSearchResults.length > 0 && (
                   <FlatList
                     data={stopSearchResults}
-                    keyExtractor={item => String(item.place_id)}
+                    keyExtractor={(item, idx) => `${item.lat},${item.lng},${idx}`}
                     style={styles.resultsList}
                     keyboardShouldPersistTaps="handled"
                     renderItem={({ item }) => (
@@ -641,10 +690,11 @@ export default function RideRequestScreen({ navigation, route }: Props) {
                         style={styles.resultItem}
                         onPress={() => selectStopResult(item)}
                         activeOpacity={0.7}>
-                        <Text style={styles.resultIcon}>🟠</Text>
-                        <Text style={styles.resultText} numberOfLines={2}>
-                          {item.display_name}
-                        </Text>
+                        <Text style={styles.resultIcon}>{iconForCategory(item.category)}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.resultText} numberOfLines={1}>{item.shortLabel}</Text>
+                          <Text style={styles.resultSubText} numberOfLines={1}>{item.displayName}</Text>
+                        </View>
                       </TouchableOpacity>
                     )}
                     ItemSeparatorComponent={() => <View style={styles.resultDivider} />}
@@ -683,10 +733,25 @@ export default function RideRequestScreen({ navigation, route }: Props) {
                     <Text style={styles.clearDropoff}>✕</Text>
                   </TouchableOpacity>
                 </View>
+                {!stopSearchQuery.trim() && stopSearchResults.length === 0 && (
+                  <View style={styles.categoriesWrap}>
+                    <View style={styles.categoriesRow}>
+                      {NEARBY_CATEGORIES.map(c => (
+                        <TouchableOpacity
+                          key={c.slug}
+                          style={styles.categoryChip}
+                          onPress={() => pickCategory(c.slug)}
+                          activeOpacity={0.7}>
+                          <Text style={styles.categoryChipText}>{c.icon} {c.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
                 {stopSearchResults.length > 0 && (
                   <FlatList
                     data={stopSearchResults}
-                    keyExtractor={item => String(item.place_id)}
+                    keyExtractor={(item, idx) => `${item.lat},${item.lng},${idx}`}
                     style={styles.resultsList}
                     keyboardShouldPersistTaps="handled"
                     renderItem={({ item }) => (
@@ -694,10 +759,11 @@ export default function RideRequestScreen({ navigation, route }: Props) {
                         style={styles.resultItem}
                         onPress={() => selectStopResult(item)}
                         activeOpacity={0.7}>
-                        <Text style={styles.resultIcon}>🟠</Text>
-                        <Text style={styles.resultText} numberOfLines={2}>
-                          {item.display_name}
-                        </Text>
+                        <Text style={styles.resultIcon}>{iconForCategory(item.category)}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.resultText} numberOfLines={1}>{item.shortLabel}</Text>
+                          <Text style={styles.resultSubText} numberOfLines={1}>{item.displayName}</Text>
+                        </View>
                       </TouchableOpacity>
                     )}
                     ItemSeparatorComponent={() => <View style={styles.resultDivider} />}
@@ -756,11 +822,31 @@ export default function RideRequestScreen({ navigation, route }: Props) {
               ) : null}
             </View>
 
+            {/* Quick category chips — shown when input is focused with no query */}
+            {searchFocused && !searchQuery.trim() && searchResults.length === 0 && !dropoff && (
+              <View style={styles.categoriesWrap}>
+                <Text style={styles.categoriesHint}>Search nearby…</Text>
+                <View style={styles.categoriesRow}>
+                  {NEARBY_CATEGORIES.map(c => (
+                    <TouchableOpacity
+                      key={c.slug}
+                      style={styles.categoryChip}
+                      onPress={() => pickDropoffCategory(c.slug)}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Search nearby ${c.label}`}>
+                      <Text style={styles.categoryChipText}>{c.icon} {c.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
             {/* Search results dropdown */}
             {searchFocused && searchResults.length > 0 && (
               <FlatList
                 data={searchResults}
-                keyExtractor={item => String(item.place_id)}
+                keyExtractor={(item, idx) => `${item.lat},${item.lng},${idx}`}
                 style={styles.resultsList}
                 keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => (
@@ -768,10 +854,15 @@ export default function RideRequestScreen({ navigation, route }: Props) {
                     style={styles.resultItem}
                     onPress={() => selectResult(item)}
                     activeOpacity={0.7}>
-                    <Text style={styles.resultIcon}>📍</Text>
-                    <Text style={styles.resultText} numberOfLines={2}>
-                      {item.display_name}
-                    </Text>
+                    <Text style={styles.resultIcon}>{iconForCategory(item.category)}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.resultText} numberOfLines={1}>
+                        {item.shortLabel}
+                      </Text>
+                      <Text style={styles.resultSubText} numberOfLines={1}>
+                        {item.displayName}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 )}
                 ItemSeparatorComponent={() => <View style={styles.resultDivider} />}
@@ -1230,9 +1321,39 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
     paddingVertical: 10,
     gap: 8,
   },
-  resultIcon: { fontSize: 14, marginTop: 1 },
-  resultText: { flex: 1, fontSize: 13, color: c.text, lineHeight: 18 },
+  resultIcon: { fontSize: 16, marginTop: 1 },
+  resultText: { fontSize: 13, color: c.text, lineHeight: 18, fontWeight: '600' },
+  resultSubText: { fontSize: 11, color: c.textSecondary, lineHeight: 14, marginTop: 1 },
   resultDivider: { height: 1, backgroundColor: c.border, marginHorizontal: 12 },
+
+  // Category quick-picks shown when search input is empty
+  categoriesWrap: {
+    marginTop: 8,
+    marginLeft: 24,
+    paddingVertical: 4,
+  },
+  categoriesHint: {
+    fontSize: 11,
+    color: c.textSecondary,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 6,
+  },
+  categoriesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  categoryChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: c.surfaceAlt ?? c.surface,
+    borderWidth: 1,
+    borderColor: c.border,
+  },
+  categoryChipText: { fontSize: 12, color: c.text, fontWeight: '600' },
 
   // Add stop button
   addStopBtn: {
