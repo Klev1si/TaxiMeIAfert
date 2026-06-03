@@ -41,8 +41,15 @@ const Config = {
   // NOTE: This key is already baked into the AndroidManifest so it is not secret.
   // The hardcoded fallback ensures fetchRoute() works even when TurboModule fails.
   GOOGLE_MAPS_API_KEY:    RNConfig.GOOGLE_MAPS_API_KEY    || 'AIzaSyAYBI5oVv2TnqtysGBsIbWx4kvupAEiGEE',
-  // Stripe publishable key — use pk_test_... in dev, pk_live_... in production
-  STRIPE_PUBLISHABLE_KEY: RNConfig.STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder',
+  // Stripe publishable key. NOTE: publishable keys are designed to be public
+  // — they're meant to ship in client apps — so it's safe to hardcode the
+  // fallback here. This guarantees card payments still work when
+  // react-native-config's TurboModule returns null on new-arch builds
+  // (a known issue on RN 0.84+).
+  // To rotate the key: edit .env.production AND this fallback together.
+  STRIPE_PUBLISHABLE_KEY:
+    RNConfig.STRIPE_PUBLISHABLE_KEY ||
+    'pk_test_51TD8FnFdD8fQdLzYRH2eEOEbamUEnDjenO87G9yvoKsD0PZWPGqOpLtI8uPv53tBiShe5lDYCiex2UwhG86hDY3R00DyLwlzZj',
 };
 
 /**
