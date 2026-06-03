@@ -41,10 +41,15 @@ const Config = {
   // NOTE: This key is already baked into the AndroidManifest so it is not secret.
   // The hardcoded fallback ensures fetchRoute() works even when TurboModule fails.
   GOOGLE_MAPS_API_KEY:    RNConfig.GOOGLE_MAPS_API_KEY    || 'AIzaSyAYBI5oVv2TnqtysGBsIbWx4kvupAEiGEE',
-  // Google Sign-In Web Client ID — from Firebase Console → Project Settings
-  // → Web SDK config. Needed by @react-native-google-signin/google-signin
-  // on Android so it can request an ID token our backend can verify.
-  GOOGLE_WEB_CLIENT_ID:   RNConfig.GOOGLE_WEB_CLIENT_ID   || '',
+  // Google Sign-In Web Client ID. NOTE: like Stripe publishable keys, OAuth
+  // Web Client IDs are designed to be public — they ship in every browser
+  // app using Google Sign-In. So it's safe to hardcode the fallback here,
+  // and necessary because react-native-config's TurboModule returns null
+  // on RN 0.84 + newArchEnabled (same problem as STRIPE_PUBLISHABLE_KEY).
+  // To rotate: update Firebase project AND edit this fallback together.
+  GOOGLE_WEB_CLIENT_ID:
+    RNConfig.GOOGLE_WEB_CLIENT_ID ||
+    '524747770284-iath1lua9mi1m2ukf41qqvs0nnl55vc6.apps.googleusercontent.com',
 
   // Stripe publishable key. NOTE: publishable keys are designed to be public
   // — they're meant to ship in client apps — so it's safe to hardcode the
