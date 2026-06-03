@@ -151,7 +151,7 @@ export class AdminService {
       where: { id: In(userIds) },
       select: ['id', 'phone'],
     });
-    return new Map(users.map(u => [u.id, u.phone]));
+    return new Map(users.map(u => [u.id, u.phone ?? ''] as [string, string]));
   }
 
   private mapDriver(d: Driver, phone?: string) {

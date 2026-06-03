@@ -67,6 +67,10 @@ export const authApi = {
   login: (payload: LoginPayload) =>
     apiClient.post<AuthTokens & { expiresIn: number }>('/auth/login', payload),
 
+  /** Sign in / sign up with a Google ID token from the mobile Google SDK. */
+  googleSignIn: (idToken: string) =>
+    apiClient.post<AuthTokens & { expiresIn: number }>('/auth/google', { idToken }),
+
   /** Register a new client account */
   registerClient: (payload: RegisterClientPayload) =>
     apiClient.post('/auth/register/client', payload),

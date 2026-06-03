@@ -220,6 +220,16 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  // POST /auth/google — exchange a Google ID token for our JWTs.
+  // Creates a new client account when the user signs in for the first time.
+  @Post('google')
+  @UseGuards(ThrottlerGuard)
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ strict: { limit: 10, ttl: 60_000 } })
+  googleSignIn(@Body('idToken') idToken: string): Promise<AuthTokensDto> {
+    return this.authService.googleSignIn(idToken);
+  }
+
   // POST /auth/refresh  — requires valid refresh token in Authorization header
   @Post('refresh')
   @UseGuards(JwtRefreshGuard)
@@ -393,6 +403,9 @@ export class AuthController {
     @CurrentUser() user: User,
     @Body() dto: ChangePasswordDto,
   ): Promise<void> {
+    if (!user.passwordHash) {
+      throw new BadRequestException('This account has no password — sign in with Google instead.');
+    }
     const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
     if (!valid) throw new ForbiddenException('Current password is incorrect');
 

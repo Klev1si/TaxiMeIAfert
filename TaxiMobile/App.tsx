@@ -24,6 +24,7 @@ import { appApi } from './src/api/app';
 import { APP_VERSION } from './src/constants/version';
 import { isOlderThan } from './src/utils/semver';
 import Config from './src/config';
+import { configureGoogleAuth } from './src/services/googleAuth';
 
 /**
  * Deep-link URL scheme: taxiapp://
@@ -114,6 +115,9 @@ export default function App(): React.JSX.Element {
 
   // Rehydrate persisted theme preference
   useEffect(() => { initTheme(); }, [initTheme]);
+
+  // Configure Google Sign-In once (no-op when GOOGLE_WEB_CLIENT_ID is unset)
+  useEffect(() => { configureGoogleAuth(); }, []);
 
   // Keep the store in sync when the OS colour scheme changes
   useEffect(() => {

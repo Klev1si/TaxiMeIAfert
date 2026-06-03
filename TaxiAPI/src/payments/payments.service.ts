@@ -207,7 +207,8 @@ export class PaymentsService {
     if (!customerId) {
       const user = await this.userRepo.findOne({ where: { id: clientUserId } });
       const customer = await this.stripe.customers.create({
-        phone:    user?.phone,
+        phone:    user?.phone ?? undefined,
+        email:    user?.email ?? undefined,
         metadata: { clientId: client.id },
       });
       customerId = customer.id;

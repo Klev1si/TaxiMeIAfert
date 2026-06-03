@@ -19,6 +19,9 @@ interface AuthState {
   /** Login with phone + password */
   login: (phone: string, password: string) => Promise<void>;
 
+  /** Login / sign up with a Google ID token from the SDK */
+  loginWithGoogle: (idToken: string) => Promise<void>;
+
   /** Logout — clear tokens on server + local storage */
   logout: () => Promise<void>;
 
@@ -83,6 +86,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       track.login(user.role);
       socketService.connect(accessToken);
       // FCM token registration is handled by RootNavigator.setupFcm()
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  loginWithGoogle: async (idToken) => {
+    set({ isLoading: true });
+    try {
+      const { data } = await authApi.googleSignIn(idToken);
+      const { accessToken, refreshToken } = data;
+      const payload = parseJwtPayload(accessToken);
+      if (!payload) throw new Error('Invalid token received from server');
+      const user: AuthUser = {
+        id: payload.sub,
+        phone: payload.phone,
+        role: payload.role as AuthUser['role'],
+      };
+      await get().setTokens(accessToken, refreshToken);
+      set({ user });
+      crash.setUser(user.id);
+      crash.setAttribute('role', user.role);
+      track.login(user.role);
+      socketService.connect(accessToken);
     } finally {
       set({ isLoading: false });
     }

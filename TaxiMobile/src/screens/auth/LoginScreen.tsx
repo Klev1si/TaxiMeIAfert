@@ -14,6 +14,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 import { authApi } from '../../api/auth';
+import { signInWithGoogle } from '../../services/googleAuth';
+import { isGoogleConfigured } from '../../config';
 import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
 import { useTranslation } from '../../i18n';
@@ -23,7 +25,7 @@ import type { AuthScreenProps } from '../../navigation/types';
 type Props = AuthScreenProps<'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
-  const { login, isLoading } = useAuthStore();
+  const { login, loginWithGoogle, isLoading } = useAuthStore();
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
@@ -45,6 +47,25 @@ export default function LoginScreen({ navigation }: Props) {
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? t('auth.login.errorMsg');
       Alert.alert(t('auth.login.errorTitle'), Array.isArray(msg) ? msg.join('\n') : msg);
+    }
+  };
+
+  const handleGoogle = async () => {
+    const outcome = await signInWithGoogle();
+    if (outcome.kind === 'cancelled' || outcome.kind === 'in_progress') return;
+    if (outcome.kind === 'play_services_unavailable') {
+      Alert.alert(t('common.error'), 'Google Play services are not available on this device.');
+      return;
+    }
+    if (outcome.kind === 'error') {
+      Alert.alert(t('common.error'), outcome.message);
+      return;
+    }
+    try {
+      await loginWithGoogle(outcome.idToken);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? 'Could not sign in.';
+      Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     }
   };
 
@@ -128,6 +149,28 @@ export default function LoginScreen({ navigation }: Props) {
                 ? <ActivityIndicator color={colors.textOnPrimary} />
                 : <Text style={styles.btnText}>{t('auth.login.signInBtn')}</Text>}
             </TouchableOpacity>
+
+            {/* Google Sign-In — shown when the Web Client ID is configured */}
+            {isGoogleConfigured && (
+              <>
+                <View style={styles.orRow}>
+                  <View style={styles.orLine} />
+                  <Text style={styles.orText}>or</Text>
+                  <View style={styles.orLine} />
+                </View>
+                <TouchableOpacity
+                  style={[styles.googleBtn, isLoading && styles.btnDisabled]}
+                  onPress={handleGoogle}
+                  disabled={isLoading}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="Continue with Google"
+                  accessibilityState={{ disabled: isLoading }}>
+                  <Text style={styles.googleG}>G</Text>
+                  <Text style={styles.googleBtnText}>Continue with Google</Text>
+                </TouchableOpacity>
+              </>
+            )}
 
             {/* Forgot password link — opens the email/SMS reset flow */}
             <TouchableOpacity
@@ -228,6 +271,30 @@ function getStyles(c: ColorPalette) {
     btn:            { height: 50, backgroundColor: c.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 20 },
     btnDisabled:    { opacity: 0.6 },
     btnText:        { fontSize: 16, fontWeight: '700', color: c.textOnPrimary },
+
+    // Google Sign-In styling
+    orRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 14, gap: 10 },
+    orLine: { flex: 1, height: 1, backgroundColor: c.border },
+    orText: { color: c.textSecondary, fontSize: 12, fontWeight: '700' },
+    googleBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+      height: 52,
+      borderRadius: 12,
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    googleG: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: '#4285F4',
+      width: 22,
+      textAlign: 'center',
+    },
+    googleBtnText: { fontSize: 16, fontWeight: '700', color: c.text },
     btnOutline:     { backgroundColor: c.transparent, borderWidth: 2, borderColor: c.primary },
     btnTextOutline: { color: c.primary },
 

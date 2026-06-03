@@ -41,6 +41,11 @@ const Config = {
   // NOTE: This key is already baked into the AndroidManifest so it is not secret.
   // The hardcoded fallback ensures fetchRoute() works even when TurboModule fails.
   GOOGLE_MAPS_API_KEY:    RNConfig.GOOGLE_MAPS_API_KEY    || 'AIzaSyAYBI5oVv2TnqtysGBsIbWx4kvupAEiGEE',
+  // Google Sign-In Web Client ID — from Firebase Console → Project Settings
+  // → Web SDK config. Needed by @react-native-google-signin/google-signin
+  // on Android so it can request an ID token our backend can verify.
+  GOOGLE_WEB_CLIENT_ID:   RNConfig.GOOGLE_WEB_CLIENT_ID   || '',
+
   // Stripe publishable key. NOTE: publishable keys are designed to be public
   // — they're meant to ship in client apps — so it's safe to hardcode the
   // fallback here. This guarantees card payments still work when
@@ -59,6 +64,9 @@ const Config = {
  * error. Update .env.production with a real key from
  * Stripe Dashboard → Developers → API keys to enable card payments.
  */
+/** Google Sign-In can only work once the Web Client ID is set. */
+export const isGoogleConfigured: boolean = !!Config.GOOGLE_WEB_CLIENT_ID && Config.GOOGLE_WEB_CLIENT_ID.length > 30;
+
 export const isStripeConfigured: boolean = (() => {
   const key = Config.STRIPE_PUBLISHABLE_KEY;
   if (!key) return false;

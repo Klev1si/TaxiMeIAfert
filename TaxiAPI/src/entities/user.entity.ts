@@ -16,14 +16,27 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', unique: true, length: 20 })
-  phone: string;
+  // Phone is the canonical login identifier for phone-registered users but
+  // nullable so Google-signed-up users can exist with email-only until they
+  // complete their profile and add a phone for ride operations.
+  @Column({ type: 'varchar', unique: true, nullable: true, length: 20 })
+  phone: string | null;
 
   @Column({ type: 'varchar', unique: true, nullable: true, length: 255 })
   email: string | null;
 
-  @Column({ type: 'varchar', name: 'password_hash', length: 255 })
-  passwordHash: string;
+  // Same nullability story for the password — Google users don't have one;
+  // they auth via the OAuth ID token. Phone/email users still set one.
+  @Column({ type: 'varchar', name: 'password_hash', nullable: true, length: 255 })
+  passwordHash: string | null;
+
+  /**
+   * Google account "sub" identifier from the OAuth ID token. Stable per
+   * Google account — never reused, never changes if the user changes their
+   * email at Google. Set only for users who signed up / linked with Google.
+   */
+  @Column({ type: 'varchar', name: 'google_sub', unique: true, nullable: true, length: 64 })
+  googleSub: string | null;
 
   @Column({ type: 'enum', enum: UserRole })
   role: UserRole;
