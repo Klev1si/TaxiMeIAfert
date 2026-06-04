@@ -161,6 +161,67 @@ export class DriverTariffController {
     await this.tariffRepo.save(tariff);
   }
 
+  /**
+   * GET /driver/tariff/active — returns the tariff that would be applied
+   * RIGHT NOW for a ride this driver accepts. Mirrors the resolution chain
+   * used by selectActiveTariff in rides.service: solo personal → company →
+   * global, plus vehicle-type + night-window filtering.
+   */
+  @Get('active')
+  async getActiveTariff(@Request() req: { user: { id: string } }) {
+    const driver = await this.resolveDriver(req.user.id);
+
+    // Build the candidate pool the same way rides.service does
+    const isNightWindow = (h: number, s: number | null, e: number | null) => {
+      if (s == null || e == null) return false;
+      return s <= e ? (h >= s && h < e) : (h >= s || h < e);
+    };
+
+    const pickFromPool = (pool: Tariff[]): Tariff | null => {
+      if (pool.length === 0) return null;
+      const typed   = driver.vehicleType ? pool.filter(t => t.vehicleType === driver.vehicleType) : [];
+      const generic = pool.filter(t => t.vehicleType == null);
+      const candidates = (typed.length > 0 ? typed : generic.length > 0 ? generic : pool);
+      const hour = new Date().getUTCHours();
+      const night = candidates.find(t =>
+        t.isNightTariff && t.nightStartHour != null && t.nightEndHour != null &&
+        isNightWindow(hour, t.nightStartHour, t.nightEndHour),
+      );
+      if (night) return night;
+      const day = candidates.find(t => !t.isNightTariff);
+      return day ?? candidates[0];
+    };
+
+    // 1. Solo driver's personal tariff wins if present
+    if (!driver.companyId) {
+      const personal = await this.tariffRepo.find({
+        where: { driverId: driver.id, isActive: true },
+      });
+      const picked = pickFromPool(personal);
+      if (picked) return { source: 'personal', ...this.mapTariff(picked) };
+    }
+
+    // 2. Company tariff, if the driver is in a company
+    if (driver.companyId) {
+      const company = await this.tariffRepo.find({
+        where: { companyId: driver.companyId, isActive: true },
+      });
+      const picked = pickFromPool(company);
+      if (picked) return { source: 'company', ...this.mapTariff(picked) };
+    }
+
+    // 3. Fallback to global / admin tariff (solo drivers w/o personal)
+    if (!driver.companyId) {
+      const global = await this.tariffRepo.find({
+        where: { companyId: IsNull(), driverId: IsNull(), isActive: true },
+      });
+      const picked = pickFromPool(global);
+      if (picked) return { source: 'global', ...this.mapTariff(picked) };
+    }
+
+    return null;
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   private async resolveDriver(userId: string): Promise<Driver> {

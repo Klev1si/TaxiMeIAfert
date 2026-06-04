@@ -15,6 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
 import { clientFavoritesApi } from '../../api/client-favorites';
+import { socketService } from '../../services/socket';
+import type { WsPaymentConfirmed } from '../../types/api';
 import { track } from '../../services/analytics';
 import { maybeRequestReview } from '../../services/inAppReview';
 import { Sizes } from '../../constants';
@@ -111,8 +113,55 @@ export default function RateRideScreen({ navigation, route }: Props) {
   // Driver-only: track whether cash has been confirmed so the button becomes a tick
   const [cashConfirmed, setCashConfirmed] = useState(false);
   const [confirmingCash, setConfirmingCash] = useState(false);
+  /**
+   * Driver-only: actual ride payment state from the server. We use this to
+   * decide whether to show the "Confirm cash received" button — when the
+   * ride is already PAID (especially by card via Stripe webhook), we hide
+   * the button so the driver can't accidentally mark a card-paid ride as
+   * cash and corrupt the ledger.
+   */
+  const [payment, setPayment] = useState<{
+    status: 'pending' | 'paid' | 'failed';
+    method: 'cash' | 'card' | 'pending' | null;
+  } | null>(null);
 
   const isRatingDriver = rateTarget === 'driver';
+
+  // Fetch ride payment status when the driver lands here. We don't want the
+  // cash button visible if the client already paid via Stripe — that'd let
+  // the driver overwrite a real card payment with a fake cash entry.
+  React.useEffect(() => {
+    if (isRatingDriver) return; // driver view only — driver rates the CLIENT
+    ridesApi.getRideById(rideId)
+      .then(({ data }) => {
+        if (!data) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const anyData = data as any;
+        setPayment({
+          status: (data.paymentStatus as 'pending' | 'paid' | 'failed') ?? 'pending',
+          method: anyData.paymentMethod ?? null,
+        });
+        if (data.paymentStatus === 'paid') setCashConfirmed(true);
+      })
+      .catch(() => { /* non-fatal — fall back to showing the button */ });
+  }, [isRatingDriver, rideId]);
+
+  // Live socket update: if the client pays via Stripe while the driver is
+  // already on this screen, hide the cash button immediately.
+  React.useEffect(() => {
+    if (isRatingDriver) return;
+    const off = socketService.on<WsPaymentConfirmed>('payment_confirmed', (p) => {
+      if (p.rideId !== rideId) return;
+      setPayment({ status: 'paid', method: p.paymentMethod });
+      setCashConfirmed(true);
+    });
+    return () => { off(); };
+  }, [isRatingDriver, rideId]);
+
+  /** Show the cash button only when the ride is still unpaid. */
+  const showCashButton =
+    !isRatingDriver &&
+    (payment == null || payment.status !== 'paid');
 
   const handleConfirmCash = async () => {
     setConfirmingCash(true);
@@ -192,8 +241,19 @@ export default function RateRideScreen({ navigation, route }: Props) {
             </Text>
           </View>
 
-          {/* ── Driver only: confirm cash received ───────────────────────── */}
-          {!isRatingDriver && (
+          {/* Driver only — and only when the ride is still unpaid. Once
+              Stripe has confirmed a card payment (payment.method === 'card'
+              with status='paid'), or after the driver has tapped this once,
+              the button hides so it can't double-record. */}
+          {!isRatingDriver && payment?.status === 'paid' && payment.method === 'card' && (
+            <View style={styles.cardPaidBanner}>
+              <Text style={styles.cardPaidText}>
+                💳  Paid by card · the platform owes you this fare
+              </Text>
+            </View>
+          )}
+
+          {showCashButton && (
             <TouchableOpacity
               style={[
                 styles.cashBtn,
@@ -400,6 +460,19 @@ function getStyles(c: ColorPalette) {
     },
     cashBtnDone: { backgroundColor: c.successLight, borderWidth: 2, borderColor: c.success },
     cashBtnDisabled: { opacity: 0.6 },
+
+    // Shown when the ride was already paid via Stripe (instead of the cash button)
+    cardPaidBanner: {
+      backgroundColor: c.successLight ?? '#D1FAE5',
+      borderRadius: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderColor: c.success ?? '#10B981',
+      marginBottom: 16,
+      alignItems: 'center',
+    },
+    cardPaidText: { color: c.success ?? '#065F46', fontSize: 14, fontWeight: '700' },
     cashBtnText: { fontSize: 16, fontWeight: '700', color: c.white },
   });
 }

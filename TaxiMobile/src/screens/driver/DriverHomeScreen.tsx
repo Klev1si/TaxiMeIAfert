@@ -17,6 +17,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useDriverStore } from '../../stores/driverStore';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
+import { driverTariffApi, type ActiveDriverTariff } from '../../api/driver-tariff';
 import { socketService } from '../../services/socket';
 import {
   startBackgroundGps,
@@ -97,6 +98,19 @@ export default function DriverHomeScreen({ navigation }: Props) {
     );
     return () => { Geolocation.clearWatch(id); };
   }, [permissionDenied, locationReady, setLocation, isOnline]);
+
+  // Active tariff banner — shows the driver which tariff their next ride
+  // will use. Refresh on screen focus + every 15 min in case of night-window
+  // crossover.
+  const [activeTariff, setActiveTariff] = useState<ActiveDriverTariff | null>(null);
+  useEffect(() => {
+    const load = () => driverTariffApi.getActive()
+      .then(({ data }) => setActiveTariff(data ?? null))
+      .catch(() => { /* non-fatal */ });
+    load();
+    const id = setInterval(load, 15 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // ── On first mount: check server for an active ride (handles app-restart) ────
   useEffect(() => {
@@ -296,6 +310,26 @@ export default function DriverHomeScreen({ navigation }: Props) {
             accessibilityHint={t('driver.home.toggleHint')}
           />
         </View>
+        {/* Active tariff banner — tells the driver which tariff will be used
+            for the next ride. Solo drivers see their personal rate; company
+            drivers see whichever of their company's tariffs matches their
+            vehicle type and the current time of day. */}
+        {activeTariff && (
+          <View style={styles.tariffBanner}>
+            <Text style={styles.tariffBannerLabel}>
+              {activeTariff.source === 'personal' ? '🧑‍✈️ Your tariff'
+                : activeTariff.source === 'company'  ? '🏢 Company tariff'
+                : '🌐 Platform tariff'}
+            </Text>
+            <Text style={styles.tariffBannerName} numberOfLines={1}>
+              {activeTariff.name}
+              {activeTariff.isNightTariff ? ' · 🌙' : ''}
+            </Text>
+            <Text style={styles.tariffBannerRates}>
+              Base ${activeTariff.baseFare.toFixed(2)} · ${activeTariff.perKmRate.toFixed(2)}/km · ${activeTariff.perMinuteRate.toFixed(2)}/min
+            </Text>
+          </View>
+        )}
       </SafeAreaView>
 
       {/* Recenter — always visible so the driver can tap to jump to current GPS */}
@@ -349,6 +383,37 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
   },
   greeting: { fontSize: 14, fontWeight: '600', color: c.text },
   statusLabel: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+
+  // Active tariff banner — sits under the online toggle card
+  tariffBanner: {
+    marginHorizontal: 12,
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: c.surface,
+    borderWidth: 1,
+    borderColor: c.border,
+  },
+  tariffBannerLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: c.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  tariffBannerName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: c.text,
+    marginTop: 2,
+  },
+  tariffBannerRates: {
+    fontSize: 11,
+    color: c.textSecondary,
+    marginTop: 2,
+    fontVariant: ['tabular-nums'],
+  },
 
   recenterBtn: {
     position: 'absolute',

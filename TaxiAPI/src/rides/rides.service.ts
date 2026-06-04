@@ -1646,6 +1646,16 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       throw new ForbiddenException('Payment is already marked as paid');
     }
 
+    // If a Stripe PaymentIntent has already been created for this ride, the
+    // client chose to pay by card — don't let the driver overwrite it with a
+    // bogus cash mark just because they tapped first. The webhook will mark
+    // the ride paid once the card charge clears.
+    if (ride.stripePaymentIntentId) {
+      throw new ForbiddenException(
+        'The client is paying by card. Wait for the card payment to clear instead of confirming cash.',
+      );
+    }
+
     ride.paymentStatus = PaymentStatus.PAID;
     const saved = await this.rideRepo.save(ride);
 
@@ -2477,6 +2487,13 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       cancelledBy: ride.cancelledBy,
       cancelReason: ride.cancelReason,
       paymentStatus: ride.paymentStatus,
+      // Derive paymentMethod from Stripe state — the canonical paymentMethod
+      // lives on driver_ledger but for DTO consumers a quick read off
+      // stripePaymentIntentId is enough: present + paid ⇒ card; paid alone ⇒ cash.
+      paymentMethod:
+        ride.paymentStatus === 'paid'
+          ? (ride.stripePaymentIntentId ? 'card' : 'cash')
+          : null,
       // Trip metrics — TypeORM returns DECIMAL as string; convert explicitly
       distanceKm:     ride.distanceKm     != null ? Number(ride.distanceKm)     : null,
       durationMinutes: ride.durationMinutes != null ? Number(ride.durationMinutes) : null,

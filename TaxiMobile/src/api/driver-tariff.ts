@@ -30,9 +30,17 @@ export interface DriverTariffUpsertPayload {
   vehicleType?:     VehicleType;
 }
 
+export interface ActiveDriverTariff extends DriverTariff {
+  /** Who set this tariff — 'personal' (solo driver), 'company', or 'global' (admin). */
+  source: 'personal' | 'company' | 'global';
+}
+
 export const driverTariffApi = {
   /** GET /driver/tariff — list this driver's personal tariffs (usually 0 or 1) */
   list: () => apiClient.get<DriverTariff[]>('/driver/tariff'),
+
+  /** GET /driver/tariff/active — the tariff that would apply right now */
+  getActive: () => apiClient.get<ActiveDriverTariff | null>('/driver/tariff/active'),
 
   /** PUT /driver/tariff — create or replace the driver's tariff (solo drivers only) */
   upsert: (payload: DriverTariffUpsertPayload) =>

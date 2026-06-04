@@ -29,6 +29,8 @@ export class RideResponseDto {
   cancelledBy: string | null;
   cancelReason: string | null;
   paymentStatus: string;
+  /** 'cash' | 'card' | null — derived from stripePaymentIntentId + paymentStatus. */
+  paymentMethod: 'cash' | 'card' | null;
   // ── Trip metrics ──────────────────────────────────────────────────────────────
   distanceKm: number | null;
   durationMinutes: number | null;
