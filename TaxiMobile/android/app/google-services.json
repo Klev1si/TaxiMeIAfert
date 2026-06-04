@@ -14,7 +14,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "524747770284-iath1lua9mi1m2ukf41qqvs0nnl55vc6.apps.googleusercontent.com",
+          "client_id": "524747770284-l9gk60qjnfs2m9bih58o27c0kira3liv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.taximelafert",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "524747770284-us3dtn3h42qa0uqmip8rbheq0onb9cfd.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -27,7 +35,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "524747770284-iath1lua9mi1m2ukf41qqvs0nnl55vc6.apps.googleusercontent.com",
+              "client_id": "524747770284-us3dtn3h42qa0uqmip8rbheq0onb9cfd.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

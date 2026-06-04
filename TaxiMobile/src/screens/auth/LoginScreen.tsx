@@ -105,6 +105,34 @@ export default function LoginScreen({ navigation }: Props) {
             <Text style={styles.tagline}>{t('auth.login.tagline')}</Text>
           </View>
 
+          {/* Google Sign-In — shown at the top so it's the obvious "fast path"
+              for both signing up and signing in. Hidden when GOOGLE_WEB_CLIENT_ID
+              is not configured. */}
+          {isGoogleConfigured && (
+            <View style={styles.googleCard}>
+              <Text style={styles.googleCardHint}>One tap to get started</Text>
+              <TouchableOpacity
+                style={[styles.googleBtn, isLoading && styles.btnDisabled]}
+                onPress={handleGoogle}
+                disabled={isLoading}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Continue with Google"
+                accessibilityState={{ disabled: isLoading }}>
+                <Text style={styles.googleG}>G</Text>
+                <Text style={styles.googleBtnText}>Continue with Google</Text>
+              </TouchableOpacity>
+              <Text style={styles.googleCardSub}>
+                New here? You'll be signed up automatically.{'\n'}Existing user? You'll be signed in.
+              </Text>
+              <View style={styles.bigDividerRow}>
+                <View style={styles.bigDividerLine} />
+                <Text style={styles.bigDividerLabel}>or use phone</Text>
+                <View style={styles.bigDividerLine} />
+              </View>
+            </View>
+          )}
+
           <View style={styles.card}>
             <Text style={styles.cardTitle}>{t('auth.login.signInBtn')}</Text>
 
@@ -149,28 +177,6 @@ export default function LoginScreen({ navigation }: Props) {
                 ? <ActivityIndicator color={colors.textOnPrimary} />
                 : <Text style={styles.btnText}>{t('auth.login.signInBtn')}</Text>}
             </TouchableOpacity>
-
-            {/* Google Sign-In — shown when the Web Client ID is configured */}
-            {isGoogleConfigured && (
-              <>
-                <View style={styles.orRow}>
-                  <View style={styles.orLine} />
-                  <Text style={styles.orText}>or</Text>
-                  <View style={styles.orLine} />
-                </View>
-                <TouchableOpacity
-                  style={[styles.googleBtn, isLoading && styles.btnDisabled]}
-                  onPress={handleGoogle}
-                  disabled={isLoading}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityLabel="Continue with Google"
-                  accessibilityState={{ disabled: isLoading }}>
-                  <Text style={styles.googleG}>G</Text>
-                  <Text style={styles.googleBtnText}>Continue with Google</Text>
-                </TouchableOpacity>
-              </>
-            )}
 
             {/* Forgot password link — opens the email/SMS reset flow */}
             <TouchableOpacity
@@ -272,10 +278,36 @@ function getStyles(c: ColorPalette) {
     btnDisabled:    { opacity: 0.6 },
     btnText:        { fontSize: 16, fontWeight: '700', color: c.textOnPrimary },
 
-    // Google Sign-In styling
-    orRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 14, gap: 10 },
-    orLine: { flex: 1, height: 1, backgroundColor: c.border },
-    orText: { color: c.textSecondary, fontSize: 12, fontWeight: '700' },
+    // Google Sign-In — "primary fast path" card at the top of the screen
+    googleCard: {
+      backgroundColor: c.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 18,
+      borderWidth: 1,
+      borderColor: c.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    googleCardHint: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: c.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+      textAlign: 'center',
+      marginBottom: 10,
+    },
+    googleCardSub: {
+      fontSize: 12,
+      color: c.textSecondary,
+      textAlign: 'center',
+      lineHeight: 18,
+      marginTop: 10,
+    },
     googleBtn: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -283,7 +315,7 @@ function getStyles(c: ColorPalette) {
       gap: 12,
       height: 52,
       borderRadius: 12,
-      backgroundColor: c.surface,
+      backgroundColor: c.background,
       borderWidth: 1,
       borderColor: c.border,
     },
@@ -295,6 +327,18 @@ function getStyles(c: ColorPalette) {
       textAlign: 'center',
     },
     googleBtnText: { fontSize: 16, fontWeight: '700', color: c.text },
+
+    // "or use phone" divider that sits between the Google card and the
+    // phone-based sign-in/register cards.
+    bigDividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 14, gap: 10 },
+    bigDividerLine: { flex: 1, height: 1, backgroundColor: c.border },
+    bigDividerLabel: {
+      color: c.textSecondary,
+      fontSize: 11,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
     btnOutline:     { backgroundColor: c.transparent, borderWidth: 2, borderColor: c.primary },
     btnTextOutline: { color: c.primary },
 
