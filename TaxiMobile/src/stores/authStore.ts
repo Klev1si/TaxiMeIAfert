@@ -16,8 +16,8 @@ interface AuthState {
   /** Rehydrate tokens + user from secure Keychain storage on app start */
   initialize: () => Promise<void>;
 
-  /** Login with phone + password */
-  login: (phone: string, password: string) => Promise<void>;
+  /** Login with phone-or-email identifier + password */
+  login: (identifier: string, password: string) => Promise<void>;
 
   /** Login / sign up with a Google ID token from the SDK */
   loginWithGoogle: (idToken: string) => Promise<void>;
@@ -64,10 +64,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  login: async (phone, password) => {
+  login: async (identifier, password) => {
     set({ isLoading: true });
     try {
-      const { data } = await authApi.login({ phone, password });
+      const { data } = await authApi.login({ identifier, password });
       const { accessToken, refreshToken } = data;
       // Backend returns tokens only — decode user info from the JWT payload
       const payload = parseJwtPayload(accessToken);

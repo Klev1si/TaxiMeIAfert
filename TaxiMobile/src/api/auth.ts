@@ -3,7 +3,8 @@ import type { AuthTokens } from '../types/api';
 import type { VehicleType } from './rides';
 
 export interface LoginPayload {
-  phone: string;
+  /** Phone number OR email address — backend dispatches on whether it contains '@'. */
+  identifier: string;
   password: string;
 }
 

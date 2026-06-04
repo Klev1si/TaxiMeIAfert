@@ -6,6 +6,7 @@ import type { Ride } from '../types/api';
 // ── Auth stack ────────────────────────────────────────────────────────────────
 export type AuthStackParamList = {
   Login: undefined;
+  SignUp: undefined;
   Otp: { phone: string; mode: 'verify' | 'register'; role?: 'client' | 'driver' | 'company' };
   RegisterClient: { phone: string };
   RegisterDriver: { phone: string };

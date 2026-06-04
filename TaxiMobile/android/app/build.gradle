@@ -96,8 +96,8 @@ android {
         applicationId "com.taximelafert"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 56
-        versionName "1.52"
+        versionCode 57
+        versionName "1.53"
         manifestPlaceholders = [
             GOOGLE_MAPS_API_KEY: project.env.get("GOOGLE_MAPS_API_KEY") ?: "",
         ]

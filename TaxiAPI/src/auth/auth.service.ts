@@ -39,8 +39,16 @@ export class AuthService {
 
   // ── Login ──────────────────────────────────────────────────────────────────
   async login(dto: LoginDto): Promise<AuthTokensDto> {
+    // Accept either { phone, password } (legacy callers) or
+    // { identifier, password } (redesigned login screen with email/phone tabs).
+    const raw = (dto.identifier ?? dto.phone ?? '').trim();
+    if (!raw) throw new UnauthorizedException('Invalid credentials');
+
+    const looksLikeEmail = raw.includes('@');
     const user = await this.userRepo.findOne({
-      where: { phone: dto.phone, isActive: true },
+      where: looksLikeEmail
+        ? { email: raw.toLowerCase(), isActive: true }
+        : { phone: raw, isActive: true },
     });
 
     if (!user || !user.passwordHash) throw new UnauthorizedException('Invalid credentials');
@@ -48,7 +56,9 @@ export class AuthService {
     const passwordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!passwordValid) throw new UnauthorizedException('Invalid credentials');
 
-    if (!user.isPhoneVerified) {
+    // Phone-verified gate only applies to phone-registered users. Email/Google
+    // users are auto-verified at signup so login isn't blocked for them.
+    if (!user.isPhoneVerified && !looksLikeEmail) {
       throw new ForbiddenException('Phone number not verified');
     }
 

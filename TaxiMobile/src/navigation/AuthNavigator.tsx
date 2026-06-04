@@ -4,6 +4,7 @@ import type { AuthStackParamList } from './types';
 
 // Screens (implemented in Step 24)
 import LoginScreen from '../screens/auth/LoginScreen';
+import SignUpScreen from '../screens/auth/SignUpScreen';
 import OtpScreen from '../screens/auth/OtpScreen';
 import RegisterClientScreen from '../screens/auth/RegisterClientScreen';
 import RegisterDriverScreen from '../screens/auth/RegisterDriverScreen';
@@ -19,6 +20,7 @@ export default function AuthNavigator() {
       screenOptions={{ headerShown: false }}
       initialRouteName="Login">
       <Stack.Screen name="Login"           component={LoginScreen} />
+      <Stack.Screen name="SignUp"          component={SignUpScreen} />
       <Stack.Screen name="Otp"             component={OtpScreen} />
       <Stack.Screen name="RegisterClient"  component={RegisterClientScreen} />
       <Stack.Screen name="RegisterDriver"  component={RegisterDriverScreen} />
