@@ -70,6 +70,8 @@ export interface Ride {
   cancelledBy: string | null;
   cancelReason: string | null;
   paymentStatus: PaymentStatus;
+  /** Resolved at completion / Stripe webhook time. Null while pending. */
+  paymentMethod: 'cash' | 'card' | null;
   // Trip metrics
   distanceKm: number | null;
   durationMinutes: number | null;

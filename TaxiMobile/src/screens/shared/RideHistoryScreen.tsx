@@ -396,7 +396,9 @@ function RideCard({ ride, onCancelled }: { ride: Ride; onCancelled: (id: string)
       <View style={styles.cardFooter}>
         <View style={styles.footerLeft}>
           {ride.paymentStatus === 'paid' && (
-            <Text style={styles.footerText}>💵 {t('shared.rideHistory.cashPaid')}</Text>
+            <Text style={styles.footerText}>
+              {ride.paymentMethod === 'card' ? '💳 Paid by card' : `💵 ${t('shared.rideHistory.cashPaid')}`}
+            </Text>
           )}
           {ride.paymentStatus === 'pending' && ride.status === 'completed' && (
             <Text style={styles.footerText}>⏳ {t('shared.rideHistory.paymentPending')}</Text>

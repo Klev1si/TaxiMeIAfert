@@ -114,7 +114,9 @@ function buildReceiptText(ride: Ride): string {
     lines.push('');
   }
 
-  lines.push('Payment:  ' + (ride.paymentStatus === 'paid' ? '✓ Paid' : ride.paymentStatus));
+  lines.push('Payment:  ' + (ride.paymentStatus === 'paid'
+    ? (ride.paymentMethod === 'card' ? '✓ Paid by card' : '✓ Paid in cash')
+    : ride.paymentStatus));
   lines.push('');
   lines.push(LINE);
   lines.push('Thank you for riding with TaxiApp!');
@@ -303,7 +305,9 @@ export default function RideDetailScreen({ route }: Props) {
             </View>
             {ride.paymentStatus === 'paid' && (
               <View style={[styles.badge, { backgroundColor: colors.successLight }]}>
-                <Text style={[styles.badgeText, { color: colors.success }]}>💵 Paid</Text>
+                <Text style={[styles.badgeText, { color: colors.success }]}>
+                  {ride.paymentMethod === 'card' ? '💳 Paid by card' : '💵 Paid in cash'}
+                </Text>
               </View>
             )}
           </View>
