@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "524747770284-ah0t1iol0ltcmae5rv0u7qaridcq76gv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.taximelafert",
+            "certificate_hash": "1173400b21666510e94a2eabdc4d42c1b59b19f5"
+          }
+        },
+        {
           "client_id": "524747770284-l9gk60qjnfs2m9bih58o27c0kira3liv.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

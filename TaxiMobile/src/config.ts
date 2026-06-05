@@ -49,7 +49,7 @@ const Config = {
   // To rotate: update Firebase project AND edit this fallback together.
   GOOGLE_WEB_CLIENT_ID:
     RNConfig.GOOGLE_WEB_CLIENT_ID ||
-    '382376839873-qnpdhj2esagfshlvf5c4dkiivl8mmt2i.apps.googleusercontent.com',
+    '524747770284-us3dtn3h42qa0uqmip8rbheq0onb9cfd.apps.googleusercontent.com',
 
   // Stripe publishable key. NOTE: publishable keys are designed to be public
   // — they're meant to ship in client apps — so it's safe to hardcode the
