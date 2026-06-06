@@ -29,7 +29,7 @@ import { crash } from '../../services/crashlytics';
 import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
 import { useTranslation } from '../../i18n';
-import { isStripeConfigured } from '../../config';
+import { isStripeConfigured, cardPaymentsEnabled } from '../../config';
 import type { ColorPalette } from '../../constants/colors';
 import type { WsPaymentConfirmed } from '../../types/api';
 import type { ClientStackScreenProps } from '../../navigation/types';
@@ -541,7 +541,7 @@ export default function PayCashScreen({ navigation, route }: Props) {
                 <TouchableOpacity
                   style={[styles.primaryBtn, styles.cardBtn, (isCardBusy || !isStripeConfigured) && styles.btnDisabled]}
                   onPress={handleSavedCardPay}
-                  disabled={isCardBusy || !isStripeConfigured}
+                  disabled={isCardBusy || !isStripeConfigured || !cardPaymentsEnabled}
                   activeOpacity={0.85}
                   accessibilityRole="button"
                   accessibilityLabel={cardState === 'failed' ? 'Retry card payment' : 'Pay now with saved card'}
@@ -557,7 +557,7 @@ export default function PayCashScreen({ navigation, route }: Props) {
                 <TouchableOpacity
                   style={[styles.primaryBtn, styles.cardBtn, (isCardBusy || !isStripeConfigured) && styles.btnDisabled]}
                   onPress={handleCardPay}
-                  disabled={isCardBusy || !isStripeConfigured}
+                  disabled={isCardBusy || !isStripeConfigured || !cardPaymentsEnabled}
                   activeOpacity={0.85}
                   accessibilityRole="button"
                   accessibilityLabel={cardState === 'failed' ? 'Retry card payment' : 'Pay by card'}
@@ -569,9 +569,9 @@ export default function PayCashScreen({ navigation, route }: Props) {
                       </Text>}
                 </TouchableOpacity>
               )}
-              {!isStripeConfigured && (
+              {(!isStripeConfigured || !cardPaymentsEnabled) && (
                 <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center', marginTop: 6, paddingHorizontal: 16 }}>
-                  💡 Card payments are not enabled in this build. Cash works as usual.
+                  💡 Card payments are coming soon. Please pay your driver in cash for now.
                 </Text>
               )}
 

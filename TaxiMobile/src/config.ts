@@ -72,6 +72,19 @@ const Config = {
 /** Google Sign-In can only work once the Web Client ID is set. */
 export const isGoogleConfigured: boolean = !!Config.GOOGLE_WEB_CLIENT_ID && Config.GOOGLE_WEB_CLIENT_ID.length > 30;
 
+/**
+ * Master switch — when false, every card-payment UI in the app is hidden
+ * (Pay by card on PayCash, Manage Cards in the profile, Add card button
+ * on the ManageCards screen). Cash payments work normally.
+ *
+ * Currently false because Stripe doesn't operate in Kosovo, so the
+ * platform can't actually accept card payments yet. Flip this back to
+ * true the moment you have a working payment processor (Stripe Atlas /
+ * a Kosovo bank gateway / Estonia OÜ) — no schema or backend changes
+ * needed, the existing code paths still work.
+ */
+export const cardPaymentsEnabled: boolean = false;
+
 export const isStripeConfigured: boolean = (() => {
   const key = Config.STRIPE_PUBLISHABLE_KEY;
   if (!key) return false;

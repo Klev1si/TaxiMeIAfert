@@ -19,6 +19,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { authApi } from '../../api/auth';
 import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
+import { cardPaymentsEnabled } from '../../config';
 import type { ColorPalette } from '../../constants/colors';
 import AvatarPicker from '../../components/AvatarPicker';
 import LanguagePickerModal from '../../components/LanguagePickerModal';
@@ -411,15 +412,17 @@ export default function ClientProfileScreen() {
             <Text style={styles.actionChevron}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionRow}
-            onPress={() => navigation.navigate('ManageCards')}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Manage saved cards">
-            <Text style={styles.actionLabel}>💳  {t('client.profile.manageCards')}</Text>
-            <Text style={styles.actionChevron}>›</Text>
-          </TouchableOpacity>
+          {cardPaymentsEnabled && (
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={() => navigation.navigate('ManageCards')}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Manage saved cards">
+              <Text style={styles.actionLabel}>💳  {t('client.profile.manageCards')}</Text>
+              <Text style={styles.actionChevron}>›</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={styles.actionRow}

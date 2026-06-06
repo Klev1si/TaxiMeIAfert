@@ -22,7 +22,7 @@ import { paymentsApi, type SavedPaymentMethod } from '../../api/payments';
 import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
 import { useTranslation } from '../../i18n';
-import { isStripeConfigured } from '../../config';
+import { isStripeConfigured, cardPaymentsEnabled } from '../../config';
 import type { ColorPalette } from '../../constants/colors';
 
 const BRAND_ICONS: Record<string, string> = {
@@ -196,7 +196,7 @@ export default function ManageCardsScreen() {
         <TouchableOpacity
           style={[styles.addBtn, (adding || !isStripeConfigured) && styles.addBtnDisabled]}
           onPress={handleAddCard}
-          disabled={adding || !isStripeConfigured}
+          disabled={adding || !isStripeConfigured || !cardPaymentsEnabled}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Add new card"
@@ -205,9 +205,9 @@ export default function ManageCardsScreen() {
             ? <ActivityIndicator color="#fff" />
             : <Text style={styles.addBtnText}>＋  {t('client.manageCards.addCardBtn')}</Text>}
         </TouchableOpacity>
-        {!isStripeConfigured && (
+        {(!isStripeConfigured || !cardPaymentsEnabled) && (
           <Text style={{ fontSize: 12, color: colors.textSecondary, textAlign: 'center', marginTop: 8, paddingHorizontal: 16 }}>
-            💡 Card payments are not enabled in this build. Contact your administrator if you'd like to add a card.
+            💳 Card payments are coming soon. For now, all rides are paid in cash directly to the driver.
           </Text>
         )}
       </View>
