@@ -1,0 +1,68 @@
+# TaxiMeIAfert — Legal pages
+
+Privacy Policy + Terms of Service as a static site, ready to drop into GitHub Pages.
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `index.html` | Landing page with cards linking to the two policies |
+| `privacy.html` | Privacy Policy (Kosovo / GDPR-friendly) |
+| `terms.html` | Terms of Service (passenger / driver / company sections) |
+
+All three files are self-contained — no JavaScript, no build step, no external CSS.
+Just open them in a browser and they work.
+
+## Quick GitHub Pages setup (~5 min)
+
+Two options, depending on whether you want them on a separate repo or inside this one.
+
+### Option A — Separate dedicated repo (recommended, cleanest URL)
+
+1. Create a new GitHub repo named **`taximelafert-legal`** (or anything you like)
+2. Copy these three HTML files (and this README) into the repo root
+3. Push to GitHub
+4. Repo → **Settings** → **Pages** → Source: `Deploy from a branch` → Branch: `main` → Folder: `/ (root)` → Save
+5. Wait 1-2 minutes — your URL becomes:
+
+   ```
+   https://<your-github-username>.github.io/taximelafert-legal/
+   ```
+
+   For Klev1si this would be: `https://klev1si.github.io/taximelafert-legal/`
+
+6. Privacy URL to paste into Play Console:
+
+   ```
+   https://klev1si.github.io/taximelafert-legal/privacy.html
+   ```
+
+### Option B — Inside the existing TaxiMeIAfert repo (one-step)
+
+1. The `legal/` folder is already in the main repo
+2. GitHub → your TaxiMeIAfert repo → **Settings** → **Pages**
+3. Source: `Deploy from a branch` → Branch: `main` → Folder: `/legal` → Save
+4. URL becomes: `https://klev1si.github.io/TaxiMeIAfert/`
+5. Privacy URL: `https://klev1si.github.io/TaxiMeIAfert/privacy.html`
+
+⚠️ Option B exposes the entire repo as a static site, including the source code. The
+code is already on GitHub publicly so it doesn't leak anything new — but for a cleaner
+separation, Option A is nicer.
+
+## Updating the content
+
+Just edit the HTML files and push. GitHub Pages rebuilds automatically (~30 seconds).
+
+If you make material changes that affect users — for example, adding a new data processor
+or changing the commission structure — you should also:
+
+1. Bump the **Effective date** at the top of the changed document
+2. Send users an in-app notice or email 14 days before the change takes effect, as
+   promised in section 11 of the Privacy Policy and section 16 of the Terms
+
+## Albanian translation
+
+When ready, you can add `privacy.sq.html` and `terms.sq.html` files with Albanian
+translations. The `<html lang="sq">` attribute should be set accordingly. Update the
+landing `index.html` to offer the language choice. Most Kosovo users will appreciate the
+Albanian version even if they understand English.

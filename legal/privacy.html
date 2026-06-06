@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Policy — TaxiMeIAfert</title>
+  <style>
+    :root { --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --accent:#eab308; --border:#e2e8f0; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --muted:#94a3b8; --border:#334155; }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+           background:var(--bg); color:var(--text); line-height:1.7; }
+    .container { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; }
+    .back { color:var(--accent); text-decoration:none; font-size:14px; font-weight:600; }
+    h1 { font-size:32px; margin: 24px 0 4px; }
+    .meta { color:var(--muted); font-size:14px; margin-bottom:32px; }
+    h2 { font-size:20px; margin-top:36px; margin-bottom:8px; border-bottom: 1px solid var(--border); padding-bottom:6px; }
+    h3 { font-size:16px; margin-top:20px; margin-bottom:6px; }
+    p, li { font-size:15px; }
+    ul { padding-left:22px; }
+    li { margin-bottom:6px; }
+    code { background: var(--border); padding:2px 5px; border-radius:4px; font-size:13px; }
+    a { color:var(--accent); }
+    .note { background: var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 18px; margin: 12px 0; font-size:14px; color:var(--muted); }
+    footer { margin-top:48px; text-align:center; color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a class="back" href="./index.html">← Back</a>
+    <h1>Privacy Policy</h1>
+    <p class="meta">Effective date: 5 June 2026 · Version 1.0</p>
+
+    <p>
+      This Privacy Policy explains how <strong>TaxiMeIAfert</strong> ("we", "us", "the app")
+      collects, uses, shares, and protects information when you use our mobile application
+      and related services. We operate in Kosovo and comply with Law No. 06/L-082 on
+      Personal Data Protection, with reference to EU GDPR standards.
+    </p>
+
+    <h2>1. Who we are</h2>
+    <p>
+      TaxiMeIAfert is a ride-hailing platform that connects passengers with taxi drivers and
+      transport companies in Kosovo. The operator and data controller for this service is:
+    </p>
+    <ul>
+      <li><strong>Operator:</strong> TaxiMeIAfert (the application)</li>
+      <li><strong>Contact:</strong> <a href="mailto:klevisfx@gmail.com">klevisfx@gmail.com</a></li>
+      <li><strong>Country of operation:</strong> Republic of Kosovo</li>
+    </ul>
+
+    <h2>2. Information we collect</h2>
+
+    <h3>2.1 Account information</h3>
+    <ul>
+      <li><strong>Phone number</strong> (verified via SMS one-time code)</li>
+      <li><strong>Email address</strong> (used for login, password reset, and account communications)</li>
+      <li><strong>First and last name</strong></li>
+      <li><strong>Profile photo or avatar</strong> (optional, uploaded by you)</li>
+      <li><strong>Password</strong> (stored only as a hashed value — we never see the plaintext)</li>
+      <li><strong>Google account identifier</strong> if you sign up via Google Sign-In (we receive
+        your email, name, and profile picture from Google when you choose this option)</li>
+    </ul>
+
+    <h3>2.2 For drivers and transport companies</h3>
+    <ul>
+      <li><strong>Driver's licence number</strong></li>
+      <li><strong>Vehicle make, model, year, plate, colour, and category</strong></li>
+      <li><strong>Company name, address, and city</strong> (transport companies only)</li>
+      <li><strong>Identity and licence documents</strong> uploaded during registration for
+        admin verification</li>
+    </ul>
+
+    <h3>2.3 Location data</h3>
+    <ul>
+      <li><strong>For passengers:</strong> your device location is used at the time of
+        booking to determine pickup point and nearby drivers, and during an active ride
+        for trip routing.</li>
+      <li><strong>For drivers:</strong> while you are online (toggle ON), we collect your
+        GPS location continuously so we can dispatch nearby ride requests and show the
+        passenger your live position en route. When you switch offline, location collection
+        stops.</li>
+      <li>We do <strong>not</strong> track your location when you are offline (passenger or driver).</li>
+    </ul>
+
+    <h3>2.4 Ride and trip data</h3>
+    <ul>
+      <li>Pickup and drop-off addresses (entered or auto-resolved via OpenStreetMap Nominatim)</li>
+      <li>Intermediate stops you add to a trip</li>
+      <li>Distance travelled, duration, fare amount, and payment method</li>
+      <li>Star ratings and reviews you give or receive</li>
+      <li>Cancellations and cancellation reasons</li>
+    </ul>
+
+    <h3>2.5 Payment information</h3>
+    <p>
+      At launch, TaxiMeIAfert operates on a <strong>cash-only</strong> basis: passengers pay
+      drivers directly with cash after each ride. We do not store credit card numbers, CVV
+      codes, or card expiration data on our servers.
+    </p>
+    <p>
+      In the future, when card payments become available, payment information will be
+      processed by a regulated payment processor (such as Stripe). In that case, we will
+      receive only the card brand, the last 4 digits, and an opaque tokenised reference. We
+      will not have access to your full card details.
+    </p>
+
+    <h3>2.6 Device and technical information</h3>
+    <ul>
+      <li>Device type, operating system version, and language</li>
+      <li>Firebase Cloud Messaging push token (so we can send notifications)</li>
+      <li>App version, crash logs, and basic usage analytics (via Firebase Crashlytics)</li>
+    </ul>
+
+    <h2>3. How we use your information</h2>
+    <p>We use your data to:</p>
+    <ul>
+      <li>Match passengers with nearby drivers and dispatch ride requests</li>
+      <li>Calculate fares using the applicable tariff (per-km, per-minute, time-of-day)</li>
+      <li>Display the driver's live location to the passenger during a ride</li>
+      <li>Send transactional messages (ride accepted, driver arrived, payment confirmed)</li>
+      <li>Verify driver and company identity (admin review of uploaded documents)</li>
+      <li>Maintain a wallet/ledger of earnings, expenses, and amounts owed between parties</li>
+      <li>Provide customer support and resolve disputes</li>
+      <li>Detect and prevent fraud, abuse, or violations of these terms</li>
+      <li>Improve the app's performance and fix bugs via crash reports and analytics</li>
+      <li>Comply with our legal obligations in Kosovo</li>
+    </ul>
+
+    <h2>4. Who we share your information with</h2>
+
+    <h3>4.1 With the other party of a ride</h3>
+    <p>
+      When a ride is matched, the driver sees the passenger's first name, phone number,
+      rating, and pickup address. The passenger sees the driver's first name, phone number,
+      vehicle details, rating, and live location. This sharing is essential for the service
+      to work.
+    </p>
+
+    <h3>4.2 With service providers (data processors)</h3>
+    <ul>
+      <li><strong>Google Firebase</strong> — authentication (Google Sign-In), push notifications,
+        crash reporting, and analytics. See
+        <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>.</li>
+      <li><strong>Brevo (Sendinblue)</strong> — sends transactional emails such as password reset codes.</li>
+      <li><strong>Twilio</strong> — sends SMS one-time codes for phone verification.</li>
+      <li><strong>OpenStreetMap Nominatim</strong> — converts addresses to coordinates and
+        vice versa (no personal information is included in these lookups).</li>
+      <li><strong>Google Maps Platform</strong> — renders the map view inside the app.</li>
+      <li><strong>Railway</strong> — hosts our backend servers and PostgreSQL database in the EU.</li>
+      <li><strong>Stripe</strong> — will process card payments once card payments are enabled
+        (currently disabled at launch).</li>
+    </ul>
+
+    <h3>4.3 With law enforcement and authorities</h3>
+    <p>
+      We may disclose information when required by law, court order, or to protect the rights,
+      property, or safety of users or the public. We will not provide bulk access to user
+      data and we will resist overly broad requests.
+    </p>
+
+    <h3>4.4 We do NOT sell your data</h3>
+    <p>
+      We do not sell, rent, or trade your personal information to advertisers, data brokers,
+      or any third party for commercial purposes.
+    </p>
+
+    <h2>5. How long we keep your data</h2>
+    <ul>
+      <li><strong>Account information:</strong> retained while your account is active. If you
+        delete your account, we erase personally identifying data within 30 days, except where
+        we are required by Kosovo law to keep certain records (e.g. financial transactions for tax purposes).</li>
+      <li><strong>Ride history:</strong> retained for up to 5 years for accounting and dispute resolution.</li>
+      <li><strong>Location data of completed rides:</strong> route points used during the trip
+        are deleted automatically 90 days after the ride completes; pickup and drop-off
+        addresses are retained with the ride record.</li>
+      <li><strong>Driver location while online:</strong> the live position is stored in our
+        in-memory cache (Redis) only for as long as it takes to dispatch — after 90 seconds of
+        no movement update we treat the driver as offline and delete the cached location.</li>
+      <li><strong>Crash reports and analytics:</strong> retained up to 90 days by Firebase Crashlytics.</li>
+    </ul>
+
+    <h2>6. Your rights</h2>
+    <p>You have the right to:</p>
+    <ul>
+      <li><strong>Access</strong> the personal data we hold about you</li>
+      <li><strong>Correct</strong> inaccurate or incomplete information (most fields are editable in your profile)</li>
+      <li><strong>Delete</strong> your account and associated personal data</li>
+      <li><strong>Export</strong> a copy of your data in a portable format</li>
+      <li><strong>Withdraw consent</strong> for non-essential processing (e.g. analytics)</li>
+      <li><strong>Object</strong> to processing for legitimate-interest reasons</li>
+      <li><strong>Lodge a complaint</strong> with the Kosovo Information and Privacy Agency
+        (Agjencia për Informim dhe Privatësi) if you believe we have mishandled your data</li>
+    </ul>
+    <p>
+      To exercise any of these rights, email us at
+      <a href="mailto:klevisfx@gmail.com">klevisfx@gmail.com</a>. We will respond within
+      30 days as required by Kosovo data protection law.
+    </p>
+
+    <h2>7. Security</h2>
+    <p>
+      We protect your data with industry-standard measures: passwords are hashed with bcrypt;
+      all network traffic between the app and our servers is encrypted with TLS; payment data
+      (when card payments are enabled) is handled exclusively by certified payment processors
+      and never touches our infrastructure in plaintext form; access to production systems is
+      limited to authorised personnel using two-factor authentication.
+    </p>
+    <p>
+      Despite these measures, no online service is 100% secure. If we become aware of a data
+      breach affecting your information, we will notify you and the Kosovo Information and
+      Privacy Agency within 72 hours as required by law.
+    </p>
+
+    <h2>8. Children</h2>
+    <p>
+      TaxiMeIAfert is not intended for users under the age of 18. We do not knowingly collect
+      personal data from minors. If you believe a minor has provided us information, please
+      contact us so we can remove it.
+    </p>
+
+    <h2>9. International transfers</h2>
+    <p>
+      Our backend infrastructure is hosted in the European Union (Railway, EU regions). Some
+      service providers we use (Google Firebase, Stripe) may process data in the United States.
+      In those cases, the transfer is covered by standard contractual clauses or other
+      mechanisms recognised by Kosovo data protection law.
+    </p>
+
+    <h2>10. Cookies and similar technologies</h2>
+    <p>
+      The mobile app itself does not use cookies. Our public website (this page) uses no
+      cookies, no tracking pixels, and no analytics scripts.
+    </p>
+
+    <h2>11. Changes to this policy</h2>
+    <p>
+      We may update this Privacy Policy from time to time. If we make material changes, we
+      will notify you through the app or by email at least 14 days before they take effect.
+      Continued use of the app after changes take effect constitutes acceptance.
+    </p>
+
+    <h2>12. Contact</h2>
+    <p>
+      Questions, requests, or concerns about your privacy?
+      <br />
+      Email: <a href="mailto:klevisfx@gmail.com">klevisfx@gmail.com</a>
+    </p>
+
+    <footer>
+      <p>© 2026 TaxiMeIAfert · <a href="./index.html">Home</a> · <a href="./terms.html">Terms of Service</a></p>
+    </footer>
+  </div>
+</body>
+</html>
