@@ -12,6 +12,12 @@
     <!-- FCM push notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Explicitly remove the AD_ID permission that Firebase Analytics auto-adds
+         via manifest merging. We don't show ads, so claiming we use an
+         advertising ID would be incorrect. tools:node="remove" tells the
+         manifest merger to drop this permission from the merged manifest. -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
+
     <application
       android:name=".MainApplication"
       android:label="@string/app_name"
