@@ -12,11 +12,14 @@
     <!-- FCM push notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Explicitly remove the AD_ID permission that Firebase Analytics auto-adds
-         via manifest merging. We don't show ads, so claiming we use an
-         advertising ID would be incorrect. tools:node="remove" tells the
-         manifest merger to drop this permission from the merged manifest. -->
+    <!-- Explicitly remove the advertising-ID permissions that Firebase / Play
+         Services libraries auto-add via manifest merging. We don't show ads,
+         so claiming we use an advertising ID would be incorrect. Both the
+         legacy Play Services AD_ID and the Android 13+ Privacy Sandbox
+         AD_ID need a tools:node="remove" — Play Console treats either as
+         "uses advertising ID" and would otherwise block the release. -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID" tools:node="remove" />
 
     <application
       android:name=".MainApplication"
