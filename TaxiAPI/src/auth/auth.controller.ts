@@ -432,57 +432,81 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @Throttle({ strict: { limit: 3, ttl: 60_000 } })
   async deleteAccount(@CurrentUser() user: User): Promise<void> {
-    const ts = Date.now();
+    // Use base36-encoded timestamp to keep the tombstone phone short enough
+    // to fit the User.phone varchar(20) constraint. "del_" (4) + base36 ts
+    // (~9 chars) = ~13 chars total — safely under the column limit.
+    // Prior version used `deleted_${Date.now()}` which produced 21 chars
+    // and silently failed at the DB layer, leaving the user record intact
+    // and the account effectively un-deleted.
+    const tombstone = `del_${Date.now().toString(36)}`;
 
-    // 1. Role-specific cleanup
-    if (user.role === UserRole.CLIENT) {
-      const client = await this.clientRepo.findOne({ where: { userId: user.id } });
-      if (client) {
-        // Cancel rides that are still open
-        const activeStatuses = [
-          RideStatus.REQUESTED,
-          RideStatus.ACCEPTED,
-          RideStatus.DRIVING_TO_PICKUP,
-          RideStatus.IN_PROGRESS,
-        ] as RideStatus[];
-        await this.rideRepo.update(
-          { clientId: client.id, status: In(activeStatuses) },
-          {
-            status:       RideStatus.CANCELLED,
-            cancelledBy:  UserRole.CLIENT,
-            cancelReason: 'Account deleted',
-            cancelledAt:  new Date(),
-          },
-        );
-        // Anonymise name
-        await this.clientRepo.update(client.id, { firstName: 'Deleted', lastName: 'User' });
+    // Wrap the whole operation in a transaction so that, on any failure,
+    // partial state (e.g., anonymised name but not deactivated user) doesn't
+    // get committed and leave the account in an inconsistent state.
+    await this.userRepo.manager.transaction(async (tx) => {
+      // 1. Role-specific cleanup
+      if (user.role === UserRole.CLIENT) {
+        const client = await tx.getRepository(Client).findOne({ where: { userId: user.id } });
+        if (client) {
+          const activeStatuses = [
+            RideStatus.REQUESTED,
+            RideStatus.ACCEPTED,
+            RideStatus.DRIVING_TO_PICKUP,
+            RideStatus.IN_PROGRESS,
+          ] as RideStatus[];
+          await tx.getRepository(Ride).update(
+            { clientId: client.id, status: In(activeStatuses) },
+            {
+              status:       RideStatus.CANCELLED,
+              cancelledBy:  UserRole.CLIENT,
+              cancelReason: 'Account deleted',
+              cancelledAt:  new Date(),
+            },
+          );
+          await tx.getRepository(Client).update(client.id, { firstName: 'Deleted', lastName: 'User' });
+        }
       }
-    }
 
-    if (user.role === UserRole.DRIVER) {
-      const driver = await this.driverRepo.findOne({ where: { userId: user.id } });
-      if (driver) {
-        // Take driver offline so no rides are dispatched
-        await this.driverRepo.update(driver.id, { isOnline: false });
-        // Anonymise name
-        await this.driverRepo.update(driver.id, { firstName: 'Deleted', lastName: 'Driver' });
+      if (user.role === UserRole.DRIVER) {
+        const driver = await tx.getRepository(Driver).findOne({ where: { userId: user.id } });
+        if (driver) {
+          await tx.getRepository(Driver).update(driver.id, {
+            isOnline:  false,
+            firstName: 'Deleted',
+            lastName:  'Driver',
+          });
+        }
       }
-    }
 
-    // 2. Delete avatar file from disk
-    if (user.avatarUrl) {
-      try { unlinkSync(join(process.cwd(), user.avatarUrl)); } catch { /* already gone */ }
-    }
+      if (user.role === UserRole.COMPANY) {
+        const company = await tx.getRepository(Company).findOne({ where: { userId: user.id } });
+        if (company) {
+          await tx.getRepository(Company).update(company.id, {
+            name:       'Deleted Company',
+            address:    null,
+            city:       null,
+            logoUrl:    null,
+            isApproved: false,
+          });
+        }
+      }
 
-    // 3. Anonymise the user record
-    await this.userRepo.update(user.id, {
-      phone:        `deleted_${ts}`,   // must stay unique in the DB
-      email:        null,
-      passwordHash: await bcrypt.hash(`deleted_${ts}`, 12), // invalidate password
-      avatarUrl:    null,
-      fcmToken:     null,
-      refreshToken: null,
-      isActive:     false,
+      // 2. Delete avatar file from disk (best-effort)
+      if (user.avatarUrl) {
+        try { unlinkSync(join(process.cwd(), user.avatarUrl)); } catch { /* already gone */ }
+      }
+
+      // 3. Anonymise the user record. This MUST succeed for the deletion to
+      //    take effect — if it throws, the transaction rolls back everything.
+      await tx.getRepository(User).update(user.id, {
+        phone:        tombstone,
+        email:        null,
+        passwordHash: await bcrypt.hash(tombstone, 12),
+        avatarUrl:    null,
+        fcmToken:     null,
+        refreshToken: null,
+        isActive:     false,
+      });
     });
   }
 }
