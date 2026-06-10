@@ -1,0 +1,52 @@
+# GitHub Pages deploy for legal/ folder (Privacy Policy, Terms, Delete Account).
+#
+# Replaces the auto-generated Pages workflow so we can pass `submodules: false`
+# to actions/checkout. The auto workflow uses `submodules: true` by default
+# and was failing with "No url found for submodule path '.claude/worktrees/...'"
+# whenever a stray gitlink existed in the index.
+name: Deploy legal pages to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'legal/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: legal
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
