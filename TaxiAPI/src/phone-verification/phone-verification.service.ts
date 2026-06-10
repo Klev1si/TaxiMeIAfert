@@ -203,6 +203,15 @@ export class PhoneVerificationService {
           'This phone number isn\'t verified in our SMS provider. The app owner needs to either verify your number in Twilio\'s console, or upgrade Twilio to a paid plan.',
         );
       }
+
+      // Twilio code 21408 → SMS to this country is blocked by Twilio's
+      // Messaging Geographic Permissions. Owner needs to enable the country
+      // at https://console.twilio.com/ → Messaging → Settings → Geo permissions.
+      if (code === 21408) {
+        throw new BadRequestException(
+          'SMS to this country is not enabled yet. Please contact support so we can enable your country in our SMS provider.',
+        );
+      }
       // Other Twilio errors → keep the original behaviour (500) so we still
       // notice them in alerting, but with a cleaner message bubbled up.
       throw new BadRequestException(`Could not send SMS: ${msg}`);

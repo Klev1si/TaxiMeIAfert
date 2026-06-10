@@ -850,15 +850,19 @@ export default function DriverProfileScreen() {
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity
-            style={styles.actionRow}
-            onPress={() => navigation.navigate('DriverSubscription')}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Subscription">
-            <Text style={styles.actionLabel}>⭐  {t('driver.subscription.title')}</Text>
-            <Text style={styles.actionChevron}>›</Text>
-          </TouchableOpacity>
+          {/* Subscription — solo drivers only. Company drivers are billed via
+              their company, so the personal subscription plan is hidden. */}
+          {profile?.companyId == null && (
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={() => navigation.navigate('DriverSubscription')}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Subscription">
+              <Text style={styles.actionLabel}>⭐  {t('driver.subscription.title')}</Text>
+              <Text style={styles.actionChevron}>›</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[styles.actionRow, { borderBottomWidth: 0 }]}

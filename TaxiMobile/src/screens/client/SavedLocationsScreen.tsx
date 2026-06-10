@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ActivityIndicator,
   Alert, ScrollView, Modal, TextInput, KeyboardAvoidingView,
-  Platform, Pressable,
+  Platform, Pressable, PermissionsAndroid,
 } from 'react-native';
+import Geolocation from '@react-native-community/geolocation';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { savedLocationsApi, type SavedLocation } from '../../api/saved-locations';
@@ -66,22 +67,47 @@ function EditModal({ visible, initial, onClose, onSaved }: EditModalProps) {
     setSaving(false);
   }, [visible]);
 
-  const fetchGps = () => {
+  const fetchGps = async () => {
     setGpsState('loading');
-    // React Native exposes geolocation via the global navigator polyfill
-    // eslint-disable-next-line no-undef
-    const geo = (globalThis as any).navigator?.geolocation as
-      | { getCurrentPosition: (s: (p: { coords: { latitude: number; longitude: number } }) => void, e: () => void, o: object) => void }
-      | undefined;
-    if (!geo) { setGpsState('error'); return; }
-    geo.getCurrentPosition(
-      pos => {
-        setLat(pos.coords.latitude);
-        setLng(pos.coords.longitude);
-        setGpsState('done');
+
+    if (Platform.OS === 'android') {
+      try {
+        const result = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location permission',
+            message: 'Allow access to your current location to save it.',
+            buttonPositive: 'OK',
+          },
+        );
+        if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+          setGpsState('error');
+          return;
+        }
+      } catch {
+        setGpsState('error');
+        return;
+      }
+    }
+
+    const onSuccess = (pos: { coords: { latitude: number; longitude: number } }) => {
+      setLat(pos.coords.latitude);
+      setLng(pos.coords.longitude);
+      setGpsState('done');
+    };
+
+    // Try high-accuracy first; fall back to low-accuracy if it times out
+    // (mirrors the pattern used in ClientHomeScreen).
+    Geolocation.getCurrentPosition(
+      onSuccess,
+      () => {
+        Geolocation.getCurrentPosition(
+          onSuccess,
+          () => setGpsState('error'),
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 },
+        );
       },
-      () => setGpsState('error'),
-      { enableHighAccuracy: true, timeout: 10000 },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   };
 
