@@ -63,14 +63,26 @@ export default function Taximeter({
   const styles = useMemo(() => getStyles(colors), [colors]);
 
   // ── Distance tracking — accumulate haversine between consecutive points ────
+  // Only starts accumulating once `startedAt` is set (ride actually started).
+  // Before that we still observe `position` so we have a "last known" anchor
+  // when the ride begins, but we don't add to the total — otherwise the driver
+  // driving toward the pickup would inflate the trip distance.
   const lastPosRef    = useRef<LatLng | null>(null);
   const distanceRef   = useRef(0); // km
   const [distanceKm, setDistanceKm] = useState(0);
 
+  // Reset accumulated distance the moment the ride transitions to "running".
+  useEffect(() => {
+    if (startedAt) {
+      distanceRef.current = 0;
+      setDistanceKm(0);
+    }
+  }, [startedAt]);
+
   useEffect(() => {
     if (!position) return;
     const last = lastPosRef.current;
-    if (last) {
+    if (last && startedAt) {
       const d = haversineKm(last, position);
       // Ignore tiny jitter (<5 m) and impossible jumps (>2 km in one update)
       if (d >= 0.005 && d <= 2) {
@@ -79,7 +91,7 @@ export default function Taximeter({
       }
     }
     lastPosRef.current = position;
-  }, [position]);
+  }, [position, startedAt]);
 
   // ── 1-second ticker to keep the time component fresh ───────────────────────
   const [nowMs, setNowMs] = useState(Date.now());
@@ -88,31 +100,41 @@ export default function Taximeter({
     return () => clearInterval(id);
   }, []);
 
-  if (!tariff || !startedAt) return null;
+  // Hide entirely if no tariff is configured — nothing to display.
+  if (!tariff) return null;
 
-  const startMs = typeof startedAt === 'string' ? new Date(startedAt).getTime() : startedAt.getTime();
-  const elapsedMin = Math.max(0, (nowMs - startMs) / 60_000);
+  // Until the driver taps "Start ride" (startedAt is null) we still show the
+  // meter UI, but at 0.00 km / 00:00 / fare = 0.00. This lets the passenger
+  // and driver see the meter is armed and ready before the trip begins.
+  const isRunning = !!startedAt;
+  const startMs = isRunning
+    ? (typeof startedAt === 'string' ? new Date(startedAt as string).getTime() : (startedAt as Date).getTime())
+    : nowMs;
+  const elapsedMin = isRunning ? Math.max(0, (nowMs - startMs) / 60_000) : 0;
+  const liveDistanceKm = isRunning ? distanceKm : 0;
 
-  const raw =
-    tariff.baseFare +
-    distanceKm   * tariff.perKmRate +
-    elapsedMin   * tariff.perMinuteRate;
-  const afterMin = Math.max(raw, tariff.minimumFare);
-  const fare = afterMin * (tariff.surgeMultiplier ?? 1);
+  const fare = isRunning
+    ? Math.max(
+        tariff.baseFare +
+          liveDistanceKm * tariff.perKmRate +
+          elapsedMin     * tariff.perMinuteRate,
+        tariff.minimumFare,
+      ) * (tariff.surgeMultiplier ?? 1)
+    : 0;
 
-  // Format minutes as mm:ss for a real-meter feel
-  const totalSec = Math.floor((nowMs - startMs) / 1000);
+  // Format minutes as mm:ss for a real-meter feel.
+  const totalSec = isRunning ? Math.floor((nowMs - startMs) / 1000) : 0;
   const mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
   const ss = String(totalSec % 60).padStart(2, '0');
 
   return (
     <View style={styles.wrap} pointerEvents="none">
       <View style={styles.row}>
-        <Text style={styles.label}>FARE</Text>
+        <Text style={styles.label}>{isRunning ? 'FARE' : 'FARE • WAITING'}</Text>
         <Text style={styles.fare}>{currency}{fare.toFixed(2)}</Text>
       </View>
       <View style={styles.metaRow}>
-        <Text style={styles.meta}>📏 {distanceKm.toFixed(2)} km</Text>
+        <Text style={styles.meta}>📏 {liveDistanceKm.toFixed(2)} km</Text>
         <Text style={styles.meta}>⏱ {mm}:{ss}</Text>
       </View>
     </View>

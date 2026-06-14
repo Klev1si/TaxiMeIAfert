@@ -455,11 +455,12 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
         )}
       </MapView>
 
-      {/* ── Real-time taximeter — shows running fare while in_progress ──── */}
-      {status === 'in_progress' && (
+      {/* ── Real-time taximeter — shows from acceptance (0.00) and starts
+            ticking when the driver taps "Start ride" (status → in_progress). */}
+      {(status === 'accepted' || status === 'driving_to_pickup' || status === 'arrived' || status === 'in_progress') && (
         <Taximeter
           tariff={ride.tariffSnapshot ?? null}
-          startedAt={ride.startedAt}
+          startedAt={status === 'in_progress' ? ride.startedAt : null}
           position={driverPos}
         />
       )}
