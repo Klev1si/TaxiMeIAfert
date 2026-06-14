@@ -10,7 +10,7 @@ import { REDIS_CLIENT } from '../redis/redis.module';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere, DataSource, In } from 'typeorm';
 import { IsString, IsNumber, IsBoolean, IsOptional, IsInt, Min, Max,
-         MaxLength, MinLength, IsNotEmpty, Matches } from 'class-validator';
+         MaxLength, MinLength, IsNotEmpty, Matches, IsEnum, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 import * as bcrypt from 'bcrypt';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -18,7 +18,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole, RideStatus } from '../common/enums';
-import { Company, CompanySubscription, Driver, Ride, SubscriptionPlan, Tariff, User } from '../entities';
+import { Company, CompanySubscription, Driver, PromoCode, Ride, SubscriptionPlan, Tariff, User } from '../entities';
+import { PromoDiscountType } from '../entities/promo-code.entity';
 import { GpsService } from '../gps/gps.service';
 
 // ── DTOs ──────────────────────────────────────────────────────────────────────
@@ -132,6 +133,63 @@ function periodStart(period: string): Date | null {
   }
 }
 
+// ── Promo Code DTOs ───────────────────────────────────────────────────────────
+
+class CompanyCreatePromoDto {
+  @IsString() @IsNotEmpty() @MaxLength(50)
+  code: string;
+
+  @IsString() @IsOptional() @MaxLength(200)
+  description?: string;
+
+  @IsEnum(PromoDiscountType)
+  discountType: PromoDiscountType;
+
+  @IsNumber() @Min(0) @Type(() => Number)
+  discountValue: number;
+
+  @IsNumber() @Min(0) @IsOptional() @Type(() => Number)
+  maxDiscountAmount?: number;
+
+  @IsNumber() @Min(0) @IsOptional() @Type(() => Number)
+  minimumFare?: number;
+
+  @IsInt() @Min(1) @IsOptional() @Type(() => Number)
+  maxUses?: number;
+
+  @IsDateString() @IsOptional()
+  expiresAt?: string;
+}
+
+class CompanyUpdatePromoDto {
+  @IsString() @IsNotEmpty() @MaxLength(50) @IsOptional()
+  code?: string;
+
+  @IsString() @IsOptional() @MaxLength(200)
+  description?: string;
+
+  @IsEnum(PromoDiscountType) @IsOptional()
+  discountType?: PromoDiscountType;
+
+  @IsNumber() @Min(0) @IsOptional() @Type(() => Number)
+  discountValue?: number;
+
+  @IsNumber() @Min(0) @IsOptional() @Type(() => Number)
+  maxDiscountAmount?: number;
+
+  @IsNumber() @Min(0) @IsOptional() @Type(() => Number)
+  minimumFare?: number;
+
+  @IsInt() @Min(1) @IsOptional() @Type(() => Number)
+  maxUses?: number;
+
+  @IsDateString() @IsOptional()
+  expiresAt?: string;
+
+  @IsBoolean() @IsOptional()
+  isActive?: boolean;
+}
+
 // ── Controller ────────────────────────────────────────────────────────────────
 
 @Controller('company')
@@ -145,6 +203,7 @@ export class CompanyController {
     @InjectRepository(Tariff)               private readonly tariffRepo:  Repository<Tariff>,
     @InjectRepository(CompanySubscription)  private readonly subRepo:     Repository<CompanySubscription>,
     @InjectRepository(SubscriptionPlan)     private readonly planRepo:    Repository<SubscriptionPlan>,
+    @InjectRepository(PromoCode)            private readonly promoRepo:   Repository<PromoCode>,
     private readonly gpsService: GpsService,
     private readonly dataSource: DataSource,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
@@ -606,6 +665,119 @@ export class CompanyController {
       nightEndHour:    t.nightEndHour,
       isActive:        t.isActive,
       createdAt:       t.createdAt,
+    };
+  }
+
+  // ── Promo Codes ──────────────────────────────────────────────────────────
+  // Company-owned promo codes apply only on rides where the assigned driver
+  // belongs to this company. Codes are globally unique — if a code already
+  // exists (admin-owned or other company's), we reject the create.
+
+  /** GET /company/promo-codes — list this company's promo codes */
+  @Get('promo-codes')
+  async listPromoCodes(@CurrentUser() user: User) {
+    const company = await this.resolveCompany(user.id);
+    const codes = await this.promoRepo.find({
+      where: { companyId: company.id },
+      order: { createdAt: 'DESC' },
+    });
+    return codes.map(c => this.mapPromo(c));
+  }
+
+  /** POST /company/promo-codes — create a new promo code owned by this company */
+  @Post('promo-codes')
+  async createPromoCode(
+    @CurrentUser() user: User,
+    @Body() dto: CompanyCreatePromoDto,
+  ) {
+    const company = await this.resolveCompany(user.id);
+    const code = dto.code.trim().toUpperCase();
+
+    const existing = await this.promoRepo.findOne({ where: { code } });
+    if (existing) {
+      throw new ConflictException('That code is already taken. Try a different one.');
+    }
+
+    const promo = this.promoRepo.create({
+      companyId:         company.id,
+      code,
+      description:       dto.description ?? null,
+      discountType:      dto.discountType,
+      discountValue:     dto.discountValue,
+      maxDiscountAmount: dto.maxDiscountAmount ?? null,
+      minimumFare:       dto.minimumFare ?? null,
+      maxUses:           dto.maxUses ?? null,
+      expiresAt:         dto.expiresAt ? new Date(dto.expiresAt) : null,
+      isActive:          true,
+    });
+    const saved = await this.promoRepo.save(promo);
+    return this.mapPromo(saved);
+  }
+
+  /** PATCH /company/promo-codes/:id — update fields */
+  @Patch('promo-codes/:id')
+  async updatePromoCode(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: CompanyUpdatePromoDto,
+  ) {
+    const company = await this.resolveCompany(user.id);
+    const promo   = await this.promoRepo.findOne({ where: { id } });
+    if (!promo || promo.companyId !== company.id) {
+      throw new NotFoundException('Promo code not found');
+    }
+
+    if (dto.code !== undefined) {
+      const newCode = dto.code.trim().toUpperCase();
+      if (newCode !== promo.code) {
+        const collision = await this.promoRepo.findOne({ where: { code: newCode } });
+        if (collision) throw new ConflictException('That code is already taken');
+        promo.code = newCode;
+      }
+    }
+    if (dto.description       !== undefined) promo.description       = dto.description ?? null;
+    if (dto.discountType      !== undefined) promo.discountType      = dto.discountType;
+    if (dto.discountValue     !== undefined) promo.discountValue     = dto.discountValue;
+    if (dto.maxDiscountAmount !== undefined) promo.maxDiscountAmount = dto.maxDiscountAmount ?? null;
+    if (dto.minimumFare       !== undefined) promo.minimumFare       = dto.minimumFare ?? null;
+    if (dto.maxUses           !== undefined) promo.maxUses           = dto.maxUses ?? null;
+    if (dto.expiresAt         !== undefined) promo.expiresAt         = dto.expiresAt ? new Date(dto.expiresAt) : null;
+    if (dto.isActive          !== undefined) promo.isActive          = dto.isActive;
+
+    const saved = await this.promoRepo.save(promo);
+    return this.mapPromo(saved);
+  }
+
+  /** DELETE /company/promo-codes/:id — permanently delete */
+  @Delete('promo-codes/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deletePromoCode(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+  ): Promise<void> {
+    const company = await this.resolveCompany(user.id);
+    const promo   = await this.promoRepo.findOne({ where: { id } });
+    if (!promo || promo.companyId !== company.id) {
+      throw new NotFoundException('Promo code not found');
+    }
+    await this.promoRepo.remove(promo);
+  }
+
+  private mapPromo(p: PromoCode) {
+    return {
+      id:                p.id,
+      companyId:         p.companyId,
+      code:              p.code,
+      description:       p.description,
+      discountType:      p.discountType,
+      discountValue:     Number(p.discountValue),
+      maxDiscountAmount: p.maxDiscountAmount != null ? Number(p.maxDiscountAmount) : null,
+      minimumFare:       p.minimumFare != null ? Number(p.minimumFare) : null,
+      maxUses:           p.maxUses,
+      usedCount:         p.usedCount,
+      expiresAt:         p.expiresAt,
+      isActive:          p.isActive,
+      createdAt:         p.createdAt,
     };
   }
 }

@@ -19,6 +19,7 @@ import { companyApi } from '../../api/company';
 import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
 import ThemeToggle from '../../components/ThemeToggle';
+import CompanyPromoCodesScreen from './CompanyPromoCodesScreen';
 import type { ColorPalette } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
 
@@ -28,6 +29,7 @@ export default function CompanyProfileScreen() {
   const { t } = useTranslation();
   const { user, logout } = useAuthStore();
   const [commissionModal, setCommissionModal] = useState(false);
+  const [promoModal, setPromoModal] = useState(false);
 
   // Company info — fetched from /auth/me since the auth store only carries the
   // bare User row. Refreshed each time the edit modal closes successfully.
@@ -111,6 +113,15 @@ export default function CompanyProfileScreen() {
             <Text style={styles.actionLabel}>💼  {t('company.profile.commissionAction')}</Text>
             <Text style={styles.actionChevron}>›</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}
+            onPress={() => setPromoModal(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Manage promo codes">
+            <Text style={styles.actionLabel}>🏷️  Promo Codes</Text>
+            <Text style={styles.actionChevron}>›</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── Appearance ── */}
@@ -150,6 +161,11 @@ export default function CompanyProfileScreen() {
           onSaved={() => { setInfoModal(false); loadInfo(); }}
         />
       )}
+
+      <CompanyPromoCodesScreen
+        visible={promoModal}
+        onClose={() => setPromoModal(false)}
+      />
     </SafeAreaView>
   );
 }

@@ -27,6 +27,14 @@ export class PromoCode {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  /**
+   * NULL = global / admin-issued, applies to any ride.
+   * Non-NULL = owned by this company, only applies when the assigned
+   * driver belongs to that company. Validated at ride completion.
+   */
+  @Column({ type: 'uuid', name: 'company_id', nullable: true })
+  companyId: string | null;
+
   /** The code clients type in (case-insensitive, stored UPPERCASE). */
   @Column({ type: 'varchar', length: 50, unique: true })
   code: string;

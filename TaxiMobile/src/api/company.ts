@@ -98,6 +98,35 @@ export interface AddDriverPayload {
   vehicleColor?: string;
 }
 
+export type PromoDiscountType = 'percent' | 'fixed';
+
+export interface CompanyPromoCode {
+  id: string;
+  companyId: string;
+  code: string;
+  description: string | null;
+  discountType: PromoDiscountType;
+  discountValue: number;
+  maxDiscountAmount: number | null;
+  minimumFare: number | null;
+  maxUses: number | null;
+  usedCount: number;
+  expiresAt: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CompanyPromoPayload {
+  code: string;
+  description?: string;
+  discountType: PromoDiscountType;
+  discountValue: number;
+  maxDiscountAmount?: number;
+  minimumFare?: number;
+  maxUses?: number;
+  expiresAt?: string;
+}
+
 export interface TariffPayload {
   name: string;
   baseFare: number;
@@ -153,4 +182,21 @@ export const companyApi = {
   /** PATCH /company/commission */
   setCommission: (driverCommissionPct: number) =>
     apiClient.patch<{ driverCommissionPct: number }>('/company/commission', { driverCommissionPct }),
+
+  // ── Promo codes ──────────────────────────────────────────────────────────
+  /** GET /company/promo-codes */
+  getPromoCodes: () =>
+    apiClient.get<CompanyPromoCode[]>('/company/promo-codes'),
+
+  /** POST /company/promo-codes */
+  createPromoCode: (payload: CompanyPromoPayload) =>
+    apiClient.post<CompanyPromoCode>('/company/promo-codes', payload),
+
+  /** PATCH /company/promo-codes/:id */
+  updatePromoCode: (id: string, payload: Partial<CompanyPromoPayload> & { isActive?: boolean }) =>
+    apiClient.patch<CompanyPromoCode>(`/company/promo-codes/${id}`, payload),
+
+  /** DELETE /company/promo-codes/:id */
+  deletePromoCode: (id: string) =>
+    apiClient.delete(`/company/promo-codes/${id}`),
 };

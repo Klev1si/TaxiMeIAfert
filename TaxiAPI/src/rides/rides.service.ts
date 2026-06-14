@@ -560,6 +560,17 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       ? this.computeDiscount(promo, estimatedFare)
       : null;
 
+    // If the code is company-owned, fetch the company name so the client can
+    // show a hint like "Applies only to RideKos drivers".
+    let companyName: string | null = null;
+    if (promo.companyId) {
+      const company = await this.companyRepo.findOne({
+        where: { id: promo.companyId },
+        select: ['name'],
+      });
+      companyName = company?.name ?? null;
+    }
+
     return {
       valid:            true,
       code:             promo.code,
@@ -571,6 +582,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       expiresAt:        promo.expiresAt,
       usesRemaining:    promo.maxUses != null ? promo.maxUses - promo.usedCount : null,
       discountAmount:   discount,
+      companyId:        promo.companyId,
+      companyName,
     };
   }
 
@@ -1497,14 +1510,28 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     }
 
     // ── Apply promo code discount (if the ride was booked with one) ──────────
+    // Company-owned promo codes (companyId != null) only apply when the
+    // assigned driver belongs to that company. Otherwise the discount is
+    // skipped and the client pays the full fare — usedCount was already
+    // incremented at booking time, so we roll it back too.
     if (ride.promoCode && ride.totalFare != null) {
       const promo = await this.promoRepo.findOne({
         where: { code: ride.promoCode, isActive: true },
       });
       if (promo) {
-        const discount = this.computeDiscount(promo, Number(ride.totalFare));
-        ride.discountAmount = discount;
-        ride.totalFare      = Math.round((Number(ride.totalFare) - discount) * 100) / 100;
+        const companyScoped = promo.companyId != null;
+        const driverInCompany = companyScoped && driver.companyId === promo.companyId;
+        const eligible = !companyScoped || driverInCompany;
+
+        if (eligible) {
+          const discount = this.computeDiscount(promo, Number(ride.totalFare));
+          ride.discountAmount = discount;
+          ride.totalFare      = Math.round((Number(ride.totalFare) - discount) * 100) / 100;
+        } else {
+          // Driver isn't from the company that issued this code — refund the
+          // booking-time usedCount bump so the code stays available.
+          void this.promoRepo.decrement({ id: promo.id }, 'usedCount', 1);
+        }
       }
     }
     // ────────────────────────────────────────────────────────────────────────
