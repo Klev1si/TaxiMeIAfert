@@ -20,10 +20,14 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/dashboard/tariffs',   label: 'Tariffs',      icon: '💰' },
   { to: '/dashboard/earnings',     label: 'Earnings',     icon: '💵', companyOnly: true },
   { to: '/dashboard/subscription', label: 'Subscription', icon: '💳', companyOnly: true },
+  { to: '/dashboard/messages',     label: 'Messages',     icon: '💬', companyOnly: true },
   { to: '/dashboard/profile',      label: 'Profile',      icon: '🏢', companyOnly: true },
   { to: '/dashboard/companies',    label: 'Companies',    icon: '🏢', adminOnly: true },
   { to: '/dashboard/plans',        label: 'Plans',        icon: '📋', adminOnly: true },
-  { to: '/dashboard/promo-codes',  label: 'Promo Codes',  icon: '🏷️', adminOnly: true },
+  // Promo Codes is visible to BOTH super-admin (sees all codes) and
+  // companies (sees their own codes). PromoCodesPage detects the role
+  // and routes API calls to the correct endpoint.
+  { to: '/dashboard/promo-codes',  label: 'Promo Codes',  icon: '🏷️' },
   { to: '/dashboard/payouts',      label: 'Payouts',      icon: '💸', adminOnly: true },
   { to: '/dashboard/platform-finances', label: 'Platform Finances', icon: '📊', adminOnly: true },
   { to: '/dashboard/support',      label: 'Support',      icon: '🎫', adminOnly: true },

@@ -80,13 +80,21 @@ function CompanyChatThread({
     const text = draft.trim();
     if (!text || sending) return;
     setSending(true);
+    setDraft('');
     try {
       const { data } = await companyMessagesApi.send(driver.driverId, text);
       setMessages(prev => [...prev, data]);
-      setDraft('');
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not send';
-      Alert.alert('Error', Array.isArray(msg) ? msg.join('\n') : msg);
+      setDraft(text);
+      const status   = err?.response?.status;
+      const apiMsg   = err?.response?.data?.message;
+      const fallback = err?.message ?? 'Could not send';
+      let msg = apiMsg ?? fallback;
+      if (Array.isArray(msg)) msg = msg.join('\n');
+      Alert.alert(
+        'Could not send',
+        status ? `${msg}\n\n(HTTP ${status})` : String(msg),
+      );
     } finally {
       setSending(false);
     }

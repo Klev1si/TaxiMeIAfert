@@ -76,13 +76,24 @@ export default function DriverCompanyChatScreen({ visible, onClose }: Props) {
     const text = draft.trim();
     if (!text || sending) return;
     setSending(true);
+    // Clear input optimistically; restore it if the send fails so the user
+    // doesn't have to retype.
+    setDraft('');
     try {
       const { data } = await driverMessagesApi.reply(text);
       setMessages(prev => [...prev, data]);
-      setDraft('');
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not send';
-      Alert.alert('Error', Array.isArray(msg) ? msg.join('\n') : msg);
+      // Restore the typed text so it's not lost.
+      setDraft(text);
+      const status   = err?.response?.status;
+      const apiMsg   = err?.response?.data?.message;
+      const fallback = err?.message ?? 'Could not send';
+      let msg = apiMsg ?? fallback;
+      if (Array.isArray(msg)) msg = msg.join('\n');
+      Alert.alert(
+        'Could not send',
+        status ? `${msg}\n\n(HTTP ${status})` : String(msg),
+      );
     } finally {
       setSending(false);
     }

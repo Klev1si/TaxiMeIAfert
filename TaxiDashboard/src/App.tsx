@@ -16,6 +16,7 @@ import EarningsPage from './pages/EarningsPage';
 import PlansPage from './pages/PlansPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import PromoCodesPage from './pages/PromoCodesPage';
+import MessagesPage from './pages/MessagesPage';
 import AuditLogsPage from './pages/AuditLogsPage';
 import PayoutsPage from './pages/PayoutsPage';
 import PlatformFinancesPage from './pages/PlatformFinancesPage';
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="/dashboard/plans"        element={<PlansPage />} />
             <Route path="/dashboard/subscription" element={<SubscriptionPage />} />
             <Route path="/dashboard/promo-codes"  element={<PromoCodesPage />} />
+            <Route path="/dashboard/messages"     element={<MessagesPage />} />
             <Route path="/dashboard/audit-logs"   element={<AuditLogsPage />} />
             <Route path="/dashboard/payouts"      element={<PayoutsPage />} />
             <Route path="/dashboard/platform-finances" element={<PlatformFinancesPage />} />
