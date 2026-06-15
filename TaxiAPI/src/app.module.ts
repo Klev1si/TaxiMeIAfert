@@ -29,6 +29,7 @@ import { CompanyFinancesModule } from './company-finances/company-finances.modul
 import { AdminFinancesModule } from './admin-finances/admin-finances.module';
 import { WalletModule } from './wallet/wallet.module';
 import { SupportModule } from './support/support.module';
+import { CompanyMessagesModule } from './company-messages/company-messages.module';
 import {
   User,
   Company,
@@ -52,6 +53,7 @@ import {
   DriverSubscription,
   ClientFavoriteDriver,
   CompanySettlement,
+  CompanyMessage,
 } from './entities';
 
 @Module({
@@ -146,6 +148,7 @@ import {
           DriverSubscription,
           ClientFavoriteDriver,
           CompanySettlement,
+          CompanyMessage,
         ],
         // Joi.boolean() has already coerced the env string to a real boolean
         synchronize: config.get<boolean>('DB_SYNCHRONIZE', false),
@@ -177,6 +180,7 @@ import {
     AdminFinancesModule,
     WalletModule,
     SupportModule,
+    CompanyMessagesModule,
     HealthModule,
     FraudModule,
   ],

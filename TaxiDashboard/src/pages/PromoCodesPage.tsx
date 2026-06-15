@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import apiClient from '../api/client';
 import StatusBadge from '../components/StatusBadge';
+import { useAuthStore } from '../stores/authStore';
 
 type DiscountType = 'percent' | 'fixed';
 
@@ -52,6 +53,16 @@ function formatExpiry(dateStr: string | null): string {
 }
 
 export default function PromoCodesPage() {
+  // Companies hit /company/promo-codes (their own codes), super-admin hits
+  // /admin/promo-codes (all codes). The two endpoints have slightly different
+  // shapes — admin paginates, company returns a flat array — so we normalize.
+  const user = useAuthStore(s => s.user);
+  const basePath = useMemo(
+    () => (user?.role === 'company' ? '/company/promo-codes' : '/admin/promo-codes'),
+    [user?.role],
+  );
+  const isCompany = user?.role === 'company';
+
   const [promos,  setPromos]  = useState<PromoCode[]>([]);
   const [total,   setTotal]   = useState(0);
   const [page,    setPage]    = useState(1);
@@ -70,19 +81,25 @@ export default function PromoCodesPage() {
   const fetchPromos = useCallback(async (p: number) => {
     setLoading(true);
     try {
-      const { data } = await apiClient.get<{ codes: PromoCode[]; total: number }>(
-        '/admin/promo-codes',
-        { params: { page: p, limit: LIMIT } },
-      );
-      setPromos(data.codes);
-      setTotal(data.total);
+      if (isCompany) {
+        const { data } = await apiClient.get<PromoCode[]>(basePath);
+        setPromos(data);
+        setTotal(data.length);
+      } else {
+        const { data } = await apiClient.get<{ codes: PromoCode[]; total: number }>(
+          basePath,
+          { params: { page: p, limit: LIMIT } },
+        );
+        setPromos(data.codes);
+        setTotal(data.total);
+      }
       setError('');
     } catch {
       setError('Failed to load promo codes.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [basePath, isCompany]);
 
   useEffect(() => { fetchPromos(1); }, [fetchPromos]);
 
@@ -137,9 +154,9 @@ export default function PromoCodesPage() {
       if (editing)                payload.isActive          = form.isActive;
 
       if (editing) {
-        await apiClient.patch(`/admin/promo-codes/${editing.id}`, payload);
+        await apiClient.patch(`${basePath}/${editing.id}`, payload);
       } else {
-        await apiClient.post('/admin/promo-codes', payload);
+        await apiClient.post(basePath, payload);
       }
       setShowModal(false);
       fetchPromos(page);
@@ -153,7 +170,7 @@ export default function PromoCodesPage() {
   async function handleDelete(promo: PromoCode) {
     if (!confirm(`Delete promo code "${promo.code}"? This cannot be undone.`)) return;
     try {
-      await apiClient.delete(`/admin/promo-codes/${promo.id}`);
+      await apiClient.delete(`${basePath}/${promo.id}`);
       fetchPromos(page);
     } catch {
       alert('Failed to delete promo code.');
@@ -162,7 +179,7 @@ export default function PromoCodesPage() {
 
   async function toggleActive(promo: PromoCode) {
     try {
-      await apiClient.patch(`/admin/promo-codes/${promo.id}`, { isActive: !promo.isActive });
+      await apiClient.patch(`${basePath}/${promo.id}`, { isActive: !promo.isActive });
       fetchPromos(page);
     } catch {
       alert('Failed to update promo code.');

@@ -18,6 +18,8 @@ import { useDriverStore } from '../../stores/driverStore';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
 import { driverTariffApi, type ActiveDriverTariff } from '../../api/driver-tariff';
+import { driverMessagesApi, type CompanyMessage } from '../../api/company-messages';
+import DriverCompanyChatScreen from './DriverCompanyChatScreen';
 import { socketService } from '../../services/socket';
 import {
   startBackgroundGps,
@@ -50,6 +52,29 @@ export default function DriverHomeScreen({ navigation }: Props) {
   const [locationReady, setLocationReady] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [toggling, setToggling] = useState(false);
+
+  // ── Company chat ──────────────────────────────────────────────────────────
+  const [chatOpen,    setChatOpen]    = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread count on mount and whenever the chat closes.
+  useEffect(() => {
+    if (chatOpen) return;
+    driverMessagesApi.getUnreadCount()
+      .then(({ data }) => setUnreadCount(data.count))
+      .catch(() => {});
+  }, [chatOpen]);
+
+  // Live unread badge: any incoming company_message bumps the counter while
+  // the chat screen is closed. (Chat screen handles its own incoming events.)
+  useEffect(() => {
+    const unsub = socketService.on<CompanyMessage>('company_message', msg => {
+      if (msg.fromRole === 'company') {
+        setUnreadCount(n => n + 1);
+      }
+    });
+    return unsub;
+  }, []);
 
   // ── Request location permission ──────────────────────────────────────────────
   useEffect(() => {
@@ -342,6 +367,28 @@ export default function DriverHomeScreen({ navigation }: Props) {
         <Text style={styles.recenterIcon}>📍</Text>
       </TouchableOpacity>
 
+      {/* Bell — company chat. Hidden for solo drivers (no company to chat with). */}
+      <TouchableOpacity
+        style={styles.bellBtn}
+        onPress={() => setChatOpen(true)}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Messages from company">
+        <Text style={styles.bellIcon}>🔔</Text>
+        {unreadCount > 0 && (
+          <View style={styles.bellBadge}>
+            <Text style={styles.bellBadgeText}>
+              {unreadCount > 99 ? '99+' : String(unreadCount)}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      <DriverCompanyChatScreen
+        visible={chatOpen}
+        onClose={() => setChatOpen(false)}
+      />
+
       {/* Bottom hint */}
       <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
         <View style={styles.hintCard}>
@@ -432,6 +479,33 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
     shadowRadius: 4,
   },
   recenterIcon: { fontSize: 22, color: c.primary },
+
+  // Bell — sits above the recenter button on the right edge
+  bellBtn: {
+    position: 'absolute',
+    right: 16,
+    bottom: 174,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: c.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  bellIcon: { fontSize: 20 },
+  bellBadge: {
+    position: 'absolute', top: -2, right: -2,
+    minWidth: 18, height: 18, paddingHorizontal: 5,
+    borderRadius: 9, backgroundColor: c.error,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: c.background,
+  },
+  bellBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
 
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0 },
   hintCard: {
