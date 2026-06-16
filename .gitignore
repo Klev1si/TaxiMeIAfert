@@ -80,3 +80,7 @@ temp/
 docker-compose.override.yml
 # Claude Code worktrees
 .claude/worktrees/
+
+# Project uses npm (package-lock.json). Yarn lockfiles created by
+# `yarn install` would conflict — keep them local-only.
+yarn.lock

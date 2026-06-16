@@ -9,6 +9,9 @@
     "start": "react-native start",
     "test": "jest"
   },
+  "resolutions": {
+    "eslint-visitor-keys": "^4.0.0"
+  },
   "dependencies": {
     "@invertase/react-native-apple-authentication": "^2.4.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
