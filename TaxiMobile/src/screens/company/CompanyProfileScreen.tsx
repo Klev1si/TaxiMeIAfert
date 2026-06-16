@@ -21,6 +21,7 @@ import { useColors } from '../../stores/themeStore';
 import ThemeToggle from '../../components/ThemeToggle';
 import CompanyPromoCodesScreen from './CompanyPromoCodesScreen';
 import CompanyMessagesScreen from './CompanyMessagesScreen';
+import LanguagePickerModal from '../../components/LanguagePickerModal';
 import type { ColorPalette } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
 
@@ -32,6 +33,7 @@ export default function CompanyProfileScreen() {
   const [commissionModal, setCommissionModal] = useState(false);
   const [promoModal, setPromoModal] = useState(false);
   const [messagesModal, setMessagesModal] = useState(false);
+  const [langVisible, setLangVisible] = useState(false);
 
   // Company info — fetched from /auth/me since the auth store only carries the
   // bare User row. Refreshed each time the edit modal closes successfully.
@@ -133,6 +135,15 @@ export default function CompanyProfileScreen() {
             <Text style={styles.actionLabel}>💬  Messages</Text>
             <Text style={styles.actionChevron}>›</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}
+            onPress={() => setLangVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Change language">
+            <Text style={styles.actionLabel}>🌐  {t('profile.language')}</Text>
+            <Text style={styles.actionChevron}>›</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── Appearance ── */}
@@ -181,6 +192,11 @@ export default function CompanyProfileScreen() {
       <CompanyMessagesScreen
         visible={messagesModal}
         onClose={() => setMessagesModal(false)}
+      />
+
+      <LanguagePickerModal
+        visible={langVisible}
+        onClose={() => setLangVisible(false)}
       />
     </SafeAreaView>
   );

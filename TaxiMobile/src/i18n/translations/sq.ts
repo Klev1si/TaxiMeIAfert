@@ -800,6 +800,7 @@ export default {
       approveMsg:        'Aprovoni {name}?',
       rejectTitle:       'Refuzo shoferin',
       rejectMsg:         'Refuzoni {name}? Nuk do të mund të pranojë udhëtime.',
+      rejectReasonPlaceholder: 'Arsyeja e refuzimit…',
       emptyMsg:          'Asnjë shofer nuk u gjet.',
       loadError:         'Nuk mund të ngarkohen shoferët.',
       approveError:      'Nuk mund të aprovohet shoferi.',
@@ -851,6 +852,7 @@ export default {
       approveMsg:     'Aprovoni këtë dokument për {name}?',
       rejectTitle:    'Refuzo dokumentin',
       rejectMsg:      'Refuzoni këtë dokument për {name}?',
+      rejectReasonPlaceholder: 'Arsyeja e refuzimit…',
       approveError:   'Nuk mund të aprovohet dokumenti.',
       rejectError:    'Nuk mund të refuzohet dokumenti.',
     },
@@ -866,6 +868,7 @@ export default {
       deleteTitle:    'Fshi tarifën',
       deleteMsg:      'Fshini "{name}"?',
       deleteError:    'Nuk mund të fshihet tarifa.',
+      surgeInvalid:   'Shumëzuesi i kërkesës duhet të jetë midis 1.0 dhe 10.0',
     },
 
     subscriptionPlans: {
@@ -903,6 +906,14 @@ export default {
       rejectMsg:      'Refuzoni pagesën prej {amount} për {name}?',
       approveError:   'Nuk mund të aprovohet pagesa.',
       rejectError:    'Nuk mund të refuzohet pagesa.',
+      payoutBtn:          'Paguaj',
+      recordPayoutTitle:  'Regjistro pagesën',
+      showAllLabel:       'Shfaq të gjitha',
+      creditsLabel:       'Kreditet',
+      emptyAllTitle:      'Ende asnjë shofer',
+      emptyAllMsg:        'Të dhënat e portofolit të shoferëve do të shfaqen këtu pasi të kryhen udhëtimet.',
+      emptyPendingTitle:  'Të gjitha të rregulluara',
+      emptyPendingMsg:    'Asnjë shofer nuk ka një bilanc të papaguar tani.',
     },
 
     promoCodes: {
@@ -922,6 +933,10 @@ export default {
       maxUsesLabel:   'Përdorime maksimale (0 = pa limit)',
       expiresLabel:   'Skadon (YYYY-MM-DD)',
       saveError:      'Nuk mund të ruhet kodi promovues.',
+      codeRequired:        'Kodi është i detyrueshëm',
+      discountInvalid:     'Vlera e zbritjes duhet të jetë një numër pozitiv',
+      discountPercentMax:  'Zbritja në përqindje nuk mund të kalojë 100',
+      expiryInvalid:       'Data e skadimit duhet të jetë YYYY-MM-DD',
     },
 
     auditLogs: {
@@ -951,6 +966,13 @@ export default {
       resolveTitle:      'Zgjidh biletën',
       resolveMsg:        'Shënoni biletën si të zgjidhur?',
       resolveError:      'Nuk mund të zgjidhet bileta.',
+      closedNotice:      'Kjo biletë është mbyllur.',
+      priorityLabel:     'Prioriteti',
+      priorityError:     'Nuk mund të përditësohet prioriteti.',
+      statusLabel:       'Statusi',
+      statusError:       'Nuk mund të përditësohet statusi.',
+      replyError:        'Nuk mund të dërgohet përgjigja.',
+      sendBtn:           'Dërgo',
     },
   },
 

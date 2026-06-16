@@ -11,4 +11,4 @@
  * Release checklist: when you bump versionName in build.gradle, bump
  * this constant in the same commit.
  */
-export const APP_VERSION = '1.64';
+export const APP_VERSION = '1.65';

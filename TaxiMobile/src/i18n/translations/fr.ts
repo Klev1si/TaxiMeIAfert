@@ -762,6 +762,7 @@ export default {
       approveMsg:        'Approuver {name} ?',
       rejectTitle:       'Refuser le conducteur',
       rejectMsg:         'Refuser {name} ?',
+      rejectReasonPlaceholder: 'Motif du refus…',
       emptyMsg:          'Aucun conducteur trouvé.',
       loadError:         'Impossible de charger les conducteurs.',
       approveError:      'Impossible d\'approuver le conducteur.',
@@ -813,6 +814,7 @@ export default {
       approveMsg:     'Approuver ce document pour {name} ?',
       rejectTitle:    'Refuser le document',
       rejectMsg:      'Refuser ce document pour {name} ?',
+      rejectReasonPlaceholder: 'Motif du refus…',
       approveError:   "Impossible d'approuver le document.",
       rejectError:    'Impossible de refuser le document.',
     },
@@ -828,6 +830,7 @@ export default {
       deleteTitle:    'Supprimer le tarif',
       deleteMsg:      'Supprimer "{name}" ?',
       deleteError:    'Impossible de supprimer le tarif.',
+      surgeInvalid:   'Le multiplicateur de surtarification doit être entre 1,0 et 10,0',
     },
 
     subscriptionPlans: {
@@ -865,6 +868,14 @@ export default {
       rejectMsg:      'Refuser le versement de {amount} pour {name} ?',
       approveError:   "Impossible d'approuver le versement.",
       rejectError:    'Impossible de refuser le versement.',
+      payoutBtn:          'Payer',
+      recordPayoutTitle:  'Enregistrer le versement',
+      showAllLabel:       'Tout afficher',
+      creditsLabel:       'Crédits',
+      emptyAllTitle:      'Aucun conducteur pour le moment',
+      emptyAllMsg:        'Les données du portefeuille des conducteurs apparaîtront ici une fois les trajets terminés.',
+      emptyPendingTitle:  'Tout est réglé',
+      emptyPendingMsg:    "Aucun conducteur n'a de solde impayé en ce moment.",
     },
 
     promoCodes: {
@@ -884,6 +895,10 @@ export default {
       maxUsesLabel:   'Utilisations max (0 = illimité)',
       expiresLabel:   'Expire (YYYY-MM-DD)',
       saveError:      "Impossible d'enregistrer le code promo.",
+      codeRequired:        'Le code est requis',
+      discountInvalid:     'La valeur de la remise doit être un nombre positif',
+      discountPercentMax:  'La remise en pourcentage ne peut pas dépasser 100',
+      expiryInvalid:       'La date d\'expiration doit être YYYY-MM-DD',
     },
 
     auditLogs: {
@@ -913,6 +928,13 @@ export default {
       resolveTitle:      'Résoudre le ticket',
       resolveMsg:        'Marquer le ticket comme résolu ?',
       resolveError:      'Impossible de résoudre le ticket.',
+      closedNotice:      'Ce ticket est fermé.',
+      priorityLabel:     'Priorité',
+      priorityError:     'Impossible de mettre à jour la priorité.',
+      statusLabel:       'Statut',
+      statusError:       'Impossible de mettre à jour le statut.',
+      replyError:        "Impossible d'envoyer la réponse.",
+      sendBtn:           'Envoyer',
     },
   },
 

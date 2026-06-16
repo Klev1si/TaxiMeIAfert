@@ -858,6 +858,7 @@ export default {
       approveMsg:        'Approve {name}?',
       rejectTitle:       'Reject Driver',
       rejectMsg:         'Reject {name}? They will not be able to accept rides.',
+      rejectReasonPlaceholder: 'Reason for rejection…',
       emptyMsg:          'No drivers found.',
       loadError:         'Could not load drivers.',
       approveError:      'Could not approve driver.',
@@ -909,6 +910,7 @@ export default {
       approveMsg:     'Approve this document for {name}?',
       rejectTitle:    'Reject Document',
       rejectMsg:      'Reject this document for {name}?',
+      rejectReasonPlaceholder: 'Reason for rejection…',
       approveError:   'Could not approve document.',
       rejectError:    'Could not reject document.',
     },
@@ -924,6 +926,7 @@ export default {
       deleteTitle:    'Delete Tariff',
       deleteMsg:      'Delete "{name}"?',
       deleteError:    'Could not delete tariff.',
+      surgeInvalid:   'Surge multiplier must be between 1.0 and 10.0',
     },
 
     subscriptionPlans: {
@@ -992,6 +995,10 @@ export default {
       maxUsesLabel:   'Max uses (0 = unlimited)',
       expiresLabel:   'Expires (YYYY-MM-DD)',
       saveError:      'Could not save promo code.',
+      codeRequired:        'Code is required',
+      discountInvalid:     'Discount value must be a positive number',
+      discountPercentMax:  'Percent discount must be 100 or less',
+      expiryInvalid:       'Expiry date must be YYYY-MM-DD',
     },
 
     auditLogs: {
@@ -1021,6 +1028,13 @@ export default {
       resolveTitle:      'Resolve Ticket',
       resolveMsg:        'Mark ticket as resolved?',
       resolveError:      'Could not resolve ticket.',
+      closedNotice:      'This ticket is closed.',
+      priorityLabel:     'Priority',
+      priorityError:     'Could not update priority.',
+      statusLabel:       'Status',
+      statusError:       'Could not update status.',
+      replyError:        'Could not send reply.',
+      sendBtn:           'Send',
     },
   },
 

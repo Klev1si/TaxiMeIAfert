@@ -762,6 +762,7 @@ export default {
       approveMsg:        '¿Aprobar a {name}?',
       rejectTitle:       'Rechazar conductor',
       rejectMsg:         '¿Rechazar a {name}?',
+      rejectReasonPlaceholder: 'Motivo del rechazo…',
       emptyMsg:          'No se encontraron conductores.',
       loadError:         'No se pudieron cargar los conductores.',
       approveError:      'No se pudo aprobar el conductor.',
@@ -813,6 +814,7 @@ export default {
       approveMsg:     '¿Aprobar este documento para {name}?',
       rejectTitle:    'Rechazar documento',
       rejectMsg:      '¿Rechazar este documento para {name}?',
+      rejectReasonPlaceholder: 'Motivo del rechazo…',
       approveError:   'No se pudo aprobar el documento.',
       rejectError:    'No se pudo rechazar el documento.',
     },
@@ -828,6 +830,7 @@ export default {
       deleteTitle:    'Eliminar tarifa',
       deleteMsg:      '¿Eliminar "{name}"?',
       deleteError:    'No se pudo eliminar la tarifa.',
+      surgeInvalid:   'El multiplicador de tarifa dinámica debe estar entre 1,0 y 10,0',
     },
 
     subscriptionPlans: {
@@ -865,6 +868,14 @@ export default {
       rejectMsg:      '¿Rechazar pago de {amount} para {name}?',
       approveError:   'No se pudo aprobar el pago.',
       rejectError:    'No se pudo rechazar el pago.',
+      payoutBtn:          'Pagar',
+      recordPayoutTitle:  'Registrar pago',
+      showAllLabel:       'Mostrar todo',
+      creditsLabel:       'Créditos',
+      emptyAllTitle:      'Aún no hay conductores',
+      emptyAllMsg:        'Los datos de la billetera de los conductores aparecerán aquí una vez completados los viajes.',
+      emptyPendingTitle:  'Todo saldado',
+      emptyPendingMsg:    'Ningún conductor tiene saldo pendiente en este momento.',
     },
 
     promoCodes: {
@@ -884,6 +895,10 @@ export default {
       maxUsesLabel:   'Usos máximos (0 = ilimitado)',
       expiresLabel:   'Vence (YYYY-MM-DD)',
       saveError:      'No se pudo guardar el código promocional.',
+      codeRequired:        'El código es obligatorio',
+      discountInvalid:     'El valor del descuento debe ser un número positivo',
+      discountPercentMax:  'El descuento porcentual no puede superar 100',
+      expiryInvalid:       'La fecha de vencimiento debe ser YYYY-MM-DD',
     },
 
     auditLogs: {
@@ -913,6 +928,13 @@ export default {
       resolveTitle:      'Resolver ticket',
       resolveMsg:        '¿Marcar el ticket como resuelto?',
       resolveError:      'No se pudo resolver el ticket.',
+      closedNotice:      'Este ticket está cerrado.',
+      priorityLabel:     'Prioridad',
+      priorityError:     'No se pudo actualizar la prioridad.',
+      statusLabel:       'Estado',
+      statusError:       'No se pudo actualizar el estado.',
+      replyError:        'No se pudo enviar la respuesta.',
+      sendBtn:           'Enviar',
     },
   },
 
