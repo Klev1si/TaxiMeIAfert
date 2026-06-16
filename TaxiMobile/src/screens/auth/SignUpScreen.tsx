@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { authApi } from '../../api/auth';
 import { signInWithGoogle } from '../../services/googleAuth';
+import { signInWithApple } from '../../services/appleAuth';
 import { useAuthStore } from '../../stores/authStore';
 import { useColors } from '../../stores/themeStore';
 import type { ColorPalette } from '../../constants/colors';
@@ -33,7 +34,7 @@ export default function SignUpScreen({ navigation }: Props) {
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
-  const { loginWithGoogle, isLoading } = useAuthStore();
+  const { loginWithGoogle, loginWithApple, isLoading } = useAuthStore();
 
   const [role,   setRole]   = useState<Role>('client');
   const [phone,  setPhone]  = useState('');
@@ -70,6 +71,25 @@ export default function SignUpScreen({ navigation }: Props) {
     }
     try {
       await loginWithGoogle(outcome.idToken);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? 'Could not sign in.';
+      Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
+    }
+  };
+
+  const handleApple = async () => {
+    const outcome = await signInWithApple();
+    if (outcome.kind === 'cancelled') return;
+    if (outcome.kind === 'unsupported') {
+      Alert.alert(t('common.error'), 'Sign in with Apple is not available on this device.');
+      return;
+    }
+    if (outcome.kind === 'error') {
+      Alert.alert(t('common.error'), outcome.message);
+      return;
+    }
+    try {
+      await loginWithApple(outcome.identityToken, outcome.firstName, outcome.lastName);
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? 'Could not sign in.';
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
@@ -161,6 +181,18 @@ export default function SignUpScreen({ navigation }: Props) {
                   accessibilityLabel="Continue with Google">
                   <Text style={styles.googleG}>G</Text>
                 </TouchableOpacity>
+
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity
+                    style={[styles.socialCircle, styles.appleCircle]}
+                    onPress={handleApple}
+                    disabled={isLoading}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Continue with Apple">
+                    <Text style={styles.appleGlyph}>{''}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
               <Text style={styles.googleHint}>
                 Passengers can also sign up with Google in one tap.
@@ -256,6 +288,8 @@ function getStyles(c: ColorPalette) {
       elevation: 2,
     },
     googleG:    { fontSize: 22, fontWeight: '800', color: '#4285F4' },
+    appleCircle:{ backgroundColor: '#000', borderColor: '#000' },
+    appleGlyph: { fontSize: 24, color: '#fff', fontWeight: '600', marginTop: -2 },
     googleHint: { fontSize: 12, color: c.textSecondary, textAlign: 'center', marginTop: 6, marginBottom: 12 },
 
     bottomLink:       { alignItems: 'center', paddingVertical: 16, marginTop: 24 },

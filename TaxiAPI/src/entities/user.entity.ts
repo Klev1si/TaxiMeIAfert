@@ -38,6 +38,14 @@ export class User {
   @Column({ type: 'varchar', name: 'google_sub', unique: true, nullable: true, length: 64 })
   googleSub: string | null;
 
+  /**
+   * Stable Apple user identifier (`sub`) — issued once per Apple ID per app
+   * Team, never reused, opaque. Set only for users who signed up / linked
+   * with Sign in with Apple. Apple's spec allows sub strings up to 255 chars.
+   */
+  @Column({ type: 'varchar', name: 'apple_sub', unique: true, nullable: true, length: 255 })
+  appleSub: string | null;
+
   @Column({ type: 'enum', enum: UserRole })
   role: UserRole;
 

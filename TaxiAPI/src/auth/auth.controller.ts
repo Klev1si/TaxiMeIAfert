@@ -230,6 +230,21 @@ export class AuthController {
     return this.authService.googleSignIn(idToken);
   }
 
+  // POST /auth/apple — exchange an Apple identity token for our JWTs.
+  // Mirrors /auth/google. Body: { identityToken, firstName?, lastName? }.
+  // Apple only sends name on the FIRST sign-in, so the client forwards it.
+  @Post('apple')
+  @UseGuards(ThrottlerGuard)
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ strict: { limit: 10, ttl: 60_000 } })
+  appleSignIn(
+    @Body('identityToken') identityToken: string,
+    @Body('firstName')     firstName?: string,
+    @Body('lastName')      lastName?: string,
+  ): Promise<AuthTokensDto> {
+    return this.authService.appleSignIn(identityToken, firstName, lastName);
+  }
+
   // POST /auth/refresh  — requires valid refresh token in Authorization header
   @Post('refresh')
   @UseGuards(JwtRefreshGuard)

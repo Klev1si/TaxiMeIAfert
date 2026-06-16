@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 import { signInWithGoogle } from '../../services/googleAuth';
+import { signInWithApple } from '../../services/appleAuth';
 import { isGoogleConfigured } from '../../config';
 import { useColors } from '../../stores/themeStore';
 import { useTranslation } from '../../i18n';
@@ -32,7 +33,7 @@ export default function LoginScreen({ navigation }: Props) {
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
-  const { login, loginWithGoogle, isLoading } = useAuthStore();
+  const { login, loginWithGoogle, loginWithApple, isLoading } = useAuthStore();
 
   const [method,     setMethod]     = useState<Method>('phone');
   const [phone,      setPhone]      = useState('');
@@ -69,6 +70,25 @@ export default function LoginScreen({ navigation }: Props) {
     }
     try {
       await loginWithGoogle(outcome.idToken);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? 'Could not sign in.';
+      Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
+    }
+  };
+
+  const handleApple = async () => {
+    const outcome = await signInWithApple();
+    if (outcome.kind === 'cancelled') return;
+    if (outcome.kind === 'unsupported') {
+      Alert.alert(t('common.error'), 'Sign in with Apple is not available on this device.');
+      return;
+    }
+    if (outcome.kind === 'error') {
+      Alert.alert(t('common.error'), outcome.message);
+      return;
+    }
+    try {
+      await loginWithApple(outcome.identityToken, outcome.firstName, outcome.lastName);
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? 'Could not sign in.';
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
@@ -217,6 +237,21 @@ export default function LoginScreen({ navigation }: Props) {
                   accessibilityLabel="Continue with Google">
                   <Text style={styles.googleG}>G</Text>
                 </TouchableOpacity>
+
+                {/* Sign in with Apple — iOS only. Apple's brand guidelines
+                    require a black-or-white  glyph; we use a simple round
+                    button styled to match the Google one for consistency. */}
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity
+                    style={[styles.socialCircle, styles.appleCircle]}
+                    onPress={handleApple}
+                    disabled={isLoading}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Continue with Apple">
+                    <Text style={styles.appleGlyph}>{''}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </>
           )}
@@ -329,6 +364,10 @@ function getStyles(c: ColorPalette) {
       elevation: 2,
     },
     googleG: { fontSize: 22, fontWeight: '800', color: '#4285F4' },
+
+    // Apple — black circle with white  glyph per Apple's brand guidance
+    appleCircle: { backgroundColor: '#000', borderColor: '#000' },
+    appleGlyph:  { fontSize: 24, color: '#fff', fontWeight: '600', marginTop: -2 },
 
     bottomLink: { alignItems: 'center', paddingVertical: 16, marginTop: 'auto', paddingTop: 28 },
     bottomLinkText:   { fontSize: 14, color: c.textSecondary, fontWeight: '600' },

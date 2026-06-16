@@ -72,6 +72,16 @@ export const authApi = {
   googleSignIn: (idToken: string) =>
     apiClient.post<AuthTokens & { expiresIn: number }>('/auth/google', { idToken }),
 
+  /** Sign in / sign up with an Apple identity token (iOS only).
+   *  firstName/lastName only arrive on the very first sign-in — forward them
+   *  so the server can populate the new client's name. */
+  appleSignIn: (identityToken: string, firstName?: string, lastName?: string) =>
+    apiClient.post<AuthTokens & { expiresIn: number }>('/auth/apple', {
+      identityToken,
+      firstName,
+      lastName,
+    }),
+
   /** Register a new client account */
   registerClient: (payload: RegisterClientPayload) =>
     apiClient.post('/auth/register/client', payload),

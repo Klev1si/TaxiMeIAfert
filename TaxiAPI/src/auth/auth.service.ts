@@ -11,6 +11,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { OAuth2Client, type TokenPayload } from 'google-auth-library';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const appleSignin = require('apple-signin-auth') as {
+  verifyIdToken: (
+    idToken: string,
+    options: { audience?: string | string[]; nonce?: string; ignoreExpiration?: boolean },
+  ) => Promise<{ sub: string; email?: string; email_verified?: string | boolean; aud: string }>;
+};
 import { Client, User } from '../entities';
 import { UserRole } from '../common/enums';
 import { LoginDto } from './dto/login.dto';
@@ -155,6 +162,96 @@ export class AuthService {
       this.logger.log(`Google signup: created client ${user.id} (${email})`);
     } else {
       this.logger.log(`Google login: existing user ${user.id} (${user.email ?? user.phone})`);
+    }
+
+    return this.issueTokens(user);
+  }
+
+  // ── Apple Sign-In ──────────────────────────────────────────────────────────
+  /**
+   * Verify a Sign-in-with-Apple identity token coming from the iOS SDK, then
+   * either log in an existing user (matched by appleSub or email) or create
+   * a brand-new client account. Mirrors googleSignIn().
+   *
+   * Apple only sends the user's name on the FIRST sign-in, so the client is
+   * expected to forward it as { firstName, lastName }; if missing we fall
+   * back to a generic placeholder, which the user can edit later.
+   *
+   * Audience: the app's iOS bundle id. We accept any of the configured
+   * APPLE_BUNDLE_ID / APPLE_SERVICE_ID values.
+   */
+  async appleSignIn(
+    identityToken: string,
+    firstName?: string,
+    lastName?: string,
+  ): Promise<AuthTokensDto> {
+    if (!identityToken || identityToken.length < 100) {
+      throw new BadRequestException('Missing or malformed Apple identity token');
+    }
+
+    const audiences = [
+      this.config.get<string>('APPLE_BUNDLE_ID'),
+      this.config.get<string>('APPLE_SERVICE_ID'),
+    ].filter((s): s is string => !!s);
+
+    if (audiences.length === 0) {
+      this.logger.error('No APPLE_BUNDLE_ID env var set — Apple sign-in disabled');
+      throw new BadRequestException('Apple sign-in is not enabled on the server');
+    }
+
+    let payload: { sub: string; email?: string };
+    try {
+      payload = await appleSignin.verifyIdToken(identityToken, {
+        audience: audiences,
+      });
+    } catch (err) {
+      this.logger.warn(`Apple identity token verification failed: ${(err as Error).message}`);
+      throw new UnauthorizedException('Could not verify Apple account');
+    }
+
+    const appleSub = payload.sub;
+    const email    = payload.email?.toLowerCase() ?? null;
+    if (!appleSub) throw new UnauthorizedException('Apple token missing sub claim');
+
+    // 1. Try to find by stable Apple sub (already linked)
+    let user = await this.userRepo.findOne({ where: { appleSub, isActive: true } });
+
+    // 2. Otherwise try by email (only for the very first sign-in — Apple may
+    //    omit email on subsequent logins, but sub is stable)
+    if (!user && email) {
+      user = await this.userRepo.findOne({ where: { email, isActive: true } });
+      if (user) {
+        user.appleSub = appleSub;
+        if (!user.phone) user.isPhoneVerified = true;
+        await this.userRepo.save(user);
+      }
+    }
+
+    // 3. New user — create a CLIENT account. Phone/password stay null;
+    //    they're prompted to add a phone in the profile flow before booking.
+    if (!user) {
+      user = this.userRepo.create({
+        phone:        null,
+        email,
+        passwordHash: null,
+        role:         UserRole.CLIENT,
+        isPhoneVerified: true, // Apple verified the identity
+        appleSub,
+      });
+      user = await this.userRepo.save(user);
+
+      const safeFirst = (firstName ?? '').trim() || 'Apple';
+      const safeLast  = (lastName  ?? '').trim() || 'User';
+      const client = this.clientRepo.create({
+        userId:    user.id,
+        firstName: safeFirst,
+        lastName:  safeLast,
+      });
+      await this.clientRepo.save(client);
+
+      this.logger.log(`Apple signup: created client ${user.id} (${email ?? 'email-private'})`);
+    } else {
+      this.logger.log(`Apple login: existing user ${user.id} (${user.email ?? user.phone ?? 'apple-only'})`);
     }
 
     return this.issueTokens(user);

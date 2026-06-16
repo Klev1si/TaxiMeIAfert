@@ -58,6 +58,22 @@
 	<string>TaxiApp needs photo library access to let you choose a profile photo or driver document.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>TaxiApp needs permission to save photos to your library.</string>
+	<!-- We don't currently track users across other apps, but Apple still
+	     requires the key whenever any tracking framework is linked. Default
+	     answer is "Ask App not to Track". -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>This identifier is only used to keep your TaxiApp session secure and is never used to track you across other apps or websites.</string>
+	<!-- Background modes:
+	   - location: required for drivers to send GPS updates while driving with
+	     the screen locked or another app in the foreground.
+	   - remote-notification: required for Firebase Cloud Messaging to deliver
+	     ride requests, chat messages, etc. in the background. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
