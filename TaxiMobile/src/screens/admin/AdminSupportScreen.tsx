@@ -56,26 +56,23 @@ function formatDate(iso: string): string {
 }
 
 // ── Label maps ────────────────────────────────────────────────────────────────
+// Status/priority labels are translated at the call site via t('admin.support.*').
+// The label-map constants below are kept only for accessibility fallbacks where
+// the t() helper is awkward to thread in (e.g. accessibilityLabel composition).
 
-const STATUS_LABEL: Record<TicketStatus, string> = {
-  open:        'Open',
-  in_progress: 'In Progress',
-  resolved:    'Resolved',
-  closed:      'Closed',
-};
+type TranslateFn = (k: string) => string;
+function statusLabel(s: TicketStatus, t: TranslateFn): string {
+  return t(`admin.support.status_${s}`);
+}
+function priorityLabel(p: TicketPriority, t: TranslateFn): string {
+  return t(`admin.support.priority_${p}`);
+}
 
 const STATUS_COLOR: Record<TicketStatus, string> = {
   open:        '#f59e0b',
   in_progress: '#3b82f6',
   resolved:    '#16a34a',
   closed:      '#6b7280',
-};
-
-const PRIORITY_LABEL: Record<TicketPriority, string> = {
-  low:    'Low',
-  normal: 'Normal',
-  high:   'High',
-  urgent: 'Urgent',
 };
 
 const PRIORITY_COLOR: Record<TicketPriority, string> = {
@@ -117,6 +114,7 @@ function TicketCard({
 }) {
   const colors = useColors();
   const card = useMemo(() => getCardStyles(colors), [colors]);
+  const { t } = useTranslation();
   const statusColor   = STATUS_COLOR[ticket.status];
   const priorityColor = PRIORITY_COLOR[ticket.priority];
 
@@ -126,18 +124,18 @@ function TicketCard({
       onPress={onPress}
       activeOpacity={0.75}
       accessibilityRole="button"
-      accessibilityLabel={`${ticket.subject}, ${STATUS_LABEL[ticket.status]}, ${PRIORITY_LABEL[ticket.priority]} priority, ${ticket.messageCount} messages`}>
+      accessibilityLabel={`${ticket.subject}, ${statusLabel(ticket.status, t)}, ${priorityLabel(ticket.priority, t)} priority, ${ticket.messageCount} messages`}>
       {/* Top row: category + role + time */}
       <View style={card.topRow}>
         <View style={[card.badge, { backgroundColor: statusColor + '22' }]}>
           <Text style={[card.badgeText, { color: statusColor }]}>
-            {STATUS_LABEL[ticket.status]}
+            {statusLabel(ticket.status, t)}
           </Text>
         </View>
         {ticket.priority !== 'normal' && (
           <View style={[card.badge, { backgroundColor: priorityColor + '22', marginLeft: 6 }]}>
             <Text style={[card.badgeText, { color: priorityColor }]}>
-              {PRIORITY_LABEL[ticket.priority]}
+              {priorityLabel(ticket.priority, t)}
             </Text>
           </View>
         )}
@@ -294,33 +292,38 @@ function TicketDetailModal({
               <View style={detail.metaGroup}>
                 <Text style={detail.metaLabel}>{t('admin.support.statusLabel')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={detail.chipScroll}>
-                  {(Object.entries(STATUS_LABEL) as [TicketStatus, string][]).map(([s, label]) => (
-                    <TouchableOpacity
-                      key={s}
-                      style={[
-                        detail.chip,
-                        ticket.status === s && { backgroundColor: STATUS_COLOR[s], borderColor: STATUS_COLOR[s] },
-                      ]}
-                      onPress={() => ticket.status !== s && handleUpdateStatus(s)}
-                      disabled={updating}
-                      accessibilityRole="radio"
-                      accessibilityLabel={`Status: ${label}`}
-                      accessibilityState={{ checked: ticket.status === s, disabled: updating }}>
-                      <Text style={[
-                        detail.chipText,
-                        ticket.status === s && { color: colors.white, fontWeight: '700' },
-                      ]}>
-                        {label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  {(['open', 'in_progress', 'resolved', 'closed'] as TicketStatus[]).map(s => {
+                    const label = statusLabel(s, t);
+                    return (
+                      <TouchableOpacity
+                        key={s}
+                        style={[
+                          detail.chip,
+                          ticket.status === s && { backgroundColor: STATUS_COLOR[s], borderColor: STATUS_COLOR[s] },
+                        ]}
+                        onPress={() => ticket.status !== s && handleUpdateStatus(s)}
+                        disabled={updating}
+                        accessibilityRole="radio"
+                        accessibilityLabel={`Status: ${label}`}
+                        accessibilityState={{ checked: ticket.status === s, disabled: updating }}>
+                        <Text style={[
+                          detail.chipText,
+                          ticket.status === s && { color: colors.white, fontWeight: '700' },
+                        ]}>
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </ScrollView>
               </View>
 
               <View style={[detail.metaGroup, { marginTop: 8 }]}>
                 <Text style={detail.metaLabel}>{t('admin.support.priorityLabel')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={detail.chipScroll}>
-                  {(Object.entries(PRIORITY_LABEL) as [TicketPriority, string][]).map(([p, label]) => (
+                  {(['low', 'normal', 'high', 'urgent'] as TicketPriority[]).map(p => {
+                    const label = priorityLabel(p, t);
+                    return (
                     <TouchableOpacity
                       key={p}
                       style={[
@@ -339,7 +342,8 @@ function TicketDetailModal({
                         {label}
                       </Text>
                     </TouchableOpacity>
-                  ))}
+                    );
+                  })}
                 </ScrollView>
               </View>
 

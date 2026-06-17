@@ -294,11 +294,11 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
   title:    { flex: 1, fontSize: 20, fontWeight: '800', color: c.text },
   count:    { fontSize: 13, color: c.textSecondary, fontWeight: '600' },
 
-  pillRow:    { maxHeight: 48, backgroundColor: c.white, borderBottomWidth: 1, borderBottomColor: c.border },
+  pillRow:    { maxHeight: 48, backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.border },
   pillContent:{ paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
   pill:       {
     borderRadius: 16, borderWidth: 1, borderColor: c.border,
-    paddingHorizontal: 12, paddingVertical: 5, backgroundColor: c.white,
+    paddingHorizontal: 12, paddingVertical: 5, backgroundColor: c.surface,
   },
   pillActive:     { backgroundColor: c.primary, borderColor: c.primary },
   pillText:       { fontSize: 12, color: c.textSecondary, fontWeight: '500' },

@@ -484,7 +484,7 @@ function getWdStyles(c: ColorPalette) { return StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: c.white,
+    backgroundColor: c.surface,
     borderBottomWidth: 1, borderBottomColor: c.border,
   },
   closeBtn:  { width: 32, height: 32, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
@@ -683,7 +683,7 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
   toolbar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: Sizes.screenPadding, paddingVertical: 10,
-    backgroundColor: c.white,
+    backgroundColor: c.surface,
     borderBottomWidth: 1, borderBottomColor: c.border,
   },
   count:       { fontSize: 13, color: c.textSecondary },

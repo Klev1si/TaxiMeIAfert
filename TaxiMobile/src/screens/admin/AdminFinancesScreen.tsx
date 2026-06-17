@@ -18,6 +18,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import {
   adminFinancesApi,
   type AdminCompanyFinance,
@@ -43,6 +44,7 @@ export default function AdminFinancesScreen() {
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
+  const navigation = useNavigation();
 
   const [tab,       setTab]       = useState<Tab>('drivers');
   const [period,    setPeriod]    = useState<FinancePeriod>('all');
@@ -101,6 +103,17 @@ export default function AdminFinancesScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}>
+          <Text style={styles.backBtn}>‹ {t('common.back')}</Text>
+        </TouchableOpacity>
+        <Text style={styles.topBarTitle}>Platform Finances</Text>
+        <View style={{ width: 60 }} />
+      </View>
       <FlatList
         data={tab === 'drivers' ? drivers : companies}
         keyExtractor={(item: any) => item.driverId ?? item.companyId}
@@ -111,7 +124,6 @@ export default function AdminFinancesScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Platform Finances</Text>
 
             {/* Tab switch */}
             <View style={styles.tabRow}>
@@ -299,6 +311,19 @@ function getStyles(c: ColorPalette) {
 
     list: { padding: 16, paddingBottom: 32 },
     title: { fontSize: 24, fontWeight: '800', color: c.text, marginBottom: 12 },
+
+    topBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: c.border,
+      backgroundColor: c.surface,
+    },
+    backBtn:     { fontSize: 16, color: c.primary, fontWeight: '600' },
+    topBarTitle: { fontSize: 17, fontWeight: '800', color: c.text },
 
     tabRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
     tab: {

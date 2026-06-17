@@ -94,7 +94,7 @@ function getModalStyles(c: ColorPalette) {
       justifyContent: 'center', alignItems: 'center', padding: 24,
     },
     box: {
-      backgroundColor: c.white, borderRadius: 16, padding: 20, width: '100%',
+      backgroundColor: c.surface, borderRadius: 16, padding: 20, width: '100%',
     },
     title: { fontSize: 18, fontWeight: '700', color: c.text, marginBottom: 8 },
     sub:   { fontSize: 13, color: c.textSecondary, lineHeight: 18, marginBottom: 14 },
@@ -376,7 +376,7 @@ export default function AdminDriversScreen({ navigation }: Props) {
           onPress={handleSearch}
           accessibilityRole="button"
           accessibilityLabel="Search">
-          <Text style={styles.searchBtnText}>{t('common.go')}</Text>
+          <Text style={styles.searchBtnText}>{t('common.search')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -444,16 +444,16 @@ function getStyles(c: ColorPalette) {
     header: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
       paddingHorizontal: Sizes.screenPadding, paddingTop: 16, paddingBottom: 8,
-      backgroundColor: c.white, borderBottomWidth: 1, borderBottomColor: c.border,
+      backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.border,
     },
     title: { fontSize: 20, fontWeight: '700', color: c.text },
     count: { fontSize: 13, color: c.textSecondary },
 
-    pillRow: { maxHeight: 48, backgroundColor: c.white },
+    pillRow: { maxHeight: 48, backgroundColor: c.surface },
     pillRowContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
     pill: {
       borderRadius: 16, borderWidth: 1, borderColor: c.border,
-      paddingHorizontal: 14, paddingVertical: 5, backgroundColor: c.white,
+      paddingHorizontal: 14, paddingVertical: 5, backgroundColor: c.surface,
     },
     pillActive:    { backgroundColor: c.primary, borderColor: c.primary },
     pillText:      { fontSize: 13, color: c.textSecondary },
@@ -462,7 +462,7 @@ function getStyles(c: ColorPalette) {
     searchRow: {
       flexDirection: 'row', gap: 8,
       paddingHorizontal: 12, paddingVertical: 8,
-      backgroundColor: c.white, borderBottomWidth: 1, borderBottomColor: c.border,
+      backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.border,
     },
     searchInput: {
       flex: 1, backgroundColor: c.background,

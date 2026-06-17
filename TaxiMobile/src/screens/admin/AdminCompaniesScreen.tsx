@@ -303,16 +303,16 @@ function getStyles(c: ColorPalette) {
     header: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
       paddingHorizontal: Sizes.screenPadding, paddingTop: 16, paddingBottom: 8,
-      backgroundColor: c.white, borderBottomWidth: 1, borderBottomColor: c.border,
+      backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.border,
     },
     title: { fontSize: 20, fontWeight: '700', color: c.text },
     count: { fontSize: 13, color: c.textSecondary },
 
-    pillRow: { maxHeight: 48, backgroundColor: c.white },
+    pillRow: { maxHeight: 48, backgroundColor: c.surface },
     pillRowContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
     pill: {
       borderRadius: 16, borderWidth: 1, borderColor: c.border,
-      paddingHorizontal: 14, paddingVertical: 5, backgroundColor: c.white,
+      paddingHorizontal: 14, paddingVertical: 5, backgroundColor: c.surface,
     },
     pillActive:    { backgroundColor: c.primary, borderColor: c.primary },
     pillText:      { fontSize: 13, color: c.textSecondary },

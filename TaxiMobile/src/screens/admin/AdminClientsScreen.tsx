@@ -150,7 +150,7 @@ export default function AdminClientsScreen() {
           onPress={handleSearch}
           accessibilityRole="button"
           accessibilityLabel="Search">
-          <Text style={styles.searchBtnText}>{t('common.go')}</Text>
+          <Text style={styles.searchBtnText}>{t('common.search')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -199,7 +199,7 @@ function getStyles(c: ColorPalette) {
     header: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
       paddingHorizontal: Sizes.screenPadding, paddingTop: 16, paddingBottom: 8,
-      backgroundColor: c.white, borderBottomWidth: 1, borderBottomColor: c.border,
+      backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.border,
     },
     title: { fontSize: 20, fontWeight: '700', color: c.text },
     count: { fontSize: 13, color: c.textSecondary },
@@ -207,7 +207,7 @@ function getStyles(c: ColorPalette) {
     searchRow: {
       flexDirection: 'row', gap: 8,
       paddingHorizontal: 12, paddingVertical: 8,
-      backgroundColor: c.white, borderBottomWidth: 1, borderBottomColor: c.border,
+      backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.border,
     },
     searchInput: {
       flex: 1, backgroundColor: c.background,
