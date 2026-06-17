@@ -1533,6 +1533,24 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
           void this.promoRepo.decrement({ id: promo.id }, 'usedCount', 1);
         }
       }
+    } else if (ride.totalFare != null) {
+      // ── First-ride auto-promo ──────────────────────────────────────────────
+      // If the client hasn't completed any ride yet (totalRides === 0) AND
+      // they didn't already use a promo code on this ride, automatically
+      // apply 50% off, capped at €5. The increment to client.totalRides
+      // happens a few lines below, so we read the still-zero value here.
+      const client = await this.clientRepo.findOne({
+        where: { id: ride.clientId },
+        select: ['id', 'totalRides'],
+      });
+      if (client && (client.totalRides ?? 0) === 0) {
+        const fare = Number(ride.totalFare);
+        const discount = Math.min(fare * 0.5, 5);
+        if (discount > 0) {
+          ride.discountAmount = Math.round(discount * 100) / 100;
+          ride.totalFare      = Math.round((fare - discount) * 100) / 100;
+        }
+      }
     }
     // ────────────────────────────────────────────────────────────────────────
 
@@ -2295,6 +2313,103 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
 
     await this.attachStops([ride]);
     return this.toDto(ride);
+  }
+
+  /**
+   * Issue (or return) the public tracking token for the ride. Only the ride's
+   * client can request one. Token is opaque, 32 chars, base36, unique per ride.
+   */
+  async createShareToken(userId: string, rideId: string): Promise<{ token: string }> {
+    const client = await this.clientRepo.findOne({ where: { userId }, select: ['id'] });
+    if (!client) throw new NotFoundException('Client profile not found');
+
+    const ride = await this.rideRepo.findOne({ where: { id: rideId } });
+    if (!ride || ride.clientId !== client.id) {
+      throw new NotFoundException('Ride not found');
+    }
+    // Only meaningful while a ride is "in motion" — accepted through in_progress
+    const activeStatuses: RideStatus[] = [
+      RideStatus.ACCEPTED,
+      RideStatus.DRIVING_TO_PICKUP,
+      RideStatus.ARRIVED,
+      RideStatus.IN_PROGRESS,
+    ];
+    if (!activeStatuses.includes(ride.status)) {
+      throw new BadRequestException('Ride is not currently active');
+    }
+
+    if (!ride.shareToken) {
+      ride.shareToken =
+        Math.random().toString(36).slice(2, 14) +
+        Math.random().toString(36).slice(2, 14);
+      await this.rideRepo.update(ride.id, { shareToken: ride.shareToken });
+    }
+    return { token: ride.shareToken };
+  }
+
+  /**
+   * PUBLIC read-only view of a ride for trip-sharing. Returns a minimal
+   * payload — never the passenger's identity, never sensitive driver data
+   * beyond first name + plate. Token-gated; expires (returns null) once
+   * the ride is completed or cancelled.
+   */
+  async getPublicRideByToken(token: string): Promise<{
+    status: RideStatus;
+    driverFirstName: string | null;
+    driverPlate: string | null;
+    driverPhotoUrl: string | null;
+    pickupLat: number; pickupLng: number; pickupAddress: string | null;
+    dropoffLat: number; dropoffLng: number; dropoffAddress: string | null;
+    driverLat: number | null; driverLng: number | null;
+    startedAt: Date | null;
+  } | null> {
+    const ride = await this.rideRepo.findOne({ where: { shareToken: token } });
+    if (!ride) return null;
+
+    // Expire the link the moment the ride is over.
+    const terminalStatuses: RideStatus[] = [RideStatus.COMPLETED, RideStatus.CANCELLED];
+    if (terminalStatuses.includes(ride.status)) return null;
+
+    let driverFirstName: string | null = null;
+    let driverPlate:     string | null = null;
+    let driverPhotoUrl:  string | null = null;
+    let driverLat:       number | null = null;
+    let driverLng:       number | null = null;
+
+    if (ride.driverId) {
+      const driver = await this.driverRepo.findOne({
+        where: { id: ride.driverId },
+        select: ['id', 'firstName', 'vehiclePlate', 'userId'],
+      });
+      if (driver) {
+        driverFirstName = driver.firstName;
+        driverPlate     = driver.vehiclePlate;
+        const user = await this.userRepo.findOne({
+          where: { id: driver.userId },
+          select: ['avatarUrl'],
+        });
+        driverPhotoUrl  = user?.avatarUrl ?? null;
+        const loc = await this.gpsService.getLocation(driver.id);
+        driverLat = loc?.lat ?? null;
+        driverLng = loc?.lng ?? null;
+      }
+    }
+
+    return {
+      status:          ride.status,
+      driverFirstName,
+      driverPlate,
+      driverPhotoUrl,
+      pickupLat:       Number(ride.pickupLat),
+      pickupLng:       Number(ride.pickupLng),
+      pickupAddress:   ride.pickupAddress ?? null,
+      dropoffLat:      Number(ride.dropoffLat),
+      dropoffLng:      Number(ride.dropoffLng),
+      dropoffAddress:  ride.dropoffAddress ?? null,
+      driverLat,
+      driverLng,
+      startedAt:       ride.startedAt ?? null,
+    };
   }
 
   /**

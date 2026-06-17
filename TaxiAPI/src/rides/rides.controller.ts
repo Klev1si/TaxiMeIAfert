@@ -111,6 +111,22 @@ export class RidesController {
     );
   }
 
+  // ── POST /rides/:id/share-token ───────────────────────────────────────────
+  /**
+   * Issue (or return existing) public tracking token for an active ride.
+   * Client-only. The returned token can be embedded in a URL the user
+   * shares with friends/family for live-tracking.
+   */
+  @Post(':id/share-token')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.CLIENT)
+  createShareToken(
+    @Request() req: { user: { id: string } },
+    @Param('id', new ParseUUIDPipe()) rideId: string,
+  ): Promise<{ token: string }> {
+    return this.ridesService.createShareToken(req.user.id, rideId);
+  }
+
   // ── GET /rides/active ─────────────────────────────────────────────────────
   /**
    * Returns the caller's current active ride (status: requested / accepted /

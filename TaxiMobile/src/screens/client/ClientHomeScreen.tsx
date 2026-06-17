@@ -18,6 +18,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
+import { authApi } from '../../api/auth';
 import { savedLocationsApi, type SavedLocation } from '../../api/saved-locations';
 import { useColors, useTheme } from '../../stores/themeStore';
 import { DARK_MAP_STYLE } from '../../constants/mapStyles';
@@ -46,6 +47,20 @@ export default function ClientHomeScreen({ navigation }: Props) {
   const [userRegion,       setUserRegion]       = useState<Region | null>(null);
   const [loadingDrivers,   setLoadingDrivers]   = useState(false);
   const [savedLocations,   setSavedLocations]   = useState<SavedLocation[]>([]);
+  // First-ride banner — show until the user has completed their first ride.
+  const [isFirstRide,      setIsFirstRide]      = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    authApi.getMe()
+      .then(({ data }) => {
+        if (!cancelled && (data as { totalRides?: number }).totalRides === 0) {
+          setIsFirstRide(true);
+        }
+      })
+      .catch(() => { /* silent — banner just stays hidden */ });
+    return () => { cancelled = true; };
+  }, []);
 
   // Reload saved locations every time this screen comes into focus
   useFocusEffect(
@@ -292,6 +307,16 @@ export default function ClientHomeScreen({ navigation }: Props) {
             </Text>
           </View>
         </View>
+
+        {isFirstRide && (
+          <View style={styles.firstRideBanner}>
+            <Text style={styles.firstRideEmoji}>🎁</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.firstRideTitle}>{t('client.home.firstRideTitle')}</Text>
+              <Text style={styles.firstRideBody}>{t('client.home.firstRideBody')}</Text>
+            </View>
+          </View>
+        )}
       </SafeAreaView>
 
       {/* ── Centre pin — drag the map to set your pickup location ──────── */}
@@ -484,6 +509,23 @@ function getStyles(c: ColorPalette) {
     topRight:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
     refreshText: { fontSize: 20, color: c.primary, fontWeight: '700' },
     driverCount: { fontSize: 12, color: c.textSecondary, fontWeight: '500' },
+
+    firstRideBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginHorizontal: 12,
+      marginTop: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      backgroundColor: c.primaryLight ?? (c.primary + '22'),
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.primary + '55',
+    },
+    firstRideEmoji: { fontSize: 28 },
+    firstRideTitle: { fontSize: 14, fontWeight: '800', color: c.text },
+    firstRideBody:  { fontSize: 12, color: c.textSecondary, marginTop: 2 },
 
     centerPinWrap: {
       position: 'absolute',

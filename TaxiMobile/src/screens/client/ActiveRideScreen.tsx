@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useRideStore } from '../../stores/rideStore';
-import { ridesApi } from '../../api/rides';
+import { ridesApi, TRIP_SHARE_BASE_URL } from '../../api/rides';
 import { socketService } from '../../services/socket';
 import { useColors, useTheme } from '../../stores/themeStore';
 import { DARK_MAP_STYLE } from '../../constants/mapStyles';
@@ -342,13 +342,24 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
   };
 
   // ── Trip sharing ─────────────────────────────────────────────────────────────
+  // Generates (or fetches the existing) public tracking token, builds a URL
+  // pointing at the GitHub Pages live-tracking page, and opens the native
+  // share sheet so the passenger can send it to family / friends.
   const handleShareRide = async () => {
+    if (!ride?.id) return;
     const pickup  = ride?.pickupAddress  ?? 'pickup location';
     const dropoff = ride?.dropoffAddress ?? 'destination';
-    const message =
-      `🚕 I'm on my way!\n\nPickup: ${pickup}\nDropoff: ${dropoff}\n\nTracking my TaxiApp ride — I'll let you know when I arrive!`;
+    let trackingUrl: string | null = null;
     try {
-      await Share.share({ message });
+      const { data } = await ridesApi.createShareToken(ride.id);
+      trackingUrl = `${TRIP_SHARE_BASE_URL}?token=${encodeURIComponent(data.token)}`;
+    } catch { /* fall through — share text-only if token issuance fails */ }
+
+    const message = trackingUrl
+      ? `🚕 I'm on my way!\n\nFollow my ride live: ${trackingUrl}\n\nPickup: ${pickup}\nDropoff: ${dropoff}`
+      : `🚕 I'm on my way!\n\nPickup: ${pickup}\nDropoff: ${dropoff}\n\nTracking my TaxiApp ride — I'll let you know when I arrive!`;
+    try {
+      await Share.share({ message, url: trackingUrl ?? undefined });
     } catch { /* user dismissed — ignore */ }
   };
 

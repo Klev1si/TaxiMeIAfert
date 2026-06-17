@@ -17,6 +17,7 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 import OfflineBanner from './src/components/OfflineBanner';
 import SnackbarHost from './src/components/SnackbarHost';
 import UpdateModal from './src/components/UpdateModal';
+import OnboardingTour, { shouldShowOnboarding } from './src/components/OnboardingTour';
 import { startConnectivityMonitor } from './src/services/connectivity';
 import { initI18n } from './src/i18n';
 import { useThemeStore, useColors } from './src/stores/themeStore';
@@ -73,6 +74,14 @@ type UpdateState =
 export default function App(): React.JSX.Element {
   const [updateState, setUpdateState] = useState<UpdateState>(null);
   const [updateDismissed, setUpdateDismissed] = useState(false);
+  const [onboardingVisible, setOnboardingVisible] = useState(false);
+
+  // Show onboarding once on first install. The flag lives in AsyncStorage,
+  // so reinstalling resets it. We don't gate the app on it; the user can
+  // skip and access all features immediately.
+  useEffect(() => {
+    shouldShowOnboarding().then(show => setOnboardingVisible(show));
+  }, []);
 
   const initTheme        = useThemeStore(s => s.initTheme);
   const _setSystemScheme = useThemeStore(s => s._setSystemScheme);
@@ -183,6 +192,11 @@ export default function App(): React.JSX.Element {
         <SnackbarHost />
 
         {/* Version update modal — rendered on top of everything */}
+        <OnboardingTour
+          visible={onboardingVisible}
+          onDone={() => setOnboardingVisible(false)}
+        />
+
         {updateState && !updateDismissed && (
           <UpdateModal
             visible

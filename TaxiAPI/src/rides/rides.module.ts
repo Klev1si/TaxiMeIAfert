@@ -10,6 +10,7 @@ import { FraudModule } from '../fraud/fraud.module.js';
 import { RidesService } from './rides.service.js';
 import { RouteTrackerModule } from './route-tracker.module.js';
 import { RidesController } from './rides.controller.js';
+import { PublicRidesController } from './public-rides.controller.js';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { RidesController } from './rides.controller.js';
     FraudModule,
     RouteTrackerModule,
   ],
-  controllers: [RidesController],
+  controllers: [RidesController, PublicRidesController],
   providers: [RidesService],
   exports: [RidesService],
 })

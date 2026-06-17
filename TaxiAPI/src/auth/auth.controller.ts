@@ -169,6 +169,9 @@ export class AuthController {
       firstName: client?.firstName ?? null,
       lastName:  client?.lastName  ?? null,
       rating:    client?.rating != null ? Number(client.rating) : null,
+      // totalRides drives the first-ride 50% off banner on Client Home —
+      // 0 = banner visible, anything else = hidden.
+      totalRides: client?.totalRides ?? 0,
     };
   }
 

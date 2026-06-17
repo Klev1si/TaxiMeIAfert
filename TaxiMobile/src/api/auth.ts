@@ -104,6 +104,8 @@ export const authApi = {
       id: string; phone: string; email: string | null; role: string;
       avatarUrl: string | null;
       firstName: string | null; lastName: string | null; rating: number | null;
+      // client-only
+      totalRides?: number;
       // driver-only
       isApproved?: boolean; licenseNumber?: string | null;
       vehicleMake?: string | null; vehicleModel?: string | null;

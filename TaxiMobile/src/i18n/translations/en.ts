@@ -41,6 +41,7 @@ export default {
     appearance:     'Appearance',
     info:           'Info',
     skip:           'Skip',
+    next:           'Next',
     approved:       'Approved',
     pending:        'Pending',
     rejected:       'Rejected',
@@ -188,6 +189,8 @@ export default {
       hello:                   'Hello, {phone}',
       driversNearby:           '{count} driver nearby',
       driversNearbyPlural:     '{count} drivers nearby',
+      firstRideTitle:          'Your first ride is half off! 🎉',
+      firstRideBody:           '50% off, up to €5 — applied automatically.',
       gettingLocation:         'Getting your location…',
       whereGoing:              'Where are you going?',
       requestRideBtn:          'Request a Ride',
@@ -1243,6 +1246,18 @@ export default {
   language: {
     title:       'Choose Language',
     description: 'Select your preferred language',
+  },
+
+  onboarding: {
+    slide1Title: 'Welcome to TaxiMeIAfert',
+    slide1Body:  'The simplest way to find a ride in Kosovo. Cash payments, real drivers, real prices.',
+    slide2Title: 'Book in seconds',
+    slide2Body:  'Choose where you are, where you\'re going, and we\'ll match you with the nearest driver instantly.',
+    slide3Title: 'Share your trip',
+    slide3Body:  'Send your live trip to friends or family so they always know you arrived safely.',
+    slide4Title: 'Your first ride is half off',
+    slide4Body:  'New riders get 50% off their first trip — automatically applied at checkout.',
+    getStarted:  'Get Started',
   },
 
   components: {

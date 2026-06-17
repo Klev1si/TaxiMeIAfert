@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live trip — TaxiMeIAfert</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <style>
+    :root {
+      --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b;
+      --primary:#eab308; --border:#e2e8f0;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --muted:#94a3b8; --border:#334155; }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+           background:var(--bg); color:var(--text); }
+    header { padding:14px 18px; border-bottom:1px solid var(--border); background:var(--card); display:flex; align-items:center; gap:10px; }
+    header .logo { font-size:24px; }
+    header h1 { font-size:16px; margin:0; font-weight:800; }
+    header p  { margin:0; font-size:12px; color:var(--muted); }
+    main { padding:14px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:12px; }
+    .status { display:inline-block; padding:4px 10px; border-radius:10px; font-size:12px; font-weight:700; background:var(--primary); color:#000; }
+    .row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); }
+    .row:last-child { border-bottom:none; }
+    .row .label { color:var(--muted); font-size:13px; }
+    .row .value { font-size:14px; font-weight:600; text-align:right; }
+    #map { width:100%; height:300px; border-radius:14px; border:1px solid var(--border); }
+    .empty { padding:48px 24px; text-align:center; color:var(--muted); }
+    .empty .icon { font-size:48px; margin-bottom:12px; }
+    footer { margin-top:18px; text-align:center; color:var(--muted); font-size:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo">🚕</span>
+    <div>
+      <h1>TaxiMeIAfert · Live trip</h1>
+      <p id="last-update">Connecting…</p>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="empty" id="loading">
+      <div class="icon">⏳</div>
+      <div>Loading trip…</div>
+    </div>
+  </main>
+
+  <footer>
+    <p>This link expires when the trip ends.</p>
+    <p>Powered by <strong>TaxiMeIAfert</strong> — the simplest way to ride in Kosovo.</p>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    // Read token from query string. Show error if missing/invalid.
+    const params = new URLSearchParams(window.location.search);
+    const token  = params.get('token');
+
+    // Resolve API base — try the same Railway host the apps use.
+    const API_BASE = 'https://taxiapp-production-cb7c.up.railway.app';
+    const POLL_MS  = 5000;
+
+    const STATUS_LABEL = {
+      accepted:           'Driver assigned',
+      driving_to_pickup:  'Driver on the way',
+      arrived:            'Driver has arrived',
+      in_progress:        'Trip in progress',
+    };
+
+    let map      = null;
+    let driverMk = null;
+    let pickupMk = null;
+    let dropMk   = null;
+
+    function showError(msg) {
+      document.getElementById('main').innerHTML =
+        '<div class="empty"><div class="icon">⚠️</div><div>' + msg + '</div></div>';
+    }
+
+    function renderUI(data) {
+      const statusKey = data.status || 'accepted';
+      const statusText = STATUS_LABEL[statusKey] || statusKey;
+
+      let html = '';
+      html += '<div class="card">';
+      html += '  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">';
+      html += '    <span class="status">' + statusText + '</span>';
+      html += '  </div>';
+      html += '  <div class="row"><span class="label">Driver</span><span class="value">' + (data.driverFirstName || '—') + '</span></div>';
+      html += '  <div class="row"><span class="label">Car plate</span><span class="value">' + (data.driverPlate || '—') + '</span></div>';
+      html += '  <div class="row"><span class="label">From</span><span class="value">' + (data.pickupAddress || (data.pickupLat.toFixed(4) + ', ' + data.pickupLng.toFixed(4))) + '</span></div>';
+      html += '  <div class="row"><span class="label">To</span><span class="value">' + (data.dropoffAddress || (data.dropoffLat.toFixed(4) + ', ' + data.dropoffLng.toFixed(4))) + '</span></div>';
+      html += '</div>';
+      html += '<div id="map"></div>';
+      document.getElementById('main').innerHTML = html;
+
+      if (!map) {
+        map = L.map('map').setView([data.pickupLat, data.pickupLng], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap',
+          maxZoom: 19,
+        }).addTo(map);
+      }
+
+      // Pickup marker (green)
+      if (!pickupMk) {
+        pickupMk = L.marker([data.pickupLat, data.pickupLng], {
+          title: 'Pickup',
+        }).addTo(map);
+      }
+      // Dropoff marker
+      if (!dropMk) {
+        dropMk = L.marker([data.dropoffLat, data.dropoffLng], {
+          title: 'Dropoff',
+        }).addTo(map);
+      }
+
+      // Driver marker (live)
+      if (data.driverLat != null && data.driverLng != null) {
+        const pos = [data.driverLat, data.driverLng];
+        if (!driverMk) {
+          driverMk = L.circleMarker(pos, {
+            radius: 9, color: '#eab308', fillColor: '#eab308', fillOpacity: 0.9,
+          }).addTo(map);
+          driverMk.bindTooltip('🚕 ' + (data.driverFirstName || 'Driver'), { permanent: true, direction: 'top' });
+        } else {
+          driverMk.setLatLng(pos);
+        }
+        map.panTo(pos);
+      }
+
+      document.getElementById('last-update').textContent =
+        'Last updated ' + new Date().toLocaleTimeString();
+    }
+
+    async function tick() {
+      if (!token) {
+        showError('Missing tracking token in the URL.');
+        return;
+      }
+      try {
+        const res = await fetch(API_BASE + '/public/rides/track/' + encodeURIComponent(token), {
+          headers: { Accept: 'application/json' },
+        });
+        if (res.status === 404) {
+          showError('This trip has ended or the link has expired.');
+          return; // stop polling
+        }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        renderUI(data);
+        setTimeout(tick, POLL_MS);
+      } catch (err) {
+        document.getElementById('last-update').textContent = 'Reconnecting…';
+        setTimeout(tick, POLL_MS);
+      }
+    }
+
+    tick();
+  </script>
+</body>
+</html>

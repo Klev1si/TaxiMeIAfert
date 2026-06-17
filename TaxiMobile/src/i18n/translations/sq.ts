@@ -36,6 +36,7 @@ export default {
     appearance:    'Pamja',
     info:          'Info',
     skip:          'Kalo',
+    next:          'Vazhdo',
     approved:      'Aprovuar',
     pending:       'Në pritje',
     rejected:      'Refuzuar',
@@ -183,6 +184,8 @@ export default {
       hello:                   'Tungjatjeta, {phone}',
       driversNearby:           '{count} shofer pranë',
       driversNearbyPlural:     '{count} shoferë pranë',
+      firstRideTitle:          'Udhëtimi i parë me 50% zbritje! 🎉',
+      firstRideBody:           'Zbritje 50%, deri në 5€ — aplikohet automatikisht.',
       gettingLocation:         'Po merret vendndodhja juaj…',
       whereGoing:              'Ku doni të shkoni?',
       requestRideBtn:          'Kërkoni një udhëtim',
@@ -1181,6 +1184,18 @@ export default {
   language: {
     title:       'Zgjidhni Gjuhën',
     description: 'Zgjidhni gjuhën tuaj të preferuar',
+  },
+
+  onboarding: {
+    slide1Title: 'Mirë se vini në TaxiMeIAfert',
+    slide1Body:  'Mënyra më e thjeshtë për të gjetur një taksi në Kosovë. Pagesa në cash, shoferë realë, çmime reale.',
+    slide2Title: 'Rezervo për sekonda',
+    slide2Body:  'Zgjidhni ku jeni dhe ku po shkoni — ne do t\'ju lidhim menjëherë me shoferin më të afërt.',
+    slide3Title: 'Ndaj udhëtimin tënd',
+    slide3Body:  'Dërgo udhëtimin live te miqtë ose familja, që të dinë gjithmonë se ke mbërritur i sigurt.',
+    slide4Title: 'Udhëtimi i parë me 50% zbritje',
+    slide4Body:  'Pasagjerët e rinj e marrin udhëtimin e parë me gjysmë çmimi — aplikohet automatikisht.',
+    getStarted:  'Fillo tani',
   },
 
   components: {

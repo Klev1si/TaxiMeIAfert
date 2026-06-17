@@ -1,6 +1,12 @@
 import apiClient from './client';
 import type { NearestDriver, Ride, RideStop } from '../types/api';
 
+// Public live-tracking URL — passenger taps "Share trip" → backend issues a
+// token → we wrap it in this URL for the share sheet. The track page is
+// hosted on the existing GitHub Pages site that already serves the legal
+// pages, so no extra hosting is needed.
+export const TRIP_SHARE_BASE_URL = 'https://klev1si.github.io/TaxiMeIAfert/legal/track.html';
+
 export type VehicleType = 'economy' | 'comfort' | 'xl';
 
 export interface FareEstimate {
@@ -173,6 +179,10 @@ export const ridesApi = {
   /** POST /rides/:id/cancel */
   cancelRide: (rideId: string, payload?: CancelRidePayload) =>
     apiClient.post<Ride>(`/rides/${rideId}/cancel`, payload ?? {}),
+
+  /** POST /rides/:id/share-token — issue (or return existing) public tracking token */
+  createShareToken: (rideId: string) =>
+    apiClient.post<{ token: string }>(`/rides/${rideId}/share-token`),
 
   /** POST /rides/:id/pay-cash */
   confirmCashPayment: (rideId: string) =>

@@ -35,6 +35,7 @@ export default {
     appearance:    'Apparence',
     info:          'Info',
     skip:          'Ignorer',
+    next:          'Suivant',
     approved:      'Approuvé',
     pending:       'En attente',
     rejected:      'Refusé',
@@ -178,6 +179,8 @@ export default {
       hello:                   'Bonjour, {phone}',
       driversNearby:           '{count} conducteur à proximité',
       driversNearbyPlural:     '{count} conducteurs à proximité',
+      firstRideTitle:          'Votre première course à -50% ! 🎉',
+      firstRideBody:           '50 % de réduction, jusqu\'à 5 € — appliquée automatiquement.',
       gettingLocation:         'Récupération de votre position…',
       whereGoing:              'Où allez-vous ?',
       requestRideBtn:          'Demander un trajet',
@@ -1143,6 +1146,18 @@ export default {
   language: {
     title:       'Choisir la langue',
     description: 'Sélectionnez votre langue préférée',
+  },
+
+  onboarding: {
+    slide1Title: 'Bienvenue sur TaxiMeIAfert',
+    slide1Body:  'La façon la plus simple de trouver une course au Kosovo. Paiement en espèces, vrais conducteurs, vrais prix.',
+    slide2Title: 'Réservez en quelques secondes',
+    slide2Body:  'Choisissez où vous êtes et où vous allez — nous vous mettons en relation avec le conducteur le plus proche.',
+    slide3Title: 'Partagez votre trajet',
+    slide3Body:  'Envoyez votre trajet en direct à vos proches pour qu\'ils sachent que vous êtes bien arrivé.',
+    slide4Title: 'Votre première course à -50%',
+    slide4Body:  'Les nouveaux utilisateurs bénéficient de 50% de réduction sur leur première course — appliqué automatiquement.',
+    getStarted:  'Commencer',
   },
 
   components: {

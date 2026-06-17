@@ -115,6 +115,15 @@ export class Ride {
   @Column({ type: 'decimal', name: 'discount_amount', precision: 10, scale: 2, nullable: true })
   discountAmount: number | null;
 
+  /**
+   * One-time public token a passenger can hand out to share the ride live.
+   * Anyone with the token can read minimal ride state via /public/rides/track/:token —
+   * driver name, plate, status, current driver location, pickup/dropoff. NULL until
+   * the passenger taps "Share trip" the first time.
+   */
+  @Column({ type: 'varchar', name: 'share_token', nullable: true, length: 64 })
+  shareToken: string | null;
+
   // Cancellation
   @Column({ type: 'varchar', name: 'cancel_reason', nullable: true, length: 300 })
   cancelReason: string | null;
