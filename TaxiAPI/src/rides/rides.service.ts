@@ -2331,7 +2331,6 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     const activeStatuses: RideStatus[] = [
       RideStatus.ACCEPTED,
       RideStatus.DRIVING_TO_PICKUP,
-      RideStatus.ARRIVED,
       RideStatus.IN_PROGRESS,
     ];
     if (!activeStatuses.includes(ride.status)) {
