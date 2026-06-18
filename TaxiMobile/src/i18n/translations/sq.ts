@@ -350,6 +350,7 @@ export default {
       appearance:  'Pamja',
       manageCards: 'Menaxho Kartat e Ruajtura',
       helpSupport: 'Ndihmë dhe Mbështetje',
+      howToUse:    'Si të përdoret TaxiMeIAfert',
     },
   },
 
@@ -1188,11 +1189,11 @@ export default {
 
   onboarding: {
     slide1Title: 'Mirë se vini në TaxiMeIAfert',
-    slide1Body:  'Mënyra më e thjeshtë për të gjetur një taksi në Kosovë. Pagesa në cash, shoferë realë, çmime reale.',
-    slide2Title: 'Rezervo për sekonda',
-    slide2Body:  'Zgjidhni ku jeni dhe ku po shkoni — ne do t\'ju lidhim menjëherë me shoferin më të afërt.',
-    slide3Title: 'Ndaj udhëtimin tënd',
-    slide3Body:  'Dërgo udhëtimin live te miqtë ose familja, që të dinë gjithmonë se ke mbërritur i sigurt.',
+    slide1Body:  'Shoku juaj i zgjuar i udhëtimit nëpër Kosovë — i shpejtë, i sigurt dhe gjithmonë në dispozicion.',
+    slide2Title: 'Rezervoni një udhëtim për sekonda',
+    slide2Body:  'Zgjidhni pikën e marrjes dhe destinacionin — ne gjejmë menjëherë një shofer afër jush.',
+    slide3Title: 'Udhëtoni me besim',
+    slide3Body:  'Të gjithë shoferët janë të verifikuar dhe siguria juaj është prioriteti ynë kryesor.',
     slide4Title: 'Udhëtimi i parë me 50% zbritje',
     slide4Body:  'Pasagjerët e rinj e marrin udhëtimin e parë me gjysmë çmimi — aplikohet automatikisht.',
     getStarted:  'Fillo tani',

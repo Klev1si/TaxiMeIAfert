@@ -345,6 +345,7 @@ export default {
       appearance:  'Apariencia',
       manageCards: 'Gestionar tarjetas guardadas',
       helpSupport: 'Ayuda y soporte',
+      howToUse:    'Cómo usar TaxiMeIAfert',
     },
   },
 
@@ -1150,11 +1151,11 @@ export default {
 
   onboarding: {
     slide1Title: 'Bienvenido a TaxiMeIAfert',
-    slide1Body:  'La forma más sencilla de pedir un taxi en Kosovo. Pago en efectivo, conductores reales, precios reales.',
-    slide2Title: 'Reserva en segundos',
-    slide2Body:  'Elija dónde está y a dónde va — le conectamos al instante con el conductor más cercano.',
-    slide3Title: 'Comparte tu viaje',
-    slide3Body:  'Envía tu viaje en directo a tu familia o amigos para que sepan que llegaste bien.',
+    slide1Body:  'Tu compañero de viaje inteligente por Kosovo — rápido, seguro y siempre disponible.',
+    slide2Title: 'Reserva un viaje en segundos',
+    slide2Body:  'Elige tu punto de recogida y destino — encontramos al instante el conductor más cercano.',
+    slide3Title: 'Viaja con confianza',
+    slide3Body:  'Todos los conductores están verificados y tu seguridad es nuestra máxima prioridad.',
     slide4Title: 'Tu primer viaje al 50%',
     slide4Body:  'Los nuevos usuarios reciben 50% de descuento en su primer viaje — se aplica automáticamente.',
     getStarted:  'Empezar',

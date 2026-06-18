@@ -355,6 +355,7 @@ export default {
       appearance:    'Appearance',
       manageCards:   'Manage Saved Cards',
       helpSupport:   'Help & Support',
+      howToUse:      'How to use TaxiMeIAfert',
     },
   },
 
@@ -1250,11 +1251,12 @@ export default {
 
   onboarding: {
     slide1Title: 'Welcome to TaxiMeIAfert',
-    slide1Body:  'The simplest way to find a ride in Kosovo. Cash payments, real drivers, real prices.',
-    slide2Title: 'Book in seconds',
-    slide2Body:  'Choose where you are, where you\'re going, and we\'ll match you with the nearest driver instantly.',
-    slide3Title: 'Share your trip',
-    slide3Body:  'Send your live trip to friends or family so they always know you arrived safely.',
+    slide1Body:  'Your smart travel companion across Kosovo — fast, safe, and always available.',
+    slide2Title: 'Book a ride in seconds',
+    slide2Body:  'Choose your pickup and destination — we instantly find the nearest driver to you.',
+    slide3Title: 'Travel with confidence',
+    slide3Body:  'All drivers are verified and your safety is our top priority.',
+    // Legacy keys kept for older builds — safe to leave even if unused.
     slide4Title: 'Your first ride is half off',
     slide4Body:  'New riders get 50% off their first trip — automatically applied at checkout.',
     getStarted:  'Get Started',

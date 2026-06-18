@@ -23,6 +23,7 @@ import { cardPaymentsEnabled } from '../../config';
 import type { ColorPalette } from '../../constants/colors';
 import AvatarPicker from '../../components/AvatarPicker';
 import LanguagePickerModal from '../../components/LanguagePickerModal';
+import OnboardingTour from '../../components/OnboardingTour';
 import ThemeToggle from '../../components/ThemeToggle';
 import { useTranslation } from '../../i18n';
 
@@ -266,6 +267,7 @@ export default function ClientProfileScreen() {
   const [editVisible,     setEditVisible]     = useState(false);
   const [pwVisible,       setPwVisible]       = useState(false);
   const [langVisible,     setLangVisible]     = useState(false);
+  const [tourVisible,     setTourVisible]     = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
@@ -445,6 +447,16 @@ export default function ClientProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => setTourVisible(true)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="How to use TaxiMeIAfert">
+            <Text style={styles.actionLabel}>📖  {t('client.profile.howToUse')}</Text>
+            <Text style={styles.actionChevron}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.actionRow, { borderBottomWidth: 0 }]}
             onPress={() => navigation.navigate('Support')}
             activeOpacity={0.7}
@@ -498,6 +510,11 @@ export default function ClientProfileScreen() {
       <LanguagePickerModal
         visible={langVisible}
         onClose={() => setLangVisible(false)}
+      />
+      <OnboardingTour
+        visible={tourVisible}
+        onDone={() => setTourVisible(false)}
+        replay
       />
     </SafeAreaView>
   );
