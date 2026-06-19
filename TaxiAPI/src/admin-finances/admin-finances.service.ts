@@ -6,8 +6,9 @@
  */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Company, Driver, Ride } from '../entities';
+import { MoreThanOrEqual, Repository } from 'typeorm';
+import { Company, Driver, PlatformCredit, Ride } from '../entities';
+import { PlatformCreditReason } from '../entities/platform-credit.entity';
 import { RideStatus } from '../common/enums';
 
 const PLATFORM_CARD_COMMISSION_PCT = Number(
@@ -74,10 +75,50 @@ export interface AdminCompanyFinanceDto {
 @Injectable()
 export class AdminFinancesService {
   constructor(
-    @InjectRepository(Driver)  private readonly driverRepo:  Repository<Driver>,
-    @InjectRepository(Company) private readonly companyRepo: Repository<Company>,
-    @InjectRepository(Ride)    private readonly rideRepo:    Repository<Ride>,
+    @InjectRepository(Driver)         private readonly driverRepo:         Repository<Driver>,
+    @InjectRepository(Company)        private readonly companyRepo:        Repository<Company>,
+    @InjectRepository(Ride)           private readonly rideRepo:           Repository<Ride>,
+    @InjectRepository(PlatformCredit) private readonly platformCreditRepo: Repository<PlatformCredit>,
   ) {}
+
+  /**
+   * Summarise platform-funded promo spend over the given period. Breaks the
+   * total down by reason so admin can see what acquisition / promo flows are
+   * costing the platform.
+   */
+  async getPlatformCreditsSummary(period: FinancePeriod): Promise<{
+    period: FinancePeriod;
+    total:  number;
+    count:  number;
+    byReason: Record<PlatformCreditReason, { total: number; count: number }>;
+  }> {
+    const start = periodStart(period);
+    const where = start ? { createdAt: MoreThanOrEqual(start) } : {};
+    const rows = await this.platformCreditRepo.find({ where });
+
+    const byReason: Record<PlatformCreditReason, { total: number; count: number }> = {
+      [PlatformCreditReason.FIRST_RIDE_PROMO]:  { total: 0, count: 0 },
+      [PlatformCreditReason.ADMIN_PROMO_CODE]:  { total: 0, count: 0 },
+    };
+    let total = 0;
+    for (const r of rows) {
+      const amt = Number(r.amount);
+      total += amt;
+      byReason[r.reason].total += amt;
+      byReason[r.reason].count += 1;
+    }
+    return {
+      period,
+      total: Math.round(total * 100) / 100,
+      count: rows.length,
+      byReason: Object.fromEntries(
+        Object.entries(byReason).map(([k, v]) => [
+          k,
+          { total: Math.round(v.total * 100) / 100, count: v.count },
+        ]),
+      ) as Record<PlatformCreditReason, { total: number; count: number }>,
+    };
+  }
 
   /** Per-driver breakdown across the whole platform (solo + company drivers). */
   async getDrivers(period: FinancePeriod): Promise<AdminDriverFinanceDto[]> {

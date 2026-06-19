@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Client, Company, Driver, PromoCode, Ride, RideStop, Tariff, User } from '../entities/index.js';
+import { Client, Company, Driver, PlatformCredit, PromoCode, Ride, RideStop, Tariff, User } from '../entities/index.js';
 import { DriverLedger } from '../entities/driver-ledger.entity.js';
 import { GpsModule } from '../gps/gps.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
@@ -14,7 +14,7 @@ import { PublicRidesController } from './public-rides.controller.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Driver, Client, Ride, RideStop, User, Tariff, Company, PromoCode, DriverLedger]),
+    TypeOrmModule.forFeature([Driver, Client, Ride, RideStop, User, Tariff, Company, PromoCode, DriverLedger, PlatformCredit]),
     GpsModule,
     NotificationsModule,
     MailerModule,

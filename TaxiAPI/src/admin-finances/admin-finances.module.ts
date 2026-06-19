@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Company, Driver, Ride } from '../entities';
+import { Company, Driver, PlatformCredit, Ride } from '../entities';
 import { AdminFinancesController } from './admin-finances.controller';
 import { AdminFinancesService } from './admin-finances.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Driver, Company, Ride])],
+  imports: [TypeOrmModule.forFeature([Driver, Company, Ride, PlatformCredit])],
   controllers: [AdminFinancesController],
   providers: [AdminFinancesService],
 })

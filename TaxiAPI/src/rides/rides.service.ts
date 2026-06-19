@@ -12,7 +12,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, In, IsNull, Repository } from 'typeorm';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.module.js';
-import { Client, Company, Driver, PromoCode, Ride, RideStop, Tariff, User } from '../entities/index.js';
+import { Client, Company, Driver, PlatformCredit, PromoCode, Ride, RideStop, Tariff, User } from '../entities/index.js';
+import { PlatformCreditReason } from '../entities/platform-credit.entity.js';
 import { DriverLedger } from '../entities/driver-ledger.entity.js';
 import { PromoDiscountType } from '../entities/promo-code.entity.js';
 import { PaymentStatus, RideStatus, UserRole, VehicleType } from '../common/enums/index.js';
@@ -144,6 +145,9 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
 
     @InjectRepository(DriverLedger)
     private readonly ledgerRepo: Repository<DriverLedger>,
+
+    @InjectRepository(PlatformCredit)
+    private readonly platformCreditRepo: Repository<PlatformCredit>,
 
     @Inject(REDIS_CLIENT)
     private readonly redis: Redis,
@@ -1510,10 +1514,21 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     }
 
     // ── Apply promo code discount (if the ride was booked with one) ──────────
-    // Company-owned promo codes (companyId != null) only apply when the
-    // assigned driver belongs to that company. Otherwise the discount is
-    // skipped and the client pays the full fare — usedCount was already
-    // incremented at booking time, so we roll it back too.
+    // We track:
+    //   - `ride.totalFare`        = what the PASSENGER pays after the discount.
+    //   - `ride.discountAmount`   = the discount amount applied.
+    //   - `platformAbsorbed`      = how much of the discount the PLATFORM pays
+    //                                back to the driver (so the driver always
+    //                                gets the full pre-discount fare).
+    //
+    // Currently the platform absorbs first-ride and admin-issued promos.
+    // Company-issued promos still come out of the company's pocket — the
+    // accounting for that happens elsewhere (driver's company is charged
+    // separately, or in a future patch). For now company codes are NOT
+    // platform-absorbed.
+    let platformAbsorbed = 0;
+    let platformReason:  PlatformCreditReason | null = null;
+
     if (ride.promoCode && ride.totalFare != null) {
       const promo = await this.promoRepo.findOne({
         where: { code: ride.promoCode, isActive: true },
@@ -1524,9 +1539,17 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         const eligible = !companyScoped || driverInCompany;
 
         if (eligible) {
-          const discount = this.computeDiscount(promo, Number(ride.totalFare));
-          ride.discountAmount = discount;
-          ride.totalFare      = Math.round((Number(ride.totalFare) - discount) * 100) / 100;
+          const fare     = Number(ride.totalFare);
+          const discount = this.computeDiscount(promo, fare);
+          ride.discountAmount = Math.round(discount * 100) / 100;
+          ride.totalFare      = Math.round((fare - discount) * 100) / 100;
+
+          // Admin/global codes → platform absorbs. Company codes → company
+          // absorbs (handled in company-finances, not here).
+          if (!companyScoped) {
+            platformAbsorbed = ride.discountAmount;
+            platformReason   = PlatformCreditReason.ADMIN_PROMO_CODE;
+          }
         } else {
           // Driver isn't from the company that issued this code — refund the
           // booking-time usedCount bump so the code stays available.
@@ -1537,7 +1560,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       // ── First-ride auto-promo ──────────────────────────────────────────────
       // If the client hasn't completed any ride yet (totalRides === 0) AND
       // they didn't already use a promo code on this ride, automatically
-      // apply 50% off, capped at €5. The increment to client.totalRides
+      // apply 50% off, capped at €5. The platform pays the discount so the
+      // driver still earns the full fare. The increment to client.totalRides
       // happens a few lines below, so we read the still-zero value here.
       const client = await this.clientRepo.findOne({
         where: { id: ride.clientId },
@@ -1547,14 +1571,31 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         const fare = Number(ride.totalFare);
         const discount = Math.min(fare * 0.5, 5);
         if (discount > 0) {
-          ride.discountAmount = Math.round(discount * 100) / 100;
-          ride.totalFare      = Math.round((fare - discount) * 100) / 100;
+          ride.discountAmount  = Math.round(discount * 100) / 100;
+          ride.totalFare       = Math.round((fare - discount) * 100) / 100;
+          platformAbsorbed     = ride.discountAmount;
+          platformReason       = PlatformCreditReason.FIRST_RIDE_PROMO;
         }
       }
     }
     // ────────────────────────────────────────────────────────────────────────
 
     const saved = await this.rideRepo.save(ride);
+
+    // ── Log the platform credit so the platform's promo spend is auditable ──
+    // Fire-and-forget. Unique constraint on ride_id makes this idempotent if
+    // completeRide were retried.
+    if (platformAbsorbed > 0 && platformReason) {
+      void this.platformCreditRepo
+        .save(this.platformCreditRepo.create({
+          rideId:   saved.id,
+          clientId: saved.clientId,
+          driverId: driver.id,
+          amount:   platformAbsorbed,
+          reason:   platformReason,
+        }))
+        .catch(err => this.logger.error(`Failed to log platform credit for ride ${saved.id}`, err));
+    }
 
     // Remove live-location relay, chat reverse, and ETA pickup-coords keys — ride is over
     const clientUserForCleanup = await this.getClientUser(ride.clientId);
@@ -1568,9 +1609,14 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     void this.driverRepo.increment({ id: driver.id }, 'totalRides', 1);
     void this.clientRepo.increment({ id: ride.clientId }, 'totalRides', 1);
 
-    // Credit driver's wallet with their share of the fare (fire-and-forget)
-    if (saved.totalFare != null && Number(saved.totalFare) > 0) {
-      void this.walletService.creditRide(driver.id, rideId, Number(saved.totalFare));
+    // Credit driver's wallet with their share of the fare (fire-and-forget).
+    // Driver earns the PRE-discount fare — the platform absorbed any
+    // platform-funded discount above, so the driver isn't out of pocket.
+    if (saved.totalFare != null) {
+      const driverEarning = Math.round((Number(saved.totalFare) + platformAbsorbed) * 100) / 100;
+      if (driverEarning > 0) {
+        void this.walletService.creditRide(driver.id, rideId, driverEarning);
+      }
     }
 
     const clientUser = clientUserForCleanup;

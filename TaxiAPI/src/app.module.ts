@@ -54,6 +54,7 @@ import {
   ClientFavoriteDriver,
   CompanySettlement,
   CompanyMessage,
+  PlatformCredit,
 } from './entities';
 
 @Module({
@@ -149,6 +150,7 @@ import {
           ClientFavoriteDriver,
           CompanySettlement,
           CompanyMessage,
+          PlatformCredit,
         ],
         // Joi.boolean() has already coerced the env string to a real boolean
         synchronize: config.get<boolean>('DB_SYNCHRONIZE', false),

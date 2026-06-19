@@ -23,4 +23,12 @@ export class AdminFinancesController {
   getCompanies(@Query('period') period: FinancePeriod = 'all') {
     return this.svc.getCompanies(period);
   }
+
+  /** GET /admin/finances/platform-credits?period=...
+   *  Returns total platform-funded promo spend (first-ride promo, admin codes)
+   *  for the period, broken down by reason. */
+  @Get('platform-credits')
+  getPlatformCreditsSummary(@Query('period') period: FinancePeriod = 'all') {
+    return this.svc.getPlatformCreditsSummary(period);
+  }
 }
