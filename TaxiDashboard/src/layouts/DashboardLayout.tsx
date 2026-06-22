@@ -21,7 +21,10 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/dashboard/earnings',     label: 'Earnings',     icon: '💵', companyOnly: true },
   { to: '/dashboard/subscription', label: 'Subscription', icon: '💳', companyOnly: true },
   { to: '/dashboard/messages',     label: 'Messages',     icon: '💬', companyOnly: true },
-  { to: '/dashboard/profile',      label: 'Profile',      icon: '🏢', companyOnly: true },
+  // Profile is visible to BOTH roles. Company users see the full company-info
+  // editor + change-password card; super-admin sees only the change-password
+  // card (the company fields don't apply).
+  { to: '/dashboard/profile',      label: 'Profile',      icon: '👤' },
   { to: '/dashboard/companies',    label: 'Companies',    icon: '🏢', adminOnly: true },
   { to: '/dashboard/plans',        label: 'Plans',        icon: '📋', adminOnly: true },
   // Promo Codes is visible to BOTH super-admin (sees all codes) and

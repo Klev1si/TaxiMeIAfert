@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Platform,
@@ -13,6 +13,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
 import ThemeToggle from '../../components/ThemeToggle';
+import ChangePasswordModal from '../../components/ChangePasswordModal';
 import type { ColorPalette } from '../../constants/colors';
 import type { AdminProfileStackScreenProps } from '../../navigation/types';
 import { useTranslation } from '../../i18n';
@@ -71,6 +72,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { user, logout } = useAuthStore();
   const { t } = useTranslation();
+  const [pwVisible, setPwVisible] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(t('admin.profile.logoutTitle'), t('admin.profile.logoutConfirm'), [
@@ -134,6 +136,16 @@ export default function AdminProfileScreen({ navigation }: Props) {
           />
         </View>
 
+        {/* Security */}
+        <Text style={styles.sectionLabel}>{t('profile.password.title')}</Text>
+        <View style={styles.card}>
+          <NavRow
+            icon="🔒"
+            label={t('profile.changePassword')}
+            onPress={() => setPwVisible(true)}
+          />
+        </View>
+
         {/* Appearance */}
         <Text style={styles.sectionLabel}>{t('admin.profile.sectionAppearance')}</Text>
         <View style={[styles.card, { paddingVertical: 12 }]}>
@@ -153,6 +165,11 @@ export default function AdminProfileScreen({ navigation }: Props) {
           <Text style={styles.logoutText}>{t('admin.profile.logoutBtn')}</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <ChangePasswordModal
+        visible={pwVisible}
+        onClose={() => setPwVisible(false)}
+      />
     </SafeAreaView>
   );
 }

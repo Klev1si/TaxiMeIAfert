@@ -87,17 +87,33 @@ export default function ProfilePage() {
   if (user?.role !== 'company' && user?.role !== 'super_admin') {
     return null;
   }
+  const isAdmin = user?.role === 'super_admin';
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Profile</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Your company information. Some changes require admin re-approval.
+          {isAdmin
+            ? 'Your administrator account.'
+            : 'Your company information. Some changes require admin re-approval.'}
         </p>
       </div>
 
-      {loading ? (
+      {/* Change password — shown for both roles */}
+      <ChangePasswordCard />
+
+      {isAdmin && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 text-sm text-blue-900">
+          <p className="font-semibold mb-1">Super admin account</p>
+          <p className="text-blue-800">
+            The form below is for company users. As a super admin you can update your
+            password using the card above, and manage everything else from the dashboard.
+          </p>
+        </div>
+      )}
+
+      {isAdmin ? null : loading ? (
         <div className="flex items-center justify-center h-32">
           <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -240,6 +256,104 @@ function Field({ label, hint, children }: { label: string; hint?: React.ReactNod
       </label>
       {children}
       {hint && <div className="mt-1">{hint}</div>}
+    </div>
+  );
+}
+
+/**
+ * ChangePasswordCard — same flow for super-admin and company. Calls the
+ * existing PATCH /auth/change-password endpoint. Surfaces the server's
+ * error verbatim so the user knows when their current password is wrong.
+ */
+function ChangePasswordCard() {
+  const [current,   setCurrent]   = useState('');
+  const [next,      setNext]      = useState('');
+  const [confirm,   setConfirm]   = useState('');
+  const [saving,    setSaving]    = useState(false);
+  const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    if (!current)             { setErrorMsg('Please enter your current password.'); return; }
+    if (next.length < 6)      { setErrorMsg('New password must be at least 6 characters.'); return; }
+    if (next !== confirm)     { setErrorMsg('New passwords do not match.'); return; }
+
+    setSaving(true);
+    try {
+      await apiClient.patch('/auth/change-password', {
+        currentPassword: current,
+        newPassword:     next,
+      });
+      setSuccessMsg('Password updated.');
+      setCurrent(''); setNext(''); setConfirm('');
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? 'Could not update password.';
+      setErrorMsg(Array.isArray(msg) ? msg.join('\n') : msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        🔒 Change password
+      </p>
+
+      <Field label="Current password">
+        <input
+          type="password"
+          value={current}
+          onChange={e => setCurrent(e.target.value)}
+          autoComplete="current-password"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          maxLength={128}
+        />
+      </Field>
+
+      <Field label="New password" hint={<span className="text-xs text-gray-400">Minimum 6 characters.</span>}>
+        <input
+          type="password"
+          value={next}
+          onChange={e => setNext(e.target.value)}
+          autoComplete="new-password"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          maxLength={64}
+        />
+      </Field>
+
+      <Field label="Confirm new password">
+        <input
+          type="password"
+          value={confirm}
+          onChange={e => setConfirm(e.target.value)}
+          autoComplete="new-password"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          maxLength={64}
+        />
+      </Field>
+
+      {errorMsg && (
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-700">
+          {errorMsg}
+        </div>
+      )}
+      {successMsg && (
+        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-sm text-green-700">
+          ✓ {successMsg}
+        </div>
+      )}
+
+      <button
+        onClick={handleSave}
+        disabled={saving || !current || !next || !confirm}
+        className="px-5 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+      >
+        {saving ? 'Updating…' : 'Update password'}
+      </button>
     </div>
   );
 }
