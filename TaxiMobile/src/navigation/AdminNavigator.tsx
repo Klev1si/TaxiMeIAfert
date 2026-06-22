@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useColors } from '../stores/themeStore';
+import { useTranslation } from '../i18n';
 import type {
   AdminTabParamList,
   AdminDriverStackParamList,
@@ -55,6 +56,7 @@ function AdminProfileNavigator() {
 
 export default function AdminNavigator() {
   const colors = useColors();
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -75,13 +77,13 @@ export default function AdminNavigator() {
           return <Icon name={icons[route.name]} size={size} color={color} />;
         },
         tabBarLabel:
-          route.name === 'AdminDashboard'  ? 'Dashboard' :
-          route.name === 'AdminDrivers'    ? 'Drivers'   :
-          route.name === 'AdminClients'    ? 'Passengers':
-          route.name === 'AdminCompanies'  ? 'Companies' :
-          route.name === 'AdminPromos'     ? 'Promos'    :
-          route.name === 'AdminSupport'    ? 'Support'   :
-                                             'Profile',
+          route.name === 'AdminDashboard'  ? t('nav.dashboard')  :
+          route.name === 'AdminDrivers'    ? t('nav.drivers')    :
+          route.name === 'AdminClients'    ? t('nav.passengers') :
+          route.name === 'AdminCompanies'  ? t('nav.companies')  :
+          route.name === 'AdminPromos'     ? t('nav.promos')     :
+          route.name === 'AdminSupport'    ? t('nav.support')    :
+                                             t('nav.profile'),
       })}>
       <Tab.Screen name="AdminDashboard"  component={AdminDashboardScreen}    />
       <Tab.Screen name="AdminDrivers"    component={AdminDriversNavigator}   />

@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useColors } from '../stores/themeStore';
+import { useTranslation } from '../i18n';
 import type { CompanyTabParamList } from './types';
 
 import CompanyDashboardScreen     from '../screens/company/CompanyDashboardScreen';
@@ -15,6 +16,7 @@ const Tab = createBottomTabNavigator<CompanyTabParamList>();
 
 export default function CompanyNavigator() {
   const colors = useColors();
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -34,12 +36,12 @@ export default function CompanyNavigator() {
           return <Icon name={icons[route.name]} size={size} color={color} />;
         },
         tabBarLabel:
-          route.name === 'CompanyDashboard'    ? 'Dashboard' :
-          route.name === 'CompanyDrivers'      ? 'Drivers'   :
-          route.name === 'CompanyFinances'     ? 'Finances'  :
-          route.name === 'CompanyTariffs'      ? 'Tariffs'   :
-          route.name === 'CompanySubscription' ? 'Plan'      :
-                                                 'Profile',
+          route.name === 'CompanyDashboard'    ? t('nav.dashboard')    :
+          route.name === 'CompanyDrivers'      ? t('nav.drivers')      :
+          route.name === 'CompanyFinances'     ? t('nav.finances')     :
+          route.name === 'CompanyTariffs'      ? t('nav.tariffs')      :
+          route.name === 'CompanySubscription' ? t('nav.subscription') :
+                                                 t('nav.profile'),
       })}>
       <Tab.Screen name="CompanyDashboard"    component={CompanyDashboardScreen}    />
       <Tab.Screen name="CompanyDrivers"      component={CompanyDriversScreen}      />

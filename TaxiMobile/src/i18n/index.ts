@@ -25,12 +25,13 @@ import en from './translations/en';
 import es from './translations/es';
 import fr from './translations/fr';
 import sq from './translations/sq';
+import tr from './translations/tr';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type Lang = 'en' | 'es' | 'fr' | 'sq';
+export type Lang = 'en' | 'es' | 'fr' | 'sq' | 'tr';
 
-const translations: Record<Lang, unknown> = { en, es, fr, sq };
+const translations: Record<Lang, unknown> = { en, es, fr, sq, tr };
 
 const STORAGE_KEY = '@taxiapp/lang';
 
@@ -42,6 +43,7 @@ export const AVAILABLE_LANGUAGES: Array<{
 }> = [
   { code: 'sq', label: 'Shqip',    flag: '🇦🇱' },
   { code: 'en', label: 'English',  flag: '🇬🇧' },
+  { code: 'tr', label: 'Türkçe',   flag: '🇹🇷' },
   { code: 'es', label: 'Español',  flag: '🇪🇸' },
   { code: 'fr', label: 'Français', flag: '🇫🇷' },
 ];

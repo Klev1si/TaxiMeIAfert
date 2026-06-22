@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useColors } from '../stores/themeStore';
+import { useTranslation } from '../i18n';
 import type {
   DriverTabParamList,
   DriverStackParamList,
@@ -64,6 +65,7 @@ function DriverProfileStack() {
 
 export default function DriverNavigator() {
   const colors = useColors();
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -82,11 +84,11 @@ export default function DriverNavigator() {
           return <Icon name={icons[route.name]} size={size} color={color} />;
         },
         tabBarLabel:
-          route.name === 'DriverHome'        ? 'Home'     :
-          route.name === 'DriverRideHistory' ? 'History'  :
-          route.name === 'DriverWallet'      ? 'Earnings' :
-          route.name === 'DriverExpenses'    ? 'Expenses' :
-                                               'Profile',
+          route.name === 'DriverHome'        ? t('nav.home')     :
+          route.name === 'DriverRideHistory' ? t('nav.history')  :
+          route.name === 'DriverWallet'      ? t('nav.earnings') :
+          route.name === 'DriverExpenses'    ? t('nav.expenses') :
+                                               t('nav.profile'),
       })}>
       <Tab.Screen name="DriverHome"        component={DriverHomeStack}      />
       <Tab.Screen name="DriverRideHistory" component={DriverHistoryStack}  />

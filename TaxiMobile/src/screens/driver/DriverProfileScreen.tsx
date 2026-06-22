@@ -672,10 +672,10 @@ export default function DriverProfileScreen() {
         {/* ── Ratings card ───────────────────────────────────────────────── */}
         {ratings && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>My Ratings</Text>
+            <Text style={styles.cardTitle}>{t('driver.profile.myRatings')}</Text>
 
             {ratings.total === 0 ? (
-              <Text style={ratingStyles.empty}>No ratings yet — complete your first ride!</Text>
+              <Text style={ratingStyles.empty}>{t('driver.profile.noRatingsYet')}</Text>
             ) : (
               <>
                 {/* Overall score row */}
@@ -738,7 +738,7 @@ export default function DriverProfileScreen() {
                 {ratings.recent.length > 0 && (
                   <>
                     <Text style={[styles.cardTitle, { marginTop: 16, marginBottom: 10 }]}>
-                      Recent Reviews
+                      {t('driver.profile.recentReviews')}
                     </Text>
                     {(showAllReviews ? ratings.recent : ratings.recent.slice(0, 3)).map(
                       (r, i) => (
@@ -769,7 +769,7 @@ export default function DriverProfileScreen() {
                           {r.review ? (
                             <Text style={ratingStyles.reviewText}>"{r.review}"</Text>
                           ) : (
-                            <Text style={ratingStyles.reviewNoText}>No comment left</Text>
+                            <Text style={ratingStyles.reviewNoText}>{t('driver.profile.noComment')}</Text>
                           )}
                           {/* Pickup address */}
                           {r.pickupAddress && (
@@ -790,8 +790,8 @@ export default function DriverProfileScreen() {
                         accessibilityLabel={showAllReviews ? 'Show fewer reviews' : `Show all ${ratings.recent.length} reviews`}>
                         <Text style={ratingStyles.toggleText}>
                           {showAllReviews
-                            ? 'Show fewer'
-                            : `Show all ${ratings.recent.length} reviews`}
+                            ? t('driver.profile.showFewer')
+                            : t('driver.profile.showAllReviews', { count: ratings.recent.length })}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -804,7 +804,7 @@ export default function DriverProfileScreen() {
 
         {/* Actions */}
         <View style={styles.actionsCard}>
-          <Text style={styles.cardTitle}>Settings</Text>
+          <Text style={styles.cardTitle}>{t('driver.profile.settings')}</Text>
 
           <TouchableOpacity
             style={styles.actionRow}

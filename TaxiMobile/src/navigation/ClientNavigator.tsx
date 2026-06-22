@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useColors } from '../stores/themeStore';
+import { useTranslation } from '../i18n';
 import type {
   ClientTabParamList,
   ClientStackParamList,
@@ -72,6 +73,7 @@ function ClientProfileStack() {
 
 export default function ClientNavigator() {
   const colors = useColors();
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -89,10 +91,10 @@ export default function ClientNavigator() {
         },
         tabBarLabel:
           route.name === 'ClientHome'
-            ? 'Home'
+            ? t('nav.home')
             : route.name === 'ClientRideHistory'
-              ? 'History'
-              : 'Profile',
+              ? t('nav.history')
+              : t('nav.profile'),
       })}>
       <Tab.Screen name="ClientHome" component={ClientHomeStack} />
       <Tab.Screen name="ClientRideHistory" component={ClientHistoryStack} />
