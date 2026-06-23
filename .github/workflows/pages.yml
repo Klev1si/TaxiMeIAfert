@@ -35,10 +35,27 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      # Stage the legal/ content so the deployed URLs keep the /legal/ prefix.
+      # Without this, upload-pages-artifact strips the folder name and
+      # /TaxiMeIAfert/legal/privacy.html would 404 — Play Console flagged this
+      # exact issue against the privacy policy URL on v1.71.
+      - name: Stage Pages content
+        run: |
+          mkdir -p _site/legal
+          cp -r legal/. _site/legal/
+          # Friendly root redirect so the bare repo URL goes somewhere useful.
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <meta http-equiv="refresh" content="0; url=./legal/">
+          <title>TaxiMeIAfert</title>
+          <p>Redirecting to <a href="./legal/">legal pages</a>…</p>
+          HTML
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: legal
+          path: _site
 
   deploy:
     needs: build
