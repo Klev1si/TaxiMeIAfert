@@ -1,36 +1,49 @@
 import { useEffect, useState, useCallback } from 'react';
 import apiClient from '../api/client';
 
+type BillingPeriod = 'monthly' | 'quarterly' | 'yearly';
+type Audience      = 'company' | 'driver';
+
 interface Plan {
   id: string;
   name: string;
-  priceMonthly: number;
+  price: number | string;
+  billingPeriod: BillingPeriod;
   maxDrivers: number;
   features: string[];
-  stripePriceId: string | null;
+  targetAudience: Audience;
   isActive: boolean;
   createdAt: string;
 }
 
 interface FormState {
-  name: string;
-  priceMonthly: string;
-  maxDrivers: string;
-  features: string; // newline-separated
-  stripePriceId: string;
+  name:           string;
+  price:          string;
+  billingPeriod:  BillingPeriod;
+  maxDrivers:     string;
+  features:       string; // newline-separated
+  targetAudience: Audience;
 }
 
 const EMPTY_FORM: FormState = {
-  name: '', priceMonthly: '', maxDrivers: '', features: '', stripePriceId: '',
+  name: '', price: '', billingPeriod: 'monthly', maxDrivers: '1',
+  features: '', targetAudience: 'driver',
+};
+
+const PERIOD_LABEL: Record<BillingPeriod, string> = {
+  monthly:   'Monthly',
+  quarterly: '3-Month',
+  yearly:    'Yearly',
 };
 
 function planToForm(p: Plan): FormState {
   return {
-    name:          p.name,
-    priceMonthly:  String(p.priceMonthly),
-    maxDrivers:    String(p.maxDrivers),
-    features:      p.features.join('\n'),
-    stripePriceId: p.stripePriceId ?? '',
+    name:           p.name,
+    price:          String(p.price),
+    billingPeriod:  p.billingPeriod,
+    maxDrivers:     String(p.maxDrivers),
+    features:       p.features.join('\n'),
+    targetAudience: p.targetAudience,
   };
 }
 
@@ -38,8 +51,8 @@ export default function PlansPage() {
   const [plans,   setPlans]   = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
+  const [filter,  setFilter]  = useState<'all' | Audience>('all');
 
-  // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [editPlan,  setEditPlan]  = useState<Plan | null>(null);
   const [form,      setForm]      = useState<FormState>(EMPTY_FORM);
@@ -80,17 +93,17 @@ export default function PlansPage() {
   const handleSave = async () => {
     setFormError('');
     const payload = {
-      name:          form.name.trim(),
-      priceMonthly:  parseFloat(form.priceMonthly),
-      maxDrivers:    parseInt(form.maxDrivers, 10),
-      features:      form.features.split('\n').map(f => f.trim()).filter(Boolean),
-      stripePriceId: form.stripePriceId.trim() || null,
+      name:           form.name.trim(),
+      price:          parseFloat(form.price),
+      billingPeriod:  form.billingPeriod,
+      maxDrivers:     parseInt(form.maxDrivers, 10),
+      features:       form.features.split('\n').map(f => f.trim()).filter(Boolean),
+      targetAudience: form.targetAudience,
     };
-    if (!payload.name)                    return setFormError('Name is required.');
-    if (isNaN(payload.priceMonthly) || payload.priceMonthly < 0)
-                                          return setFormError('Enter a valid price.');
-    if (isNaN(payload.maxDrivers)   || payload.maxDrivers < 1)
-                                          return setFormError('Enter a valid driver limit.');
+    if (!payload.name)                                  return setFormError('Name is required.');
+    if (isNaN(payload.price)      || payload.price < 0) return setFormError('Enter a valid price.');
+    if (isNaN(payload.maxDrivers) || payload.maxDrivers < 1)
+                                                        return setFormError('Enter a valid driver limit (≥ 1).');
 
     setSaving(true);
     try {
@@ -109,7 +122,7 @@ export default function PlansPage() {
   };
 
   const handleDeactivate = async (p: Plan) => {
-    if (!confirm(`Deactivate "${p.name}"? Companies on this plan won't be affected immediately.`)) return;
+    if (!confirm(`Deactivate "${p.name}"? Existing subscribers are unaffected.`)) return;
     try {
       await apiClient.delete(`/admin/plans/${p.id}`);
       load();
@@ -118,13 +131,14 @@ export default function PlansPage() {
     }
   };
 
+  const visiblePlans = filter === 'all' ? plans : plans.filter(p => p.targetAudience === filter);
+
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Subscription Plans</h2>
-          <p className="text-sm text-gray-500 mt-1">Manage the plans companies can subscribe to.</p>
+          <p className="text-sm text-gray-500 mt-1">Manage driver and company plans across all billing periods.</p>
         </div>
         <button
           onClick={openCreate}
@@ -134,55 +148,83 @@ export default function PlansPage() {
         </button>
       </div>
 
-      {/* Error */}
+      {/* Audience filter */}
+      <div className="flex gap-2 mb-5">
+        {(['all', 'driver', 'company'] as const).map(opt => (
+          <button
+            key={opt}
+            onClick={() => setFilter(opt)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold border ${
+              filter === opt
+                ? 'bg-indigo-600 text-white border-indigo-600'
+                : 'bg-white text-gray-700 border-gray-200 hover:border-indigo-300'
+            }`}
+          >
+            {opt === 'all' ? 'All' : opt === 'driver' ? 'Drivers' : 'Companies'}
+          </button>
+        ))}
+      </div>
+
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">
           {error}
         </div>
       )}
 
-      {/* Loading */}
       {loading ? (
         <div className="flex justify-center py-16">
           <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : plans.length === 0 ? (
+      ) : visiblePlans.length === 0 ? (
         <div className="text-center py-20">
           <p className="text-4xl mb-3">📋</p>
-          <p className="text-gray-600 font-medium">No plans yet</p>
-          <p className="text-gray-400 text-sm mt-1">Click "New Plan" to create the first one.</p>
+          <p className="text-gray-600 font-medium">No plans match this filter</p>
+          <p className="text-gray-400 text-sm mt-1">Click "New Plan" to add one.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {plans.map(p => (
+          {visiblePlans.map(p => (
             <div
               key={p.id}
               className={`bg-white rounded-xl border p-5 flex flex-col gap-4 ${
                 p.isActive ? 'border-gray-200' : 'border-gray-200 opacity-50'
               }`}
             >
-              {/* Status badge */}
-              {!p.isActive && (
-                <span className="self-start bg-gray-100 text-gray-500 text-xs font-semibold px-2 py-0.5 rounded-full">
-                  Inactive
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  p.targetAudience === 'driver'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-purple-100 text-purple-700'
+                }`}>
+                  {p.targetAudience === 'driver' ? 'Driver' : 'Company'}
                 </span>
-              )}
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                  {PERIOD_LABEL[p.billingPeriod]}
+                </span>
+                {!p.isActive && (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                    Inactive
+                  </span>
+                )}
+              </div>
 
-              {/* Name + price */}
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <h3 className="text-lg font-bold text-gray-900">{p.name}</h3>
-                  <p className="text-sm text-gray-500">Up to {p.maxDrivers} drivers</p>
+                  {p.targetAudience === 'company' && (
+                    <p className="text-sm text-gray-500">Up to {p.maxDrivers} drivers</p>
+                  )}
                 </div>
                 <div className="text-right shrink-0">
                   <span className="text-2xl font-extrabold text-gray-900">
-                    ${Number(p.priceMonthly).toFixed(2)}
+                    €{Number(p.price).toFixed(2)}
                   </span>
-                  <span className="text-sm text-gray-400">/mo</span>
+                  <span className="text-sm text-gray-400">
+                    /{p.billingPeriod === 'monthly' ? 'mo' : p.billingPeriod === 'quarterly' ? '3mo' : 'yr'}
+                  </span>
                 </div>
               </div>
 
-              {/* Features */}
               {p.features.length > 0 && (
                 <ul className="space-y-1">
                   {p.features.map((f, i) => (
@@ -193,14 +235,6 @@ export default function PlansPage() {
                 </ul>
               )}
 
-              {/* Stripe ID */}
-              {p.stripePriceId && (
-                <p className="text-xs text-gray-400 font-mono truncate">
-                  Stripe: {p.stripePriceId}
-                </p>
-              )}
-
-              {/* Actions */}
               <div className="flex gap-2 mt-auto pt-3 border-t border-gray-100">
                 <button
                   onClick={() => openEdit(p)}
@@ -222,19 +256,15 @@ export default function PlansPage() {
         </div>
       )}
 
-      {/* ── Create / Edit Modal ─────────────────────────────────────────────── */}
+      {/* ── Modal ──────────────────────────────────────────────────────────── */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-            {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900">
-                {editPlan ? 'Edit Plan' : 'New Plan'}
-              </h3>
+              <h3 className="text-lg font-bold text-gray-900">{editPlan ? 'Edit Plan' : 'New Plan'}</h3>
               <button onClick={closeModal} className="text-gray-400 hover:text-gray-700 text-xl leading-none">×</button>
             </div>
 
-            {/* Form */}
             <div className="px-6 py-5 space-y-4">
               {formError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">
@@ -246,7 +276,7 @@ export default function PlansPage() {
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Plan Name</label>
                 <input
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  placeholder="e.g. Professional"
+                  placeholder="e.g. Driver Monthly"
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 />
@@ -254,13 +284,39 @@ export default function PlansPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Price / Month ($)</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Audience</label>
+                  <select
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                    value={form.targetAudience}
+                    onChange={e => setForm(f => ({ ...f, targetAudience: e.target.value as Audience }))}
+                  >
+                    <option value="driver">Driver</option>
+                    <option value="company">Company</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Billing Period</label>
+                  <select
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                    value={form.billingPeriod}
+                    onChange={e => setForm(f => ({ ...f, billingPeriod: e.target.value as BillingPeriod }))}
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">3-Month</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Price (€)</label>
                   <input
                     type="number" min="0" step="0.01"
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                    placeholder="29.99"
-                    value={form.priceMonthly}
-                    onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))}
+                    placeholder="15.00"
+                    value={form.price}
+                    onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
                   />
                 </div>
                 <div>
@@ -268,7 +324,7 @@ export default function PlansPage() {
                   <input
                     type="number" min="1" step="1"
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                    placeholder="25"
+                    placeholder={form.targetAudience === 'driver' ? '1' : '100'}
                     value={form.maxDrivers}
                     onChange={e => setForm(f => ({ ...f, maxDrivers: e.target.value }))}
                   />
@@ -282,26 +338,13 @@ export default function PlansPage() {
                 <textarea
                   rows={4}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
-                  placeholder={"Priority support\nAdvanced analytics\nCustom tariffs"}
+                  placeholder={'Unlimited rides\nIn-app support'}
                   value={form.features}
                   onChange={e => setForm(f => ({ ...f, features: e.target.value }))}
                 />
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Stripe Price ID <span className="font-normal text-gray-400">(optional)</span>
-                </label>
-                <input
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  placeholder="price_1Abc..."
-                  value={form.stripePriceId}
-                  onChange={e => setForm(f => ({ ...f, stripePriceId: e.target.value }))}
-                />
-              </div>
             </div>
 
-            {/* Actions */}
             <div className="flex gap-3 px-6 py-4 border-t border-gray-100">
               <button
                 onClick={closeModal}

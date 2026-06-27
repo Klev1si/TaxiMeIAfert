@@ -1,127 +1,87 @@
 import { useEffect, useState, useCallback } from 'react';
 import apiClient from '../api/client';
 
+type BillingPeriod = 'monthly' | 'quarterly' | 'yearly';
+type SubStatus     = 'active' | 'pending' | 'trialing' | 'past_due' | 'cancelled';
+type PaymentMethod = 'card' | 'cash';
+type SubState      = 'inactive' | 'active' | 'grace' | 'blocked';
+
 interface Plan {
   id: string;
   name: string;
-  priceMonthly: number;
+  price: number | string;
+  billingPeriod: BillingPeriod;
   maxDrivers: number;
   features: string[];
   isActive: boolean;
 }
 
-type SubStatus = 'active' | 'trialing' | 'past_due' | 'cancelled';
-
 interface CompanySubscription {
   id: string;
   planId: string;
   status: SubStatus;
+  paymentMethod: PaymentMethod;
   currentPeriodStart: string;
   currentPeriodEnd: string;
   cancelledAt: string | null;
   plan: Plan;
+  state?: SubState;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtPrice(n: number) {
-  return `$${Number(n).toFixed(2)}`;
-}
-
+function fmtPrice(n: number | string) { return `€${Number(n).toFixed(2)}`; }
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
     month: 'short', day: 'numeric', year: 'numeric',
   });
 }
-
-const STATUS_META: Record<SubStatus, { label: string; cls: string }> = {
-  active:    { label: '● Active',    cls: 'text-green-600 bg-green-50 border-green-200' },
-  trialing:  { label: '○ Trial',     cls: 'text-blue-600  bg-blue-50  border-blue-200'  },
-  past_due:  { label: '⚠ Past Due',  cls: 'text-amber-600 bg-amber-50 border-amber-200' },
-  cancelled: { label: '✕ Cancelled', cls: 'text-red-600   bg-red-50   border-red-200'   },
-};
-
-// ── Current Plan Banner ───────────────────────────────────────────────────────
-
-function CurrentPlanBanner({
-  sub,
-  onCancel,
-  cancelling,
-}: {
-  sub: CompanySubscription;
-  onCancel: () => void;
-  cancelling: boolean;
-}) {
-  const meta = STATUS_META[sub.status];
-  const isCancelled = sub.status === 'cancelled';
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
-          <h3 className="text-xl font-bold text-gray-900">{sub.plan.name}</h3>
-          <p className="text-sm text-gray-500 mt-0.5">Up to {sub.plan.maxDrivers} drivers</p>
-        </div>
-        <div className="text-right shrink-0">
-          <span className="text-3xl font-extrabold text-gray-900">
-            {fmtPrice(sub.plan.priceMonthly)}
-          </span>
-          <span className="text-sm text-gray-400">/mo</span>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${meta.cls}`}>
-          {meta.label}
-        </span>
-        <span className="text-sm text-gray-500">
-          {isCancelled
-            ? `Cancelled on ${sub.cancelledAt ? fmtDate(sub.cancelledAt) : '—'}`
-            : `Renews on ${fmtDate(sub.currentPeriodEnd)}`}
-        </span>
-      </div>
-
-      {sub.plan.features.length > 0 && (
-        <ul className="flex flex-wrap gap-2 mb-5">
-          {sub.plan.features.map((f, i) => (
-            <li key={i} className="flex items-center gap-1.5 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1">
-              <span className="text-green-500 font-bold text-xs">✓</span> {f}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {!isCancelled && (
-        <button
-          onClick={onCancel}
-          disabled={cancelling}
-          className="text-sm font-semibold text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
-        >
-          {cancelling ? 'Cancelling…' : 'Cancel Subscription'}
-        </button>
-      )}
-    </div>
-  );
+function periodLabel(p: BillingPeriod) {
+  return p === 'monthly' ? '/mo' : p === 'quarterly' ? '/3mo' : '/yr';
 }
 
-// ── Plan Card ─────────────────────────────────────────────────────────────────
+const STATUS_META: Record<SubStatus, { label: string; cls: string }> = {
+  active:    { label: '● Active',     cls: 'text-green-600 bg-green-50 border-green-200' },
+  pending:   { label: '⏳ Awaiting',   cls: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
+  trialing:  { label: '○ Trial',       cls: 'text-blue-600  bg-blue-50  border-blue-200'  },
+  past_due:  { label: '⚠ Past Due',    cls: 'text-amber-600 bg-amber-50 border-amber-200' },
+  cancelled: { label: '✕ Cancelled',   cls: 'text-red-600   bg-red-50   border-red-200'   },
+};
+
+// ── State banner (grace / blocked) ────────────────────────────────────────────
+
+function StateBanner({ state, periodEnd }: { state: SubState; periodEnd: string }) {
+  if (state === 'grace') {
+    return (
+      <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-5 py-3 mb-5 text-sm">
+        ⚠ Your subscription expired on <strong>{fmtDate(periodEnd)}</strong>. You're in a 3-day grace period — renew now to avoid losing access.
+      </div>
+    );
+  }
+  if (state === 'blocked') {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl px-5 py-3 mb-5 text-sm">
+        ⛔ Your subscription is blocked. Renew to start accepting rides again.
+      </div>
+    );
+  }
+  return null;
+}
+
+// ── Plan card ─────────────────────────────────────────────────────────────────
 
 function PlanCard({
-  plan,
-  isCurrent,
-  onSelect,
-  loading,
+  plan, isCurrent, onPickCard, onPickCash, busy,
 }: {
   plan: Plan;
   isCurrent: boolean;
-  onSelect: () => void;
-  loading: boolean;
+  onPickCard: (planId: string) => void;
+  onPickCash: (planId: string) => void;
+  busy: boolean;
 }) {
   return (
     <div className={`bg-white rounded-xl border p-5 flex flex-col gap-4 transition-all ${
-      isCurrent
-        ? 'border-indigo-500 ring-2 ring-indigo-200'
-        : 'border-gray-200 hover:border-indigo-300'
+      isCurrent ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-200 hover:border-indigo-300'
     }`}>
       {isCurrent && (
         <span className="self-start bg-indigo-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide">
@@ -130,10 +90,15 @@ function PlanCard({
       )}
 
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
+        <div>
+          <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
+          <p className="text-xs text-gray-500 mt-0.5 capitalize">
+            {plan.billingPeriod === 'quarterly' ? '3-month' : plan.billingPeriod} billing
+          </p>
+        </div>
         <div className="text-right shrink-0">
-          <span className="text-2xl font-extrabold text-gray-900">{fmtPrice(plan.priceMonthly)}</span>
-          <span className="text-xs text-gray-400">/mo</span>
+          <span className="text-2xl font-extrabold text-gray-900">{fmtPrice(plan.price)}</span>
+          <span className="text-xs text-gray-400">{periodLabel(plan.billingPeriod)}</span>
         </div>
       </div>
 
@@ -151,50 +116,43 @@ function PlanCard({
         </ul>
       )}
 
-      <button
-        onClick={onSelect}
-        disabled={isCurrent || loading}
-        className={`w-full py-2.5 rounded-xl text-sm font-bold transition-colors ${
-          isCurrent
-            ? 'border border-indigo-300 text-indigo-500 cursor-default'
-            : 'bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-60'
-        }`}
-      >
-        {loading ? (
-          <span className="flex items-center justify-center gap-2">
-            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Processing…
-          </span>
-        ) : isCurrent ? 'Current Plan' : 'Select Plan'}
-      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() => onPickCard(plan.id)}
+          disabled={busy}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl py-2.5 disabled:opacity-60"
+        >
+          Pay with card
+        </button>
+        <button
+          onClick={() => onPickCash(plan.id)}
+          disabled={busy}
+          className="border border-indigo-300 text-indigo-700 hover:bg-indigo-50 text-sm font-bold rounded-xl py-2.5 disabled:opacity-60"
+        >
+          Pay in cash
+        </button>
+      </div>
     </div>
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SubscriptionPage() {
   const [plans,   setPlans]   = useState<Plan[]>([]);
   const [sub,     setSub]     = useState<CompanySubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
-
-  const [subscribingId, setSubscribingId] = useState<string | null>(null);
-  const [cancelling,    setCancelling]    = useState(false);
-
+  const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [toast, setToast] = useState('');
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 3000);
-  };
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const [plansRes, subRes] = await Promise.all([
-        apiClient.get<Plan[]>('/subscriptions/plans'),
+        apiClient.get<Plan[]>('/subscriptions/plans?audience=company'),
         apiClient.get<CompanySubscription | null>('/subscriptions/my'),
       ]);
       setPlans(plansRes.data);
@@ -208,65 +166,61 @@ export default function SubscriptionPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleSelect = async (plan: Plan) => {
-    const isSwitch = sub && sub.status !== 'cancelled' && sub.planId !== plan.id;
-    const msg = isSwitch
-      ? `Switch to the "${plan.name}" plan for ${fmtPrice(plan.priceMonthly)}/mo?`
-      : `Subscribe to the "${plan.name}" plan for ${fmtPrice(plan.priceMonthly)}/mo?\n\nYou'll start with a 30-day free trial.`;
-
-    if (!confirm(msg)) return;
-
-    setSubscribingId(plan.id);
+  const handleCard = async (planId: string) => {
+    setBusyPlan(planId);
     try {
-      const { data } = await apiClient.post<CompanySubscription>('/subscriptions/subscribe', { planId: plan.id });
-      setSub(data);
-      showToast(isSwitch ? '✓ Plan switched successfully!' : '✓ Trial started! Welcome aboard.');
+      const { data } = await apiClient.post<{ url: string }>('/subscriptions/checkout', { planId });
+      window.location.href = data.url;
     } catch (err: any) {
-      alert(err?.response?.data?.message ?? 'Could not subscribe. Please try again.');
+      alert(err?.response?.data?.message ?? 'Could not start card payment.');
+      setBusyPlan(null);
+    }
+  };
+
+  const handleCash = async (planId: string) => {
+    if (!confirm('Request a cash payment? Your subscription will activate once the admin confirms receipt.')) return;
+    setBusyPlan(planId);
+    try {
+      await apiClient.post('/subscriptions/cash-request', { planId });
+      showToast('Cash payment requested — admin will confirm.');
+      load();
+    } catch (err: any) {
+      alert(err?.response?.data?.message ?? 'Could not request cash payment.');
     } finally {
-      setSubscribingId(null);
+      setBusyPlan(null);
     }
   };
 
   const handleCancel = async () => {
-    if (!confirm('Cancel your subscription?\nYour plan stays active until the end of the billing period.')) return;
-    setCancelling(true);
+    if (!confirm('Cancel your subscription? Your plan stays active until the end of the billing period.')) return;
     try {
-      const { data } = await apiClient.post<CompanySubscription>('/subscriptions/cancel');
-      setSub(data);
+      await apiClient.post('/subscriptions/cancel');
       showToast('Subscription cancelled.');
+      load();
     } catch (err: any) {
       alert(err?.response?.data?.message ?? 'Could not cancel.');
-    } finally {
-      setCancelling(false);
     }
   };
 
-  const currentPlanId =
-    sub && sub.status !== 'cancelled' ? sub.planId : null;
+  const currentPlanId = sub && sub.status !== 'cancelled' ? sub.planId : null;
 
   return (
-    <div className="max-w-4xl">
-      {/* Header */}
+    <div className="max-w-5xl">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Subscription</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Choose the plan that fits your fleet size and needs.
+          Pick a plan and pay by card (Paysera) or request a cash payment.
         </p>
       </div>
 
-      {/* Toast */}
       {toast && (
         <div className="fixed top-5 right-5 z-50 bg-green-600 text-white text-sm font-semibold px-4 py-3 rounded-xl shadow-lg">
           {toast}
         </div>
       )}
 
-      {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-5 text-sm">
-          {error}
-        </div>
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-5 text-sm">{error}</div>
       )}
 
       {loading ? (
@@ -275,15 +229,59 @@ export default function SubscriptionPage() {
         </div>
       ) : (
         <>
-          {/* Current plan */}
-          {sub && (
-            <>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Your Plan</p>
-              <CurrentPlanBanner sub={sub} onCancel={handleCancel} cancelling={cancelling} />
-            </>
+          {sub?.state && sub.state !== 'active' && sub.state !== 'inactive' && (
+            <StateBanner state={sub.state} periodEnd={sub.currentPeriodEnd} />
           )}
 
-          {/* Available plans */}
+          {sub && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">{sub.plan?.name ?? 'Subscription'}</h3>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {sub.plan ? `Up to ${sub.plan.maxDrivers} drivers` : ''}
+                  </p>
+                </div>
+                {sub.plan && (
+                  <div className="text-right shrink-0">
+                    <span className="text-3xl font-extrabold text-gray-900">{fmtPrice(sub.plan.price)}</span>
+                    <span className="text-sm text-gray-400">{periodLabel(sub.plan.billingPeriod)}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 mb-3">
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${STATUS_META[sub.status].cls}`}>
+                  {STATUS_META[sub.status].label}
+                </span>
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded ${
+                  sub.paymentMethod === 'cash' ? 'bg-amber-100 text-amber-700' : 'bg-cyan-100 text-cyan-700'
+                }`}>
+                  {sub.paymentMethod === 'cash' ? '💵 Cash' : '💳 Card'}
+                </span>
+                <span className="text-sm text-gray-500">
+                  {sub.status === 'cancelled'
+                    ? `Cancelled on ${sub.cancelledAt ? fmtDate(sub.cancelledAt) : '—'}`
+                    : `Renews on ${fmtDate(sub.currentPeriodEnd)}`}
+                </span>
+              </div>
+
+              {sub.status !== 'cancelled' && sub.status !== 'pending' && (
+                <button
+                  onClick={handleCancel}
+                  className="text-sm font-semibold text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-lg px-4 py-2 transition-colors"
+                >
+                  Cancel Subscription
+                </button>
+              )}
+              {sub.status === 'pending' && sub.paymentMethod === 'cash' && (
+                <p className="text-xs text-gray-500 italic">
+                  Your cash payment is pending — the subscription will activate once the admin confirms it.
+                </p>
+              )}
+            </div>
+          )}
+
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
             {sub ? 'Available Plans' : 'Choose a Plan'}
           </p>
@@ -292,7 +290,6 @@ export default function SubscriptionPage() {
             <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
               <p className="text-4xl mb-3">📋</p>
               <p className="text-gray-600 font-medium">No plans available yet</p>
-              <p className="text-gray-400 text-sm mt-1">Contact support to get started.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-6">
@@ -301,20 +298,13 @@ export default function SubscriptionPage() {
                   key={plan.id}
                   plan={plan}
                   isCurrent={plan.id === currentPlanId}
-                  onSelect={() => handleSelect(plan)}
-                  loading={subscribingId === plan.id}
+                  onPickCard={handleCard}
+                  onPickCash={handleCash}
+                  busy={busyPlan === plan.id}
                 />
               ))}
             </div>
           )}
-
-          {/* Trial note */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-4">
-            <p className="text-sm text-blue-700">
-              🔒 All new subscriptions include a <strong>30-day free trial</strong>.
-              No payment required until the trial ends.
-            </p>
-          </div>
         </>
       )}
     </div>

@@ -27,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/dashboard/profile',      label: 'Profile',      icon: '👤' },
   { to: '/dashboard/companies',    label: 'Companies',    icon: '🏢', adminOnly: true },
   { to: '/dashboard/plans',        label: 'Plans',        icon: '📋', adminOnly: true },
+  { to: '/dashboard/subscribers',  label: 'Subscribers',  icon: '💳', adminOnly: true },
   // Promo Codes is visible to BOTH super-admin (sees all codes) and
   // companies (sees their own codes). PromoCodesPage detects the role
   // and routes API calls to the correct endpoint.
