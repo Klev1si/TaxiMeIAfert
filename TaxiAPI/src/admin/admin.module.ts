@@ -6,6 +6,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { AuditModule } from '../audit/audit.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { FraudModule } from '../fraud/fraud.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { CompanyController } from './company.controller';
@@ -19,6 +20,7 @@ import { CompanyStatsController } from './company-stats.controller';
     AuditModule,
     WalletModule,
     FraudModule,
+    SubscriptionsModule,
   ],
   controllers: [AdminController, CompanyController, CompanyStatsController],
   providers: [AdminService],

@@ -2,6 +2,7 @@ import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -30,6 +31,7 @@ import { AdminFinancesModule } from './admin-finances/admin-finances.module';
 import { WalletModule } from './wallet/wallet.module';
 import { SupportModule } from './support/support.module';
 import { CompanyMessagesModule } from './company-messages/company-messages.module';
+import { SubscriptionCronModule } from './subscription-cron/subscription-cron.module';
 import {
   User,
   Company,
@@ -183,8 +185,10 @@ import {
     WalletModule,
     SupportModule,
     CompanyMessagesModule,
+    SubscriptionCronModule,
     HealthModule,
     FraudModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [

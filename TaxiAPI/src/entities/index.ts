@@ -22,3 +22,4 @@ export * from './client-favorite-driver.entity';
 export * from './company-settlement.entity';
 export * from './company-message.entity';
 export * from './platform-credit.entity';
+export * from './subscription-notification.entity';

@@ -19,7 +19,9 @@ import type { FraudEventType } from '../entities/fraud-event.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole, RideStatus, VehicleType } from '../common/enums';
+import { UserRole, RideStatus, VehicleType, BillingPeriod, PaymentMethod, SubscriptionStatus } from '../common/enums';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import type { PlanAudience } from '../entities/subscription-plan.entity';
 import { PromoCode, SubscriptionPlan, Tariff, User } from '../entities';
 import { PromoDiscountType } from '../entities/promo-code.entity';
 import { IsArray, IsUUID } from 'class-validator';
@@ -114,7 +116,10 @@ class CreatePlanDto {
   name: string;
 
   @IsNumber() @Min(0) @Type(() => Number)
-  priceMonthly: number;
+  price: number;
+
+  @IsEnum(BillingPeriod)
+  billingPeriod: BillingPeriod;
 
   @IsInt() @Min(1) @Type(() => Number)
   maxDrivers: number;
@@ -125,9 +130,6 @@ class CreatePlanDto {
   /** 'company' (default) or 'driver' */
   @IsString() @IsOptional()
   targetAudience?: 'company' | 'driver';
-
-  @IsString() @IsOptional() @MaxLength(100)
-  stripePriceId?: string;
 }
 
 class UpdatePlanDto {
@@ -135,7 +137,10 @@ class UpdatePlanDto {
   name?: string;
 
   @IsNumber() @Min(0) @Type(() => Number) @IsOptional()
-  priceMonthly?: number;
+  price?: number;
+
+  @IsEnum(BillingPeriod) @IsOptional()
+  billingPeriod?: BillingPeriod;
 
   @IsInt() @Min(1) @Type(() => Number) @IsOptional()
   maxDrivers?: number;
@@ -146,11 +151,30 @@ class UpdatePlanDto {
   @IsString() @IsOptional()
   targetAudience?: 'company' | 'driver';
 
-  @IsString() @IsOptional() @MaxLength(100)
-  stripePriceId?: string;
-
   @IsBoolean() @IsOptional()
   isActive?: boolean;
+}
+
+// ── Subscription admin DTOs ───────────────────────────────────────────────────
+
+class MarkPaidDto {
+  @IsUUID() @IsOptional()
+  newPlanId?: string;
+
+  /** ISO-8601 string. If omitted, period is derived from the (new) plan length. */
+  @IsDateString() @IsOptional()
+  newPeriodEnd?: string;
+
+  @IsString() @IsOptional() @MaxLength(200)
+  paymentReference?: string;
+}
+
+class UpdateSubscriptionDto {
+  @IsUUID() @IsOptional()
+  newPlanId?: string;
+
+  @IsDateString() @IsOptional()
+  newPeriodEnd?: string;
 }
 
 // ── Promo Code DTOs ────────────────────────────────────────────────────────────
@@ -223,6 +247,7 @@ export class AdminController {
     private readonly auditService: AuditService,
     private readonly walletService: WalletService,
     private readonly fraudService: FraudService,
+    private readonly subscriptionsService: SubscriptionsService,
     @InjectRepository(Tariff) private readonly tariffRepo: Repository<Tariff>,
     @InjectRepository(SubscriptionPlan) private readonly planRepo: Repository<SubscriptionPlan>,
     @InjectRepository(PromoCode) private readonly promoRepo: Repository<PromoCode>,
@@ -560,7 +585,9 @@ export class AdminController {
   /** GET /admin/plans — list all plans (active and inactive) */
   @Get('plans')
   listPlans() {
-    return this.planRepo.find({ order: { priceMonthly: 'ASC' } });
+    return this.planRepo.find({
+      order: { targetAudience: 'ASC', billingPeriod: 'ASC', price: 'ASC' },
+    });
   }
 
   /** POST /admin/plans — create a new plan */
@@ -569,11 +596,11 @@ export class AdminController {
   async createPlan(@Body() dto: CreatePlanDto) {
     const plan = this.planRepo.create({
       name:           dto.name,
-      priceMonthly:   dto.priceMonthly,
+      price:          dto.price,
+      billingPeriod:  dto.billingPeriod,
       maxDrivers:     dto.maxDrivers,
       features:       dto.features ?? [],
       targetAudience: dto.targetAudience ?? 'company',
-      stripePriceId:  dto.stripePriceId ?? null,
       isActive:       true,
     });
     return this.planRepo.save(plan);
@@ -588,11 +615,11 @@ export class AdminController {
     const plan = await this.planRepo.findOne({ where: { id } });
     if (!plan) throw new NotFoundException('Plan not found');
     if (dto.name           !== undefined) plan.name           = dto.name;
-    if (dto.priceMonthly   !== undefined) plan.priceMonthly   = dto.priceMonthly;
+    if (dto.price          !== undefined) plan.price          = dto.price;
+    if (dto.billingPeriod  !== undefined) plan.billingPeriod  = dto.billingPeriod;
     if (dto.maxDrivers     !== undefined) plan.maxDrivers     = dto.maxDrivers;
     if (dto.features       !== undefined) plan.features       = dto.features;
     if (dto.targetAudience !== undefined) plan.targetAudience = dto.targetAudience;
-    if (dto.stripePriceId  !== undefined) plan.stripePriceId  = dto.stripePriceId ?? null;
     if (dto.isActive       !== undefined) plan.isActive       = dto.isActive;
     return this.planRepo.save(plan);
   }
@@ -604,6 +631,116 @@ export class AdminController {
     const plan = await this.planRepo.findOne({ where: { id } });
     if (!plan) throw new NotFoundException('Plan not found');
     await this.planRepo.update(id, { isActive: false });
+  }
+
+  // ── Subscriber management ──────────────────────────────────────────────────
+
+  /**
+   * GET /admin/subscriptions
+   *   ?audience=driver|company
+   *   &status=active|pending|past_due|cancelled|trialing
+   *   &paymentMethod=card|cash
+   *   &expiringInDays=7
+   *   &page=1&limit=20
+   */
+  @Get('subscriptions')
+  listSubscriptions(
+    @Query('audience')        audience?: PlanAudience,
+    @Query('status')          status?: SubscriptionStatus,
+    @Query('paymentMethod')   paymentMethod?: PaymentMethod,
+    @Query('expiringInDays')  expiringInDays?: string,
+    @Query('page',  new DefaultValuePipe(1),  ParseIntPipe) page:  number = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+  ) {
+    return this.subscriptionsService.listAllSubscriptions({
+      audience:       audience === 'driver' || audience === 'company' ? audience : undefined,
+      status,
+      paymentMethod,
+      expiringInDays: expiringInDays != null ? Number(expiringInDays) : undefined,
+      page, limit,
+    });
+  }
+
+  /** GET /admin/subscriptions/:audience/:id — single subscription detail */
+  @Get('subscriptions/:audience/:id')
+  getSubscription(
+    @Param('audience') audience: PlanAudience,
+    @Param('id') id: string,
+  ) {
+    if (audience !== 'driver' && audience !== 'company') {
+      throw new NotFoundException('Unknown audience');
+    }
+    return this.subscriptionsService.getSubscription(audience, id);
+  }
+
+  /**
+   * POST /admin/subscriptions/:audience/:id/mark-paid
+   * Mark a subscription as paid in cash. Optionally switch plan and override
+   * the new period end date.
+   */
+  @Post('subscriptions/:audience/:id/mark-paid')
+  @HttpCode(HttpStatus.OK)
+  async markSubscriptionPaid(
+    @Request() req: any,
+    @Param('audience') audience: PlanAudience,
+    @Param('id') id: string,
+    @Body() dto: MarkPaidDto,
+  ) {
+    if (audience !== 'driver' && audience !== 'company') {
+      throw new NotFoundException('Unknown audience');
+    }
+    const updated = await this.subscriptionsService.markSubscriptionPaid(
+      req.user.id,
+      audience,
+      id,
+      {
+        newPlanId:        dto.newPlanId,
+        newPeriodEnd:     dto.newPeriodEnd ? new Date(dto.newPeriodEnd) : undefined,
+        paymentReference: dto.paymentReference,
+      },
+    );
+    await this.auditService.log({
+      adminId:    req.user.id,
+      adminPhone: req.user.phone ?? null,
+      action:     'subscription.cash_paid',
+      targetType: `${audience}_subscription`,
+      targetId:   id,
+      metadata: {
+        newPlanId:        dto.newPlanId ?? null,
+        newPeriodEnd:     dto.newPeriodEnd ?? null,
+        paymentReference: dto.paymentReference ?? null,
+      },
+    });
+    return updated;
+  }
+
+  /**
+   * PATCH /admin/subscriptions/:audience/:id
+   * Adjust plan and/or period end without recording a new payment.
+   */
+  @Patch('subscriptions/:audience/:id')
+  async updateSubscription(
+    @Request() req: any,
+    @Param('audience') audience: PlanAudience,
+    @Param('id') id: string,
+    @Body() dto: UpdateSubscriptionDto,
+  ) {
+    if (audience !== 'driver' && audience !== 'company') {
+      throw new NotFoundException('Unknown audience');
+    }
+    const updated = await this.subscriptionsService.adminUpdateSubscription(audience, id, {
+      newPlanId:    dto.newPlanId,
+      newPeriodEnd: dto.newPeriodEnd ? new Date(dto.newPeriodEnd) : undefined,
+    });
+    await this.auditService.log({
+      adminId:    req.user.id,
+      adminPhone: req.user.phone ?? null,
+      action:     'subscription.admin_updated',
+      targetType: `${audience}_subscription`,
+      targetId:   id,
+      metadata:   { ...dto },
+    });
+    return updated;
   }
 
   // ── Promo Code Management ──────────────────────────────────────────────────

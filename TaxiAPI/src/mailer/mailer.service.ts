@@ -81,6 +81,11 @@ export class MailerService {
    *      blocked by cloud hosts the way SMTP often is)
    *   3. SMTP → nodemailer fallback for self-hosted / non-Brevo setups
    */
+  /** Public single-shot send for transactional notifications. */
+  async sendPlain(to: string, subject: string, html: string): Promise<void> {
+    return this.send(to, subject, html);
+  }
+
   private async send(to: string, subject: string, html: string): Promise<void> {
     if (this.mockMode) {
       this.logger.debug(`[MAIL MOCK] To: ${to} | Subject: ${subject}`);

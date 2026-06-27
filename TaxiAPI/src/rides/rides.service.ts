@@ -23,6 +23,7 @@ import { NotificationsService } from '../notifications/notifications.service.js'
 import { MailerService } from '../mailer/mailer.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
 import { FraudService } from '../fraud/fraud.service.js';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service.js';
 import { RouteTrackerService } from './route-tracker.service.js';
 import { NearestDriverDto } from './dto/nearest-driver.dto.js';
 import { RequestRideDto } from './dto/request-ride.dto.js';
@@ -158,6 +159,7 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     private readonly mailerService: MailerService,
     private readonly walletService: WalletService,
     private readonly fraudService: FraudService,
+    private readonly subscriptionsService: SubscriptionsService,
     private readonly routeTracker: RouteTrackerService,
   ) {}
 
@@ -779,6 +781,10 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
   async acceptRide(driverUserId: string, rideId: string): Promise<RideResponseDto> {
     const driver = await this.driverRepo.findOne({ where: { userId: driverUserId } });
     if (!driver) throw new NotFoundException('Driver profile not found');
+
+    // Block ride acceptance when the driver's (or their company's) subscription
+    // has expired and the 3-day grace period is over.
+    await this.subscriptionsService.assertDriverCanWork(driver.id);
 
     const ride = await this.rideRepo.findOne({ where: { id: rideId } });
     if (!ride) throw new NotFoundException('Ride not found');

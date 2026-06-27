@@ -6,3 +6,5 @@ export * from './expense-type.enum';
 export * from './vehicle-type.enum';
 export * from './document-type.enum';
 export * from './document-status.enum';
+export * from './billing-period.enum';
+export * from './payment-method.enum';

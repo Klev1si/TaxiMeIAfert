@@ -71,20 +71,27 @@ async function bootstrap() {
   app.useWebSocketAdapter(new IoAdapter(app));
 
   // ── Database schema sync ──────────────────────────────────────────────────
-  // Run dataSource.synchronize() unconditionally on every startup so that all
-  // TypeORM entities are reflected in the database schema.  This is safe for
-  // development and initial production bring-up; remove / gate behind an env
-  // var once the schema is stable and migrations are in place.
-  try {
-    const dataSource = app.get(DataSource);
-    // Ensure uuid-ossp extension exists (required for uuid_generate_v4()).
-    await dataSource.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
-    logger.log('Running dataSource.synchronize() to ensure schema is up to date…');
-    await dataSource.synchronize();
-    logger.log('dataSource.synchronize() completed — all tables are up to date');
-  } catch (err) {
-    logger.error('dataSource.synchronize() FAILED:', err);
-    // Don't crash the server — the error is logged above for diagnosis.
+  // Migrations are the source of truth — synchronize() only runs when
+  // DB_AUTO_SYNC=true (initial bring-up). With migrations in place, leaving
+  // it on causes destructive column rewrites that conflict with hand-written
+  // migrations (e.g. enum type renames).
+  if ((process.env.DB_AUTO_SYNC ?? '').toLowerCase() === 'true') {
+    try {
+      const dataSource = app.get(DataSource);
+      await dataSource.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+      logger.log('DB_AUTO_SYNC=true — running dataSource.synchronize()…');
+      await dataSource.synchronize();
+      logger.log('dataSource.synchronize() completed');
+    } catch (err) {
+      logger.error('dataSource.synchronize() FAILED:', err);
+    }
+  } else {
+    try {
+      const dataSource = app.get(DataSource);
+      await dataSource.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+    } catch (err) {
+      logger.error('CREATE EXTENSION uuid-ossp failed:', err);
+    }
   }
 
   // ── Start ─────────────────────────────────────────────────────────────────

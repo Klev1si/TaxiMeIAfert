@@ -3,10 +3,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import {
   Company, CompanySubscription,
   Driver, DriverSubscription,
-  SubscriptionPlan,
+  SubscriptionPlan, User,
 } from '../entities/index.js';
 import { SubscriptionsService } from './subscriptions.service.js';
 import { SubscriptionsController } from './subscriptions.controller.js';
+import { PayseraModule } from '../paysera/paysera.module.js';
 
 @Module({
   imports: [
@@ -16,7 +17,9 @@ import { SubscriptionsController } from './subscriptions.controller.js';
       DriverSubscription,
       Company,
       Driver,
+      User,
     ]),
+    PayseraModule,
   ],
   controllers: [SubscriptionsController],
   providers: [SubscriptionsService],
