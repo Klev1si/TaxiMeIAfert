@@ -39,36 +39,47 @@ const AUDIENCES: { label: string; value: PlanAudience }[] = [
   { label: '🚗 Driver',  value: 'driver'  },
 ];
 
-function formatPrice(p: number): string {
-  return `$${Number(p).toFixed(2)}/mo`;
+type BillingPeriodLocal = 'monthly' | 'quarterly' | 'yearly';
+
+function periodSuffix(p: BillingPeriodLocal): string {
+  return p === 'monthly' ? '/mo' : p === 'quarterly' ? '/3mo' : '/yr';
 }
+
+function formatPrice(p: number, period: BillingPeriodLocal = 'monthly'): string {
+  return `€${Number(p).toFixed(2)}${periodSuffix(period)}`;
+}
+
+const PERIODS: { value: BillingPeriodLocal; label: string }[] = [
+  { value: 'monthly',   label: 'Monthly' },
+  { value: 'quarterly', label: '3-Month' },
+  { value: 'yearly',    label: 'Yearly'  },
+];
 
 // ── Plan Form Modal ───────────────────────────────────────────────────────────
 
 interface PlanFormState {
   name:           string;
-  priceMonthly:   string;
+  price:          string;
+  billingPeriod:  BillingPeriodLocal;
   maxDrivers:     string;
   featuresText:   string;  // newline-separated
   targetAudience: PlanAudience;
-  stripePriceId:  string;
   isActive:       boolean;
 }
 
 const EMPTY_FORM: PlanFormState = {
-  name: '', priceMonthly: '', maxDrivers: '1',
-  featuresText: '', targetAudience: 'company',
-  stripePriceId: '', isActive: true,
+  name: '', price: '', billingPeriod: 'monthly', maxDrivers: '1',
+  featuresText: '', targetAudience: 'driver', isActive: true,
 };
 
 function planToForm(plan: AdminPlan): PlanFormState {
   return {
     name:           plan.name,
-    priceMonthly:   String(plan.priceMonthly),
+    price:          String(plan.price),
+    billingPeriod:  plan.billingPeriod,
     maxDrivers:     String(plan.maxDrivers),
     featuresText:   plan.features.join('\n'),
     targetAudience: plan.targetAudience,
-    stripePriceId:  plan.stripePriceId ?? '',
     isActive:       plan.isActive,
   };
 }
@@ -101,7 +112,7 @@ function PlanFormModal({
 
   const handleSave = () => {
     if (!form.name.trim())        { Alert.alert(t('common.validation'), 'Name is required.'); return; }
-    const price = parseFloat(form.priceMonthly);
+    const price = parseFloat(form.price);
     if (isNaN(price) || price < 0) { Alert.alert(t('common.validation'), 'Enter a valid price.'); return; }
     const maxD  = parseInt(form.maxDrivers, 10);
     if (isNaN(maxD) || maxD < 1)   { Alert.alert(t('common.validation'), 'Max drivers must be ≥ 1.'); return; }
@@ -159,16 +170,34 @@ function PlanFormModal({
                 accessibilityLabel="Plan name"
               />
 
+              {/* Billing period */}
+              <Text style={fm.label}>Billing period</Text>
+              <View style={fm.segRow}>
+                {PERIODS.map(p => (
+                  <TouchableOpacity
+                    key={p.value}
+                    style={[fm.seg, form.billingPeriod === p.value && fm.segActive]}
+                    onPress={() => set('billingPeriod', p.value)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={p.label}
+                    accessibilityState={{ checked: form.billingPeriod === p.value }}>
+                    <Text style={[fm.segText, form.billingPeriod === p.value && fm.segTextActive]}>
+                      {p.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               {/* Price */}
-              <Text style={fm.label}>{t('admin.subscriptionPlans.priceLabel')}</Text>
+              <Text style={fm.label}>Price (€)</Text>
               <TextInput
                 style={fm.input}
-                value={form.priceMonthly}
-                onChangeText={v => set('priceMonthly', v)}
-                placeholder="29.99"
+                value={form.price}
+                onChangeText={v => set('price', v)}
+                placeholder="15.00"
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
-                accessibilityLabel="Monthly price in dollars"
+                accessibilityLabel="Plan price in euros"
               />
 
               {/* Max Drivers */}
@@ -196,19 +225,6 @@ function PlanFormModal({
                 multiline
                 textAlignVertical="top"
                 accessibilityLabel="Plan features, one per line"
-              />
-
-              {/* Stripe Price ID */}
-              <Text style={fm.label}>Stripe Price ID (optional)</Text>
-              <TextInput
-                style={fm.input}
-                value={form.stripePriceId}
-                onChangeText={v => set('stripePriceId', v)}
-                placeholder="price_..."
-                placeholderTextColor={colors.textSecondary}
-                autoCapitalize="none"
-                autoCorrect={false}
-                accessibilityLabel="Stripe price ID (optional)"
               />
 
               {/* Active toggle — only for existing plans */}
@@ -335,16 +351,16 @@ function PlanCard({
           </View>
           <Text style={pc.name}>{plan.name}</Text>
         </View>
-        <Text style={pc.price}>{formatPrice(plan.priceMonthly)}</Text>
+        <Text style={pc.price}>{formatPrice(plan.price, plan.billingPeriod)}</Text>
       </View>
 
       {/* Meta */}
       <Text style={pc.meta}>
         👥 {plan.targetAudience === 'driver' ? '1 driver' : `Up to ${plan.maxDrivers} drivers`}
       </Text>
-      {plan.stripePriceId && (
-        <Text style={pc.meta}>🔗 {plan.stripePriceId}</Text>
-      )}
+      <Text style={pc.meta}>
+        🗓 {plan.billingPeriod === 'monthly' ? 'Monthly' : plan.billingPeriod === 'quarterly' ? '3-Month' : 'Yearly'} billing
+      </Text>
 
       {/* Features */}
       {plan.features.length > 0 && (
@@ -470,22 +486,22 @@ export default function AdminSubscriptionPlansScreen({ navigation }: Props) {
       if (editingPlan) {
         const res = await adminApi.updatePlan(editingPlan.id, {
           name:           form.name.trim(),
-          priceMonthly:   parseFloat(form.priceMonthly),
+          price:          parseFloat(form.price),
+          billingPeriod:  form.billingPeriod,
           maxDrivers:     parseInt(form.maxDrivers, 10),
           features,
           targetAudience: form.targetAudience,
-          stripePriceId:  form.stripePriceId.trim() || null,
           isActive:       form.isActive,
         });
         setPlans(prev => prev.map(p => p.id === editingPlan.id ? res.data : p));
       } else {
         const payload: CreatePlanPayload = {
           name:           form.name.trim(),
-          priceMonthly:   parseFloat(form.priceMonthly),
+          price:          parseFloat(form.price),
+          billingPeriod:  form.billingPeriod,
           maxDrivers:     parseInt(form.maxDrivers, 10),
           features,
           targetAudience: form.targetAudience,
-          ...(form.stripePriceId.trim() ? { stripePriceId: form.stripePriceId.trim() } : {}),
         };
         const res = await adminApi.createPlan(payload);
         setPlans(prev => [res.data, ...prev]);

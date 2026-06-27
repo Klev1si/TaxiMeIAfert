@@ -256,36 +256,37 @@ export interface UpdateGlobalTariffPayload {
 
 // ── Subscription Plans ────────────────────────────────────────────────────────
 
-export type PlanAudience = 'company' | 'driver';
+export type PlanAudience  = 'company' | 'driver';
+export type BillingPeriod = 'monthly' | 'quarterly' | 'yearly';
 
 export interface AdminPlan {
   id:              string;
   name:            string;
-  priceMonthly:    number;
+  price:           number;
+  billingPeriod:   BillingPeriod;
   maxDrivers:      number;
   features:        string[];
   targetAudience:  PlanAudience;
-  stripePriceId:   string | null;
   isActive:        boolean;
   createdAt:       string;
 }
 
 export interface CreatePlanPayload {
   name:            string;
-  priceMonthly:    number;
+  price:           number;
+  billingPeriod:   BillingPeriod;
   maxDrivers:      number;
   features?:       string[];
   targetAudience?: PlanAudience;
-  stripePriceId?:  string;
 }
 
 export interface UpdatePlanPayload {
   name?:           string;
-  priceMonthly?:   number;
+  price?:          number;
+  billingPeriod?:  BillingPeriod;
   maxDrivers?:     number;
   features?:       string[];
   targetAudience?: PlanAudience;
-  stripePriceId?:  string | null;
   isActive?:       boolean;
 }
 

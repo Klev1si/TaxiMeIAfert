@@ -1,16 +1,19 @@
 import apiClient from './client';
 
-export type PlanAudience    = 'company' | 'driver';
-export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'cancelled';
+export type PlanAudience       = 'company' | 'driver';
+export type BillingPeriod      = 'monthly' | 'quarterly' | 'yearly';
+export type PaymentMethod      = 'card' | 'cash';
+export type SubscriptionStatus = 'active' | 'pending' | 'trialing' | 'past_due' | 'cancelled';
+export type SubscriptionState  = 'inactive' | 'active' | 'grace' | 'blocked';
 
 export interface SubscriptionPlan {
   id: string;
   name: string;
-  priceMonthly: string; // decimal string from DB
+  price: string;            // decimal string from DB
+  billingPeriod: BillingPeriod;
   maxDrivers: number;
   features: string[];
   targetAudience: PlanAudience;
-  stripePriceId: string | null;
   isActive: boolean;
   createdAt: string;
 }
@@ -20,11 +23,17 @@ export interface CompanySubscription {
   companyId: string;
   planId: string;
   status: SubscriptionStatus;
+  paymentMethod: PaymentMethod;
+  payseraOrderId: string | null;
+  paidAt: string | null;
+  paymentReference: string | null;
   currentPeriodStart: string;
   currentPeriodEnd: string;
   cancelledAt: string | null;
   createdAt: string;
   plan: SubscriptionPlan;
+  /** Computed by the backend on /subscriptions/my. */
+  state?: SubscriptionState;
 }
 
 export interface DriverSubscription {
@@ -32,6 +41,10 @@ export interface DriverSubscription {
   driverId: string;
   planId: string;
   status: SubscriptionStatus;
+  paymentMethod: PaymentMethod;
+  payseraOrderId: string | null;
+  paidAt: string | null;
+  paymentReference: string | null;
   currentPeriodStart: string;
   currentPeriodEnd: string;
   cancelledAt: string | null;
@@ -39,44 +52,61 @@ export interface DriverSubscription {
   plan: SubscriptionPlan;
 }
 
-export const subscriptionsApi = {
-  // ── Company ──────────────────────────────────────────────────────────────
+/** New shape returned by GET /subscriptions/driver/my. */
+export interface DriverSubscriptionView {
+  subscription: DriverSubscription | null;
+  state: SubscriptionState;
+  coveredBy: 'driver' | 'company' | 'none';
+  effectivePeriodEnd: string | null;
+}
 
-  /** GET /subscriptions/plans?audience=company — company plans */
+export interface CheckoutResponse {
+  url: string;
+  orderId: string;
+  subscriptionId: string;
+}
+
+export const subscriptionsApi = {
+  // ── Company ────────────────────────────────────────────────────────────────
+
   listPlans: () =>
     apiClient.get<SubscriptionPlan[]>('/subscriptions/plans', {
       params: { audience: 'company' },
     }),
 
-  /** GET /subscriptions/my — current company subscription */
   getMy: () =>
     apiClient.get<CompanySubscription | null>('/subscriptions/my'),
 
-  /** POST /subscriptions/subscribe */
+  /** Legacy direct-subscribe (server still grants the period; no payment). */
   subscribe: (planId: string) =>
     apiClient.post<CompanySubscription>('/subscriptions/subscribe', { planId }),
 
-  /** POST /subscriptions/cancel */
   cancel: () =>
     apiClient.post<CompanySubscription>('/subscriptions/cancel'),
 
-  // ── Driver ────────────────────────────────────────────────────────────────
+  // ── Driver ─────────────────────────────────────────────────────────────────
 
-  /** GET /subscriptions/plans?audience=driver — driver plans */
   listDriverPlans: () =>
     apiClient.get<SubscriptionPlan[]>('/subscriptions/plans', {
       params: { audience: 'driver' },
     }),
 
-  /** GET /subscriptions/driver/my — current driver subscription */
   getDriverMy: () =>
-    apiClient.get<DriverSubscription | null>('/subscriptions/driver/my'),
+    apiClient.get<DriverSubscriptionView>('/subscriptions/driver/my'),
 
-  /** POST /subscriptions/driver/subscribe */
   driverSubscribe: (planId: string) =>
     apiClient.post<DriverSubscription>('/subscriptions/driver/subscribe', { planId }),
 
-  /** POST /subscriptions/driver/cancel */
   driverCancel: () =>
     apiClient.post<DriverSubscription>('/subscriptions/driver/cancel'),
+
+  // ── Payment flows (shared for driver & company) ────────────────────────────
+
+  /** POST /subscriptions/checkout — returns Paysera URL to open externally. */
+  startCardCheckout: (planId: string) =>
+    apiClient.post<CheckoutResponse>('/subscriptions/checkout', { planId }),
+
+  /** POST /subscriptions/cash-request — pending until admin confirms. */
+  requestCashPayment: (planId: string) =>
+    apiClient.post<{ subscriptionId: string }>('/subscriptions/cash-request', { planId }),
 };

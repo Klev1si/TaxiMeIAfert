@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -16,8 +17,10 @@ import type { ColorPalette } from '../../constants/colors';
 import { toAlertString } from '../../utils/errorMessage';
 import {
   subscriptionsApi,
+  type BillingPeriod,
   type DriverSubscription,
   type SubscriptionPlan,
+  type SubscriptionState,
   type SubscriptionStatus,
 } from '../../api/subscriptions';
 import { useTranslation } from '../../i18n';
@@ -25,7 +28,11 @@ import { useTranslation } from '../../i18n';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatPrice(price: string | number): string {
-  return `$${Number(price).toFixed(2)}`;
+  return `€${Number(price).toFixed(2)}`;
+}
+
+function periodSuffix(p: BillingPeriod): string {
+  return p === 'monthly' ? '/mo' : p === 'quarterly' ? '/3mo' : '/yr';
 }
 
 function formatDate(iso: string): string {
@@ -37,6 +44,7 @@ function formatDate(iso: string): string {
 function statusLabel(status: SubscriptionStatus): string {
   switch (status) {
     case 'active':    return '● Active';
+    case 'pending':   return '⏳ Awaiting payment';
     case 'trialing':  return '○ Trial';
     case 'past_due':  return '⚠ Past Due';
     case 'cancelled': return '✕ Cancelled';
@@ -70,8 +78,9 @@ function CurrentSubBanner({
   }
 
   const isCancelled = sub.status === 'cancelled';
-  const planName    = sub.plan?.name         ?? '—';
-  const planPrice   = sub.plan?.priceMonthly ?? 0;
+  const planName    = sub.plan?.name           ?? '—';
+  const planPrice   = sub.plan?.price          ?? 0;
+  const planPeriod  = sub.plan?.billingPeriod  ?? 'monthly';
 
   return (
     <View style={banStyles.card}>
@@ -84,7 +93,7 @@ function CurrentSubBanner({
         </View>
         <Text style={banStyles.price}>
           {formatPrice(planPrice)}
-          <Text style={banStyles.perMonth}> /mo</Text>
+          <Text style={banStyles.perMonth}> {periodSuffix(planPeriod)}</Text>
         </Text>
       </View>
 
@@ -148,13 +157,15 @@ function getBanStyles(c: ColorPalette) {
 function PlanCard({
   plan,
   isCurrent,
-  onSelect,
+  onPickCard,
+  onPickCash,
   loading,
 }: {
-  plan:      SubscriptionPlan;
-  isCurrent: boolean;
-  onSelect:  (plan: SubscriptionPlan) => void;
-  loading:   boolean;
+  plan:        SubscriptionPlan;
+  isCurrent:   boolean;
+  onPickCard:  (plan: SubscriptionPlan) => void;
+  onPickCash:  (plan: SubscriptionPlan) => void;
+  loading:     boolean;
 }) {
   const colors = useColors();
   const planStyles = useMemo(() => getPlanStyles(colors), [colors]);
@@ -171,8 +182,8 @@ function PlanCard({
       <View style={planStyles.header}>
         <Text style={planStyles.name}>{plan.name}</Text>
         <View style={planStyles.priceRow}>
-          <Text style={planStyles.price}>{formatPrice(plan.priceMonthly)}</Text>
-          <Text style={planStyles.perMonth}>/month</Text>
+          <Text style={planStyles.price}>{formatPrice(plan.price)}</Text>
+          <Text style={planStyles.perMonth}>{periodSuffix(plan.billingPeriod)}</Text>
         </View>
       </View>
 
@@ -187,22 +198,26 @@ function PlanCard({
         ))}
       </View>
 
-      <TouchableOpacity
-        style={[planStyles.selectBtn, isCurrent && planStyles.selectBtnCurrent]}
-        onPress={() => onSelect(plan)}
-        disabled={isCurrent || loading}
-        accessibilityRole="button"
-        accessibilityLabel={isCurrent ? `${plan.name} – current plan` : `Select ${plan.name} plan`}
-        accessibilityState={{ disabled: isCurrent || loading }}>
-        {loading && !isCurrent
-          ? <ActivityIndicator size="small" color={colors.white} />
-          : <Text style={[
-              planStyles.selectBtnText,
-              isCurrent && planStyles.selectBtnTextCurrent,
-            ]}>
-              {isCurrent ? t('driver.subscription.currentPlanBadge') : t('driver.subscription.selectPlanBtn')}
-            </Text>}
-      </TouchableOpacity>
+      <View style={planStyles.payRow}>
+        <TouchableOpacity
+          style={planStyles.payCardBtn}
+          onPress={() => onPickCard(plan)}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityLabel={`Pay ${plan.name} by card`}>
+          {loading
+            ? <ActivityIndicator size="small" color={colors.white} />
+            : <Text style={planStyles.payCardBtnText}>Pay with card</Text>}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={planStyles.payCashBtn}
+          onPress={() => onPickCash(plan)}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityLabel={`Request cash payment for ${plan.name}`}>
+          <Text style={planStyles.payCashBtnText}>Pay in cash</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -234,13 +249,11 @@ function getPlanStyles(c: ColorPalette) {
     featureItem:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
     featureIcon:  { fontSize: 14, width: 20, textAlign: 'center', color: c.success },
     featureText:  { fontSize: 14, color: c.text, flex: 1 },
-    selectBtn: {
-      backgroundColor: c.primary, borderRadius: 12,
-      paddingVertical: 12, alignItems: 'center',
-    },
-    selectBtnCurrent:     { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: c.primary },
-    selectBtnText:        { color: c.white, fontSize: 15, fontWeight: '700' },
-    selectBtnTextCurrent: { color: c.primary },
+    payRow:        { flexDirection: 'row', gap: 8 },
+    payCardBtn:    { flex: 1, backgroundColor: c.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+    payCardBtnText:{ color: c.white, fontSize: 14, fontWeight: '700' },
+    payCashBtn:    { flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: c.primary },
+    payCashBtnText:{ color: c.primary, fontSize: 14, fontWeight: '700' },
   });
 }
 
@@ -252,6 +265,8 @@ export default function DriverSubscriptionScreen() {
   const { t } = useTranslation();
   const [plans, setPlans]               = useState<SubscriptionPlan[]>([]);
   const [subscription, setSub]          = useState<DriverSubscription | null>(null);
+  const [state, setState]               = useState<SubscriptionState>('inactive');
+  const [coveredBy, setCoveredBy]       = useState<'driver' | 'company' | 'none'>('none');
   const [loading, setLoading]           = useState(true);
   const [refreshing, setRefreshing]     = useState(false);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
@@ -266,7 +281,9 @@ export default function DriverSubscriptionScreen() {
         subscriptionsApi.getDriverMy(),
       ]);
       setPlans(plansRes.data);
-      setSub(subRes.data);
+      setSub(subRes.data.subscription);
+      setState(subRes.data.state);
+      setCoveredBy(subRes.data.coveredBy);
     } catch {
       Alert.alert(t('common.error'), t('driver.subscription.loadError'));
     } finally {
@@ -277,33 +294,53 @@ export default function DriverSubscriptionScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleSelect = (plan: SubscriptionPlan) => {
-    const isSwitch = subscription &&
-      subscription.status !== 'cancelled' &&
-      subscription.planId !== plan.id;
-
-    const msg = isSwitch
-      ? t('driver.subscription.switchMsg', { name: plan.name, price: formatPrice(plan.priceMonthly) })
-      : t('driver.subscription.startMsg', { name: plan.name, price: formatPrice(plan.priceMonthly) });
-
-    Alert.alert(isSwitch ? t('driver.subscription.switchTitle') : t('driver.subscription.startTitle'), msg, [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: isSwitch ? t('driver.subscription.switchBtn') : t('driver.subscription.subscribeBtn'),
-        onPress: async () => {
-          setSubscribingId(plan.id);
-          try {
-            const res = await subscriptionsApi.driverSubscribe(plan.id);
-            setSub(res.data);
-            Alert.alert(t('common.success'), isSwitch ? t('driver.subscription.planSwitched') : t('driver.subscription.trialStarted'));
-          } catch (err: any) {
-            Alert.alert(t('common.error'), toAlertString(err?.response?.data?.message, t('driver.subscription.subscribeError')));
-          } finally {
-            setSubscribingId(null);
-          }
+  const handlePickCard = (plan: SubscriptionPlan) => {
+    Alert.alert(
+      'Pay by card',
+      `Open Paysera to pay ${formatPrice(plan.price)} for "${plan.name}"?`,
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: 'Continue',
+          onPress: async () => {
+            setSubscribingId(plan.id);
+            try {
+              const res = await subscriptionsApi.startCardCheckout(plan.id);
+              await Linking.openURL(res.data.url);
+            } catch (err: any) {
+              Alert.alert(t('common.error'), toAlertString(err?.response?.data?.message, 'Could not start card payment.'));
+            } finally {
+              setSubscribingId(null);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
+  };
+
+  const handlePickCash = (plan: SubscriptionPlan) => {
+    Alert.alert(
+      'Pay in cash',
+      `Request a cash payment for "${plan.name}" (${formatPrice(plan.price)})?\n\nYour subscription will activate once the admin confirms the payment.`,
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: 'Request',
+          onPress: async () => {
+            setSubscribingId(plan.id);
+            try {
+              await subscriptionsApi.requestCashPayment(plan.id);
+              Alert.alert(t('common.success'), 'Cash payment requested. The admin will confirm shortly.');
+              await load();
+            } catch (err: any) {
+              Alert.alert(t('common.error'), toAlertString(err?.response?.data?.message, 'Could not request cash payment.'));
+            } finally {
+              setSubscribingId(null);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleCancel = () => {
@@ -353,6 +390,29 @@ export default function DriverSubscriptionScreen() {
           <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 60 }} />
         ) : (
           <>
+            {/* Grace / blocked banner — applies whether covered by own sub or company */}
+            {state === 'grace' && (
+              <View style={styles.graceBanner}>
+                <Text style={styles.graceBannerText}>
+                  ⚠ {coveredBy === 'company' ? "Your company's" : 'Your'} subscription expired. You're in the 3-day grace period — renew now to keep working.
+                </Text>
+              </View>
+            )}
+            {state === 'blocked' && (
+              <View style={styles.blockedBanner}>
+                <Text style={styles.blockedBannerText}>
+                  ⛔ {coveredBy === 'company' ? "Your company's" : 'Your'} subscription is blocked. Renew to start accepting rides again.
+                </Text>
+              </View>
+            )}
+            {coveredBy === 'company' && state === 'active' && (
+              <View style={styles.infoBanner}>
+                <Text style={styles.infoBannerText}>
+                  ℹ Your subscription is provided by your company.
+                </Text>
+              </View>
+            )}
+
             {/* Current subscription */}
             {subscription && subscription.plan && (
               <>
@@ -382,7 +442,8 @@ export default function DriverSubscriptionScreen() {
                   key={plan.id}
                   plan={plan}
                   isCurrent={plan.id === currentPlanId}
-                  onSelect={handleSelect}
+                  onPickCard={handlePickCard}
+                  onPickCash={handlePickCash}
                   loading={subscribingId === plan.id}
                 />
               ))
@@ -430,5 +491,14 @@ function getStyles(c: ColorPalette) {
     trialNoteText: {
       fontSize: 13, color: c.info ?? '#1d4ed8', lineHeight: 20,
     },
+    graceBanner: {
+      backgroundColor: '#fef3c7', borderRadius: 12, padding: 14, marginBottom: 16,
+      borderWidth: 1, borderColor: '#f59e0b',
+    },
+    graceBannerText:   { fontSize: 13, color: '#92400e', lineHeight: 20 },
+    blockedBanner:     { backgroundColor: '#fee2e2', borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#ef4444' },
+    blockedBannerText: { fontSize: 13, color: '#991b1b', lineHeight: 20 },
+    infoBanner:        { backgroundColor: '#eff6ff', borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#3b82f6' },
+    infoBannerText:    { fontSize: 13, color: '#1d4ed8', lineHeight: 20 },
   });
 }
