@@ -511,18 +511,18 @@ export default function AdminGlobalTariffsScreen({ navigation }: Props) {
     setModalOpen(true);
   };
 
-  const handleDeactivate = (t: AdminGlobalTariff) => {
+  const handleDeactivate = (tariff: AdminGlobalTariff) => {
     Alert.alert(
       t('admin.globalTariffs.deleteTitle'),
-      t('admin.globalTariffs.deleteMsg', { name: t.name }),
+      t('admin.globalTariffs.deleteMsg', { name: tariff.name }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
           text: t('admin.globalTariffs.deleteBtn'), style: 'destructive',
           onPress: async () => {
             try {
-              await adminApi.deactivateGlobalTariff(t.id);
-              setTariffs(prev => prev.filter(x => x.id !== t.id));
+              await adminApi.deactivateGlobalTariff(tariff.id);
+              setTariffs(prev => prev.filter(x => x.id !== tariff.id));
             } catch {
               Alert.alert(t('common.error'), t('admin.globalTariffs.deleteError'));
             }

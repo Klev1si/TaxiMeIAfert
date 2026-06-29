@@ -34,15 +34,15 @@ export async function signInWithApple(): Promise<AppleSignInOutcome> {
 
   // Lazy-require so Android bundles don't pull the native module in.
   let appleAuth: typeof import('@invertase/react-native-apple-authentication').default;
-  let AppleAuthError: typeof import('@invertase/react-native-apple-authentication').AppleAuthError;
-  let AppleAuthRequestScope: typeof import('@invertase/react-native-apple-authentication').AppleAuthRequestScope;
-  let AppleAuthRequestOperation: typeof import('@invertase/react-native-apple-authentication').AppleAuthRequestOperation;
+  let AppleError: typeof import('@invertase/react-native-apple-authentication').AppleError;
+  let AppleRequestScope: typeof import('@invertase/react-native-apple-authentication').AppleRequestScope;
+  let AppleRequestOperation: typeof import('@invertase/react-native-apple-authentication').AppleRequestOperation;
   try {
     const mod = require('@invertase/react-native-apple-authentication');
     appleAuth = mod.default;
-    AppleAuthError = mod.AppleAuthError;
-    AppleAuthRequestScope = mod.AppleAuthRequestScope;
-    AppleAuthRequestOperation = mod.AppleAuthRequestOperation;
+    AppleError = mod.AppleError;
+    AppleRequestScope = mod.AppleRequestScope;
+    AppleRequestOperation = mod.AppleRequestOperation;
   } catch {
     return { kind: 'unsupported' };
   }
@@ -53,8 +53,8 @@ export async function signInWithApple(): Promise<AppleSignInOutcome> {
 
   try {
     const res = await appleAuth.performRequest({
-      requestedOperation: AppleAuthRequestOperation.LOGIN,
-      requestedScopes:    [AppleAuthRequestScope.EMAIL, AppleAuthRequestScope.FULL_NAME],
+      requestedOperation: AppleRequestOperation.LOGIN,
+      requestedScopes:    [AppleRequestScope.EMAIL, AppleRequestScope.FULL_NAME],
     });
 
     const identityToken = res.identityToken;
@@ -71,7 +71,7 @@ export async function signInWithApple(): Promise<AppleSignInOutcome> {
   } catch (err: unknown) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const code = (err as any)?.code;
-    if (code === AppleAuthError.CANCELED) return { kind: 'cancelled' };
+    if (code === AppleError.CANCELED) return { kind: 'cancelled' };
     const message = (err as { message?: string })?.message ?? 'Could not sign in with Apple.';
     return { kind: 'error', message };
   }

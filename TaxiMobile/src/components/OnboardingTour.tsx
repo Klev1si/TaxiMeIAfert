@@ -60,7 +60,7 @@ async function markSeen(): Promise<void> {
 // tour we surface only the 2 launch-market languages to keep the UI clean.
 const TOGGLE_LANGS: Lang[] = ['sq', 'en'];
 const LANG_LABELS: Record<Lang, string> = {
-  sq: 'SQ', en: 'EN', fr: 'FR', es: 'ES',
+  sq: 'SQ', en: 'EN', fr: 'FR', es: 'ES', tr: 'TR',
 };
 
 // ── Phone mockup frame ───────────────────────────────────────────────────────

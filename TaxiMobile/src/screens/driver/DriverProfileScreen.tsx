@@ -404,7 +404,7 @@ export default function DriverProfileScreen() {
 
   useEffect(() => {
     authApi.getMe()
-      .then(({ data }) => setProfile(data as DriverProfile))
+      .then(({ data }) => setProfile(data as unknown as DriverProfile))
       .catch(() => {})
       .finally(() => setLoading(false));
 
