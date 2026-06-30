@@ -19,7 +19,7 @@ interface Analytics {
   generatedAt:      string;
 }
 
-const fmt€ = (n: number) =>
+const fmtEur = (n: number) =>
   `€${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function SubscriptionAnalytics() {
@@ -55,10 +55,10 @@ export default function SubscriptionAnalytics() {
     <div className="mb-5 space-y-4">
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi label="MRR"           value={fmt€(data.mrr)}        sub={`ARR ${fmt€(data.arr)}`}  tone="indigo" />
+        <Kpi label="MRR"           value={fmtEur(data.mrr)}        sub={`ARR ${fmtEur(data.arr)}`}  tone="indigo" />
         <Kpi label="Active subs"   value={String(data.activeCount)}
              sub={`${data.audienceCounts.driver} drivers · ${data.audienceCounts.company} companies`} tone="green" />
-        <Kpi label="Revenue (30d)" value={fmt€(data.revenue30d)}
+        <Kpi label="Revenue (30d)" value={fmtEur(data.revenue30d)}
              sub={`${data.cancelled30d} cancelled · ${data.churnRate30d.toFixed(2)}% churn`} tone="amber" />
         <Kpi label="Expiring (7d)" value={String(data.expiringSoon)}
              sub={`${data.expiringByAudience.driver} drivers · ${data.expiringByAudience.company} companies`}
@@ -102,7 +102,7 @@ export default function SubscriptionAnalytics() {
               const heightPct = (m.revenue / maxRev) * 100;
               return (
                 <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="text-[10px] font-semibold text-gray-700">{fmt€(m.revenue)}</div>
+                  <div className="text-[10px] font-semibold text-gray-700">{fmtEur(m.revenue)}</div>
                   <div className="w-full bg-gray-100 rounded relative" style={{ height: '100%' }}>
                     <div className="absolute bottom-0 left-0 right-0 bg-indigo-500 rounded"
                          style={{ height: `${heightPct}%` }} />
@@ -118,15 +118,17 @@ export default function SubscriptionAnalytics() {
   );
 }
 
-function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone: 'indigo' | 'green' | 'amber' | 'red' | 'gray' }) {
-  const ring: Record<typeof tone, string> = {
+type KpiTone = 'indigo' | 'green' | 'amber' | 'red' | 'gray';
+
+function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone: KpiTone }) {
+  const ring: Record<KpiTone, string> = {
     indigo: 'border-indigo-200 bg-indigo-50',
     green:  'border-green-200  bg-green-50',
     amber:  'border-amber-200  bg-amber-50',
     red:    'border-red-200    bg-red-50',
     gray:   'border-gray-200   bg-white',
   };
-  const valColor: Record<typeof tone, string> = {
+  const valColor: Record<KpiTone, string> = {
     indigo: 'text-indigo-700',
     green:  'text-green-700',
     amber:  'text-amber-700',
