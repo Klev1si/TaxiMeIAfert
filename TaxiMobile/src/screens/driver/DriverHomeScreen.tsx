@@ -31,6 +31,7 @@ import { useTranslation } from '../../i18n';
 import type { ColorPalette } from '../../constants/colors';
 import type { WsRideRequest } from '../../types/api';
 import type { DriverStackScreenProps } from '../../navigation/types';
+import SubscriptionStatusBanner from '../../components/SubscriptionStatusBanner';
 
 type Props = DriverStackScreenProps<'DriverHomeMain'>;
 
@@ -339,6 +340,12 @@ export default function DriverHomeScreen({ navigation }: Props) {
             for the next ride. Solo drivers see their personal rate; company
             drivers see whichever of their company's tariffs matches their
             vehicle type and the current time of day. */}
+        <SubscriptionStatusBanner
+          audience="driver"
+          onRenewPress={() =>
+            navigation.getParent()?.navigate('DriverProfile', { screen: 'DriverSubscription' })
+          }
+        />
         {activeTariff && (
           <View style={styles.tariffBanner}>
             <Text style={styles.tariffBannerLabel}>

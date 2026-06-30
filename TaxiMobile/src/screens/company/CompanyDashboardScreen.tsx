@@ -20,6 +20,10 @@ import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
 import type { ColorPalette } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { CompanyTabParamList } from '../../navigation/types';
+import SubscriptionStatusBanner from '../../components/SubscriptionStatusBanner';
 
 type Period   = 'today' | 'week' | 'month' | 'all';
 type ChartDays = 7 | 14 | 30;
@@ -211,6 +215,7 @@ const CHART_MAX_H = 90; // px — max bar height
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function CompanyDashboardScreen() {
+  const navigation = useNavigation<BottomTabNavigationProp<CompanyTabParamList>>();
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
@@ -273,6 +278,11 @@ export default function CompanyDashboardScreen() {
 
         <Text style={styles.title}>{t('company.dashboard.title')}</Text>
         <Text style={styles.subtitle}>{t('company.dashboard.subtitle')}</Text>
+
+        <SubscriptionStatusBanner
+          audience="company"
+          onRenewPress={() => navigation.navigate('CompanySubscription')}
+        />
 
         {loading ? (
           <View style={styles.centered}>
