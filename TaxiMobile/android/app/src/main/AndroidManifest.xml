@@ -45,10 +45,13 @@
         android:value="taxiapp_rides"
         tools:replace="android:value"/>
 
-      <!-- Foreground service used by react-native-background-actions for GPS -->
+      <!-- Driver-online GPS foreground service. Keeps the JS process alive and
+           location updates flowing while the driver is online, even with the
+           screen locked or the app backgrounded. -->
       <service
-        android:name="com.asterinet.reaction.bgactions.RNBackgroundActionsTask"
-        android:foregroundServiceType="location" />
+        android:name="com.taximelafert.location.LocationForegroundService"
+        android:foregroundServiceType="location"
+        android:exported="false" />
 
       <activity
         android:name=".MainActivity"

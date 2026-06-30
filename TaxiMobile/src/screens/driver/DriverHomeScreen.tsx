@@ -26,6 +26,10 @@ import {
   stopBackgroundGps,
   requestBackgroundLocation,
 } from '../../services/backgroundGps';
+import {
+  startDriverLocationService,
+  stopDriverLocationService,
+} from '../../services/driverLocationService';
 import { useColors } from '../../stores/themeStore';
 import { useTranslation } from '../../i18n';
 import type { ColorPalette } from '../../constants/colors';
@@ -210,6 +214,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
       gpsIntervalRef.current = null;
     }
     void stopBackgroundGps();
+    void stopDriverLocationService();
     socketService.goOffline();
   }, []);
 
@@ -233,6 +238,11 @@ export default function DriverHomeScreen({ navigation }: Props) {
         // before JS can catch it, which kills the app.
         if (bgGranted) {
           void startBackgroundGps();
+          // Spin up the native Android foreground service. It posts the
+          // persistent "online" notification and keeps the JS process alive
+          // under Doze, so location updates keep flowing even with the screen
+          // locked. No-op on iOS.
+          void startDriverLocationService();
         }
         setOnline(true);
       } else {
