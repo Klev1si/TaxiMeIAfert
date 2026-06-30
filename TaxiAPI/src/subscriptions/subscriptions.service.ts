@@ -523,6 +523,130 @@ export class SubscriptionsService {
     };
   }
 
+  /**
+   * Analytics snapshot for the admin dashboard.
+   * - MRR normalizes every active sub price to a monthly figure
+   *   (monthly=price, quarterly=price/3, yearly=price/12).
+   * - revenue30d sums actually-paid amounts (paidAt within 30 days).
+   * - revenueByMonth gives the last 6 calendar months for a trend chart.
+   * - state counts use computeSubscriptionState so grace/blocked match what
+   *   the driver actually sees in the app, not the raw status.
+   */
+  async getAnalytics() {
+    const now    = new Date();
+    const day    = 24 * 60 * 60 * 1000;
+    const cutoff30 = new Date(now.getTime() - 30 * day);
+    const cutoff7  = new Date(now.getTime() +  7 * day);
+    const monthlyDivisor: Record<BillingPeriod, number> = {
+      [BillingPeriod.MONTHLY]:   1,
+      [BillingPeriod.QUARTERLY]: 3,
+      [BillingPeriod.YEARLY]:    12,
+    };
+
+    const [driverSubs, companySubs] = await Promise.all([
+      this.driverSubRepo.createQueryBuilder('sub')
+        .leftJoinAndSelect('sub.plan', 'plan').getMany(),
+      this.companySubRepo.createQueryBuilder('sub')
+        .leftJoinAndSelect('sub.plan', 'plan').getMany(),
+    ]);
+
+    type AnySub = (DriverSubscription | CompanySubscription) & { plan?: SubscriptionPlan | null };
+    const all: Array<{ sub: AnySub; kind: 'driver' | 'company' }> = [
+      ...driverSubs.map(s => ({ sub: s as AnySub, kind: 'driver'  as const })),
+      ...companySubs.map(s => ({ sub: s as AnySub, kind: 'company' as const })),
+    ];
+
+    let mrr = 0;
+    const statusCounts:  Record<string, number> = { active: 0, pending: 0, trialing: 0, past_due: 0, cancelled: 0 };
+    const stateCounts:   Record<SubscriptionState, number> = { active: 0, grace: 0, blocked: 0, inactive: 0 };
+    const audienceCounts            = { driver: 0, company: 0 };
+    const paymentMix                = { card: 0, cash: 0 };
+    const planMix                   = new Map<string, { planId: string; planName: string; billingPeriod: BillingPeriod; count: number }>();
+    let activeCount    = 0;
+    let revenue30d     = 0;
+    let expiringSoon   = 0;
+    const expiringByAudience        = { driver: 0, company: 0 };
+    let cancelled30d   = 0;
+    const monthBuckets = new Map<string, number>(); // YYYY-MM → paid amount
+
+    for (const { sub, kind } of all) {
+      statusCounts[sub.status] = (statusCounts[sub.status] ?? 0) + 1;
+      const state = computeSubscriptionState(sub);
+      stateCounts[state]++;
+
+      if (sub.status === SubscriptionStatus.ACTIVE) {
+        activeCount++;
+        audienceCounts[kind]++;
+        if (sub.paymentMethod === PaymentMethod.CARD)      paymentMix.card++;
+        else if (sub.paymentMethod === PaymentMethod.CASH) paymentMix.cash++;
+
+        if (sub.plan) {
+          const priceNum = Number(sub.plan.price) || 0;
+          mrr += priceNum / (monthlyDivisor[sub.plan.billingPeriod] ?? 1);
+
+          const key = sub.plan.id;
+          const row = planMix.get(key);
+          if (row) row.count++;
+          else planMix.set(key, {
+            planId:        sub.plan.id,
+            planName:      `${sub.plan.name} (${kind})`,
+            billingPeriod: sub.plan.billingPeriod,
+            count:         1,
+          });
+        }
+
+        const periodEnd = new Date(sub.currentPeriodEnd).getTime();
+        if (periodEnd <= cutoff7.getTime() && periodEnd >= now.getTime()) {
+          expiringSoon++;
+          expiringByAudience[kind]++;
+        }
+      }
+
+      if (sub.cancelledAt && new Date(sub.cancelledAt).getTime() >= cutoff30.getTime()) {
+        cancelled30d++;
+      }
+
+      if (sub.paidAt && sub.plan) {
+        const paidAt = new Date(sub.paidAt);
+        const priceNum = Number(sub.plan.price) || 0;
+        if (paidAt.getTime() >= cutoff30.getTime()) revenue30d += priceNum;
+
+        const monthKey = `${paidAt.getUTCFullYear()}-${String(paidAt.getUTCMonth() + 1).padStart(2, '0')}`;
+        monthBuckets.set(monthKey, (monthBuckets.get(monthKey) ?? 0) + priceNum);
+      }
+    }
+
+    // Build last-6-months trend (oldest first, zero-fill missing months)
+    const revenueByMonth: Array<{ month: string; revenue: number }> = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      revenueByMonth.push({ month: key, revenue: Math.round((monthBuckets.get(key) ?? 0) * 100) / 100 });
+    }
+
+    // Churn = cancelled-in-window / (active + cancelled-in-window)
+    const churnDenom = activeCount + cancelled30d;
+    const churnRate  = churnDenom > 0 ? cancelled30d / churnDenom : 0;
+
+    return {
+      mrr: Math.round(mrr * 100) / 100,
+      arr: Math.round(mrr * 12 * 100) / 100,
+      activeCount,
+      audienceCounts,
+      statusCounts,
+      stateCounts,
+      paymentMix,
+      planMix: Array.from(planMix.values()).sort((a, b) => b.count - a.count),
+      revenue30d:    Math.round(revenue30d * 100) / 100,
+      revenueByMonth,
+      expiringSoon,
+      expiringByAudience,
+      cancelled30d,
+      churnRate30d: Math.round(churnRate * 10000) / 100, // percentage with 2 decimals
+      generatedAt: now.toISOString(),
+    };
+  }
+
   async listAllSubscriptions(opts: {
     audience?:        PlanAudience;
     status?:          SubscriptionStatus;

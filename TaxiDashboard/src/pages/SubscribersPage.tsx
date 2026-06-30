@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import apiClient from '../api/client';
+import SubscriptionAnalytics from '../components/SubscriptionAnalytics';
 
 type Audience      = 'driver' | 'company';
 type BillingPeriod = 'monthly' | 'quarterly' | 'yearly';
@@ -149,6 +150,8 @@ export default function SubscribersPage() {
           <p className="text-sm text-gray-500 mt-1">All driver and company subscriptions. Mark cash payments and adjust plans here.</p>
         </div>
       </div>
+
+      <SubscriptionAnalytics />
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-5 grid grid-cols-1 md:grid-cols-5 gap-3">

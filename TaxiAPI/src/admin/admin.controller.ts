@@ -661,6 +661,16 @@ export class AdminController {
     });
   }
 
+  /**
+   * GET /admin/subscriptions/analytics
+   * Snapshot for the admin dashboard: MRR/ARR, status & state counts,
+   * payment & plan mix, 6-month revenue trend, expiring-soon, churn.
+   */
+  @Get('subscriptions/analytics')
+  getSubscriptionAnalytics() {
+    return this.subscriptionsService.getAnalytics();
+  }
+
   /** GET /admin/subscriptions/:audience/:id — single subscription detail */
   @Get('subscriptions/:audience/:id')
   getSubscription(
