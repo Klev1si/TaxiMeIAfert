@@ -52,7 +52,7 @@
                             <constraint firstItem="taxi-emoji" firstAttribute="leading" secondItem="Bcu-3y-fUS" secondAttribute="leading" id="c1"/>
                             <constraint firstItem="Bcu-3y-fUS" firstAttribute="trailing" secondItem="taxi-emoji" secondAttribute="trailing" id="c2"/>
                             <constraint firstItem="taxi-emoji" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" multiplier="0.85" id="c3"/>
-                            <constraint firstItem="taxi-emoji" firstAttribute="height" secondItem="taxi-emoji" secondAttribute="height" multiplier="1" constant="72" id="c4"/>
+                            <constraint firstItem="taxi-emoji" firstAttribute="height" constant="72" id="c4"/>
                             <!-- App name: below emoji, horizontal fill -->
                             <constraint firstItem="app-name-label" firstAttribute="top" secondItem="taxi-emoji" secondAttribute="bottom" constant="12" id="c5"/>
                             <constraint firstItem="app-name-label" firstAttribute="leading" secondItem="Bcu-3y-fUS" secondAttribute="leading" id="c6"/>
