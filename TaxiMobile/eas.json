@@ -4,7 +4,6 @@
     "appVersionSource": "local"
   },
   "build": {
-    "// development": "Internal preview build with dev client (sideload to phone).",
     "development": {
       "developmentClient": true,
       "distribution": "internal",
@@ -12,16 +11,12 @@
         "simulator": false
       }
     },
-
-    "// preview": "Internal release build that's installable on test devices via TestFlight or direct .ipa download.",
     "preview": {
       "distribution": "internal",
       "ios": {
         "simulator": false
       }
     },
-
-    "// production": "Store-ready signed build. EAS auto-generates certs/profiles the first time. Bumps build number automatically.",
     "production": {
       "autoIncrement": true,
       "ios": {
@@ -40,7 +35,6 @@
         "appleTeamId": "AD8K6ZN3UG"
       },
       "android": {
-        "// note": "Either upload an existing Google service-account JSON or set ANDROID_SERVICE_ACCOUNT_KEY secret.",
         "track": "internal"
       }
     }
