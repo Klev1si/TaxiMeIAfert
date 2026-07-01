@@ -4,7 +4,6 @@ import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import FirebaseCore
 import FirebaseMessaging
-import GoogleMaps
 import UserNotifications
 
 @main
@@ -24,16 +23,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     FirebaseApp.configure()
 
     // ── Google Maps ─────────────────────────────────────────────────────────
-    // Read the iOS Maps SDK key from Info.plist (GMSApiKey) so it can be
-    // rotated without touching Swift. The key must have Maps SDK for iOS
-    // enabled and be restricted to bundle id com.taximelafert.
-    if let apiKey = Bundle.main.object(forInfoDictionaryKey: "GMSApiKey") as? String,
-       !apiKey.isEmpty,
-       apiKey != "REPLACE_WITH_IOS_MAPS_KEY" {
-      GMSServices.provideAPIKey(apiKey)
-    } else {
-      NSLog("⚠️ GMSApiKey missing from Info.plist — map screens will not render.")
-    }
+    // react-native-maps falls back to Apple Maps on iOS unless the GoogleMaps
+    // pod is explicitly linked (via use_frameworks + a pod entry). We ship v1
+    // with Apple Maps on iOS to keep the build simple; the GMSApiKey stays in
+    // Info.plist for when we opt into Google Maps parity later.
 
     // ── Push notifications ──────────────────────────────────────────────────
     UNUserNotificationCenter.current().delegate = self
