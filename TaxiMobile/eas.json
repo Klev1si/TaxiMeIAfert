@@ -35,9 +35,8 @@
   "submit": {
     "production": {
       "ios": {
-        "// TODO": "Fill ascAppId with the numeric ID from App Store Connect after creating the app record.",
         "appleId":     "klevis.morina@icloud.com",
-        "ascAppId":    "REPLACE_WITH_APP_STORE_CONNECT_APP_ID",
+        "ascAppId":    "6786225522",
         "appleTeamId": "AD8K6ZN3UG"
       },
       "android": {
