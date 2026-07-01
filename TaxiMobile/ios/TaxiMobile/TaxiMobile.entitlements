@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Sign in with Apple. Requires the "Sign in with Apple" capability to
+	     be enabled on the App ID at developer.apple.com. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+	<!-- Push notifications. EAS auto-flips between 'development' and
+	     'production' at build time based on the profile, so we hardcode
+	     'production' here for release builds. -->
+	<key>aps-environment</key>
+	<string>production</string>
+</dict>
+</plist>

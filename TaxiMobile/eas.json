@@ -35,10 +35,10 @@
   "submit": {
     "production": {
       "ios": {
-        "// note": "Fill these via `eas secret:create` or interactively on first run:",
-        "// appleId":             "your-apple-id@example.com",
-        "// ascAppId":            "App Store Connect numeric ID",
-        "// appleTeamId":         "Apple Team ID from developer.apple.com"
+        "// TODO before first submit": "Replace the three placeholders below with real values.",
+        "appleId":     "REPLACE_WITH_APPLE_ID_EMAIL",
+        "ascAppId":    "REPLACE_WITH_APP_STORE_CONNECT_APP_ID",
+        "appleTeamId": "REPLACE_WITH_APPLE_TEAM_ID"
       },
       "android": {
         "// note": "Either upload an existing Google service-account JSON or set ANDROID_SERVICE_ACCOUNT_KEY secret.",

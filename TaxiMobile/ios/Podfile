@@ -8,6 +8,11 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
+# react-native-firebase requires Firebase iOS SDK to be linked as a static
+# framework alongside CocoaPods use_frameworks. Combined with modular headers,
+# this is the recommended setup for RNFB 24 + new architecture.
+$RNFirebaseAsStaticFramework = true
+
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
@@ -15,6 +20,8 @@ if linkage != nil
 end
 
 target 'TaxiMobile' do
+  # Firebase pods require modular headers to build cleanly under new arch
+  use_modular_headers!
   config = use_native_modules!
 
   use_react_native!(

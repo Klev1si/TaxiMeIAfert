@@ -4,6 +4,15 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- Google Maps SDK for iOS. Replace before the first production build.
+	     Restrict the key to bundle id com.taximelafert in the Google Cloud
+	     console. Read at launch by AppDelegate.swift. -->
+	<key>GMSApiKey</key>
+	<string>REPLACE_WITH_IOS_MAPS_KEY</string>
+	<!-- react-native-firebase/messaging: deliver silent push while the app
+	     is backgrounded so ride events wake the JS thread. -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
