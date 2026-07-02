@@ -25,6 +25,8 @@ import ProfilePage from './pages/ProfilePage';
 import SupportPage from './pages/SupportPage';
 import HealthPage from './pages/HealthPage';
 import FraudPage from './pages/FraudPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import PublicSupportPage from './pages/PublicSupportPage';
 
 export default function App() {
   const { initialize, isInitialized, user } = useAuthStore();
@@ -42,6 +44,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public — legal pages linked from App Store / Play Store listings */}
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/support" element={<PublicSupportPage />} />
+
         {/* Public */}
         <Route
           path="/login"
