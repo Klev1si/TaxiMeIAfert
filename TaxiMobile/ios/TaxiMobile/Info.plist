@@ -1,124 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<!-- Google Maps SDK for iOS. Replace before the first production build.
-	     Restrict the key to bundle id com.taximelafert in the Google Cloud
-	     console. Read at launch by AppDelegate.swift. -->
-	<key>GMSApiKey</key>
-	<string>AIzaSyBWZnjacAQ4ef43PV1hG8Ne0EieJyx9QfY</string>
-	<!-- react-native-firebase/messaging: deliver silent push while the app
-	     is backgrounded so ride events wake the JS thread. -->
-	<key>FirebaseAppDelegateProxyEnabled</key>
-	<true/>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
-	<key>CFBundleDisplayName</key>
-	<string>TaxiMeIAfert</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleSignature</key>
-	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-	  <!-- Do not change NSAllowsArbitraryLoads to true, or you will risk app rejection! -->
-		<key>NSAllowsArbitraryLoads</key>
-		<false/>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
-	<!-- Deep-link URL scheme: taxiapp:// -->
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>com.taximelafert</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>taxiapp</string>
-			</array>
-		</dict>
-	</array>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>TaxiApp needs your location to find nearby drivers and track your ride.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Drivers need background location access to track the active ride route while the app is in the background.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Drivers need background location access to track the active ride route while the app is in the background.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>TaxiApp needs camera access to let you upload a profile photo or driver document.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>TaxiApp needs photo library access to let you choose a profile photo or driver document.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>TaxiApp needs permission to save photos to your library.</string>
-	<!-- We don't currently track users across other apps, but Apple still
-	     requires the key whenever any tracking framework is linked. Default
-	     answer is "Ask App not to Track". -->
-	<key>NSUserTrackingUsageDescription</key>
-	<string>This identifier is only used to keep your TaxiApp session secure and is never used to track you across other apps or websites.</string>
-	<!-- Background modes:
-	   - location: required for drivers to send GPS updates while driving with
-	     the screen locked or another app in the foreground.
-	   - remote-notification: required for Firebase Cloud Messaging to deliver
-	     ride requests, chat messages, etc. in the background. -->
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>location</string>
-		<string>remote-notification</string>
-		<string>fetch</string>
-	</array>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIRequiredDeviceCapabilities</key>
-	<array>
-		<string>arm64</string>
-	</array>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-	</array>
-	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<false/>
-	<key>UIAppFonts</key>
-	<array>
-		<string>MaterialIcons.ttf</string>
-		<string>MaterialCommunityIcons.ttf</string>
-		<string>FontAwesome.ttf</string>
-		<string>FontAwesome5_Brands.ttf</string>
-		<string>FontAwesome5_Regular.ttf</string>
-		<string>FontAwesome5_Solid.ttf</string>
-		<string>Ionicons.ttf</string>
-		<string>AntDesign.ttf</string>
-		<string>Entypo.ttf</string>
-		<string>EvilIcons.ttf</string>
-		<string>Feather.ttf</string>
-		<string>Foundation.ttf</string>
-		<string>Octicons.ttf</string>
-		<string>SimpleLineIcons.ttf</string>
-		<string>Zocial.ttf</string>
-	</array>
-</dict>
+  <dict>
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
+    <!-- Required by the App Store validator (ITMS-90713) for iOS 11+ SDK
+         apps. Points at the asset-catalog icon set name (AppIcon). -->
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
+    <key>GMSApiKey</key>
+    <string>AIzaSyBWZnjacAQ4ef43PV1hG8Ne0EieJyx9QfY</string>
+    <key>FirebaseAppDelegateProxyEnabled</key>
+    <true/>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleDisplayName</key>
+    <string>TaxiMeIAfert</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.0.1</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleVersion</key>
+    <string>6</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+      <key>NSAllowsArbitraryLoads</key>
+      <false/>
+      <key>NSAllowsLocalNetworking</key>
+      <true/>
+    </dict>
+    <key>CFBundleURLTypes</key>
+    <array>
+      <dict>
+        <key>CFBundleURLName</key>
+        <string>com.taximelafert</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>taxiapp</string>
+        </array>
+      </dict>
+    </array>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>TaxiApp needs your location to find nearby drivers and track your ride.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Drivers need background location access to track the active ride route while the app is in the background.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>Drivers need background location access to track the active ride route while the app is in the background.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>TaxiApp needs camera access to let you upload a profile photo or driver document.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>TaxiApp needs photo library access to let you choose a profile photo or driver document.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>TaxiApp needs permission to save photos to your library.</string>
+    <key>NSUserTrackingUsageDescription</key>
+    <string>This identifier is only used to keep your TaxiApp session secure and is never used to track you across other apps or websites.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+      <string>location</string>
+      <string>remote-notification</string>
+      <string>fetch</string>
+    </array>
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+      <string>arm64</string>
+    </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+      <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+      <string>UIInterfaceOrientationLandscapeLeft</string>
+      <string>UIInterfaceOrientationLandscapeRight</string>
+      <string>UIInterfaceOrientationPortrait</string>
+      <string>UIInterfaceOrientationPortraitUpsideDown</string>
+    </array>
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <false/>
+    <key>UIAppFonts</key>
+    <array>
+      <string>MaterialIcons.ttf</string>
+      <string>MaterialCommunityIcons.ttf</string>
+      <string>FontAwesome.ttf</string>
+      <string>FontAwesome5_Brands.ttf</string>
+      <string>FontAwesome5_Regular.ttf</string>
+      <string>FontAwesome5_Solid.ttf</string>
+      <string>Ionicons.ttf</string>
+      <string>AntDesign.ttf</string>
+      <string>Entypo.ttf</string>
+      <string>EvilIcons.ttf</string>
+      <string>Feather.ttf</string>
+      <string>Foundation.ttf</string>
+      <string>Octicons.ttf</string>
+      <string>SimpleLineIcons.ttf</string>
+      <string>Zocial.ttf</string>
+    </array>
+  </dict>
 </plist>
