@@ -7,7 +7,8 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
+import { MAP_PROVIDER } from '../../utils/mapProvider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
@@ -102,7 +103,7 @@ export default function IncomingRequestScreen({ navigation, route }: Props) {
       {req ? (
         <MapView
           style={styles.map}
-          provider={PROVIDER_GOOGLE}
+          provider={MAP_PROVIDER}
           initialRegion={{
             latitude: req.pickupLat,
             longitude: req.pickupLng,

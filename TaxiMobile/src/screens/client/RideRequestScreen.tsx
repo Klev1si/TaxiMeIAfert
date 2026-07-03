@@ -18,9 +18,9 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import MapView, {
   Marker,
   Region,
-  PROVIDER_GOOGLE,
   MapPressEvent,
 } from 'react-native-maps';
+import { MAP_PROVIDER } from '../../utils/mapProvider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
@@ -568,7 +568,7 @@ export default function RideRequestScreen({ navigation, route }: Props) {
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
+        provider={MAP_PROVIDER}
         initialRegion={pickupRegion}
         onPress={handleMapPress}
         showsUserLocation

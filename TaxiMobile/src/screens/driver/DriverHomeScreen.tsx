@@ -11,7 +11,8 @@ import {
   Linking,
 } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
-import MapView, { PROVIDER_GOOGLE, UserLocationChangeEvent } from 'react-native-maps';
+import MapView, { UserLocationChangeEvent } from 'react-native-maps';
+import { MAP_PROVIDER } from '../../utils/mapProvider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 import { useDriverStore } from '../../stores/driverStore';
@@ -319,7 +320,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
+        provider={MAP_PROVIDER}
         showsUserLocation
         showsMyLocationButton={false}
         onUserLocationChange={handleUserLocationChange}

@@ -12,7 +12,8 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
+import { MAP_PROVIDER } from '../../utils/mapProvider';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi, TRIP_SHARE_BASE_URL } from '../../api/rides';
 import { socketService } from '../../services/socket';
@@ -383,7 +384,7 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
+        provider={MAP_PROVIDER}
         customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
         showsUserLocation
         initialRegion={{

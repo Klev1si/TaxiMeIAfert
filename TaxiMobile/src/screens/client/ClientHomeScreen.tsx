@@ -12,7 +12,8 @@ import {
   Linking,
 } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
-import MapView, { Marker, Region, PROVIDER_GOOGLE, UserLocationChangeEvent } from 'react-native-maps';
+import MapView, { Marker, Region, UserLocationChangeEvent } from 'react-native-maps';
+import { MAP_PROVIDER } from '../../utils/mapProvider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
@@ -263,7 +264,7 @@ export default function ClientHomeScreen({ navigation }: Props) {
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
+        provider={MAP_PROVIDER}
         customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
         showsUserLocation
         showsMyLocationButton={false}

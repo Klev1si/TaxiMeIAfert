@@ -12,7 +12,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
+import { MAP_PROVIDER } from '../../utils/mapProvider';
 import type { UserLocationChangeEvent } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRideStore } from '../../stores/rideStore';
@@ -377,7 +378,7 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
       <MapView
         ref={mapViewRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
+        provider={MAP_PROVIDER}
         showsUserLocation={false}  /* hide default blue dot — we draw our own 🚕 */
         onUserLocationChange={handleUserLocationChange}
         initialRegion={{
