@@ -4,8 +4,6 @@
   <dict>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
-    <!-- Required by the App Store validator (ITMS-90713) for iOS 11+ SDK
-         apps. Points at the asset-catalog icon set name (AppIcon). -->
     <key>CFBundleIconName</key>
     <string>AppIcon</string>
     <key>GMSApiKey</key>
@@ -31,7 +29,7 @@
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleVersion</key>
-    <string>6</string>
+    <string>7</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>NSAppTransportSecurity</key>
@@ -64,8 +62,6 @@
     <string>TaxiApp needs photo library access to let you choose a profile photo or driver document.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>TaxiApp needs permission to save photos to your library.</string>
-    <key>NSUserTrackingUsageDescription</key>
-    <string>This identifier is only used to keep your TaxiApp session secure and is never used to track you across other apps or websites.</string>
     <key>UIBackgroundModes</key>
     <array>
       <string>location</string>
