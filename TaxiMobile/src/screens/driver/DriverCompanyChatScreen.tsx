@@ -11,7 +11,7 @@ import {
   StyleSheet, Text, TextInput, TouchableOpacity, View, FlatList,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { driverMessagesApi, type CompanyMessage } from '../../api/company-messages';
 import { useColors } from '../../stores/themeStore';
 import type { ColorPalette } from '../../constants/colors';
@@ -29,6 +29,7 @@ function formatTime(iso: string): string {
 
 export default function DriverCompanyChatScreen({ visible, onClose }: Props) {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => getStyles(colors), [colors]);
 
   const [messages,    setMessages]    = useState<CompanyMessage[]>([]);
@@ -114,9 +115,14 @@ export default function DriverCompanyChatScreen({ visible, onClose }: Props) {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        <View style={styles.header}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      onRequestClose={onClose}
+      presentationStyle="pageSheet"
+    >
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={[styles.header, { paddingTop: insets.top > 0 ? 0 : 8 }]}>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={styles.headerBtn}>‹ Back</Text>
           </TouchableOpacity>

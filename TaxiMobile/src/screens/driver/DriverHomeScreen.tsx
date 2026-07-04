@@ -224,19 +224,23 @@ export default function DriverHomeScreen({ navigation }: Props) {
 
   // ── Online toggle ────────────────────────────────────────────────────────────
   const handleToggleOnline = async (value: boolean) => {
+    // Flip the switch immediately so it visually snaps on the first tap.
+    // The permission prompt + service startup can await after that. Without
+    // this, on iOS the Switch waits for requestBackgroundLocation() to resolve
+    // before painting the "on" thumb, so the user sees a half-animated toggle
+    // and has to tap again.
+    setOnline(value);
     setToggling(true);
     try {
       if (value) {
-        // Request background location permission on Android 10+.
+        socketService.goOnline();
+        startGps();
+        // Request background location permission on Android 10+. iOS returns
+        // true immediately (permission was granted at first launch).
         // Returns true  → "Allow all the time" granted → safe to start foreground service.
         // Returns false → "Allow only while using" or denied → skip background service
         //                 to avoid a SecurityException native crash on Android 14+.
         const bgGranted = await requestBackgroundLocation();
-        socketService.goOnline();
-        startGps();
-        // Only start the foreground service when the OS will actually allow it.
-        // Without ACCESS_BACKGROUND_LOCATION, Android 14+ throws SecurityException
-        // before JS can catch it, which kills the app.
         if (bgGranted) {
           void startBackgroundGps();
           // Spin up the native Android foreground service. It posts the
@@ -245,14 +249,14 @@ export default function DriverHomeScreen({ navigation }: Props) {
           // locked. No-op on iOS.
           void startDriverLocationService();
         }
-        setOnline(true);
       } else {
         stopGps();   // stopGps already calls stopBackgroundGps + goOffline
-        setOnline(false);
       }
     } catch (err) {
       // Fallback: catch any remaining JS-layer errors so the app does not crash
       console.warn('[DriverHome] toggle error:', err);
+      // Roll the switch back if startup blew up
+      setOnline(!value);
     } finally {
       setToggling(false);
     }
