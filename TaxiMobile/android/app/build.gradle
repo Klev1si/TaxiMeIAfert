@@ -96,8 +96,8 @@ android {
         applicationId "com.taximelafert"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 84
-        versionName "1.76"
+        versionCode 5
+        versionName "0.0.1"
         manifestPlaceholders = [
             GOOGLE_MAPS_API_KEY: project.env.get("GOOGLE_MAPS_API_KEY") ?: "",
         ]
@@ -133,6 +133,18 @@ android {
             minifyEnabled enableProguardInReleaseBuilds
             shrinkResources enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+
+    // ── 16 KB page-size compatibility ────────────────────────────────────────
+    // Play Store now rejects apps whose native .so files aren't aligned to
+    // 16 KB (required for Android 15+ devices). Uncompressed jniLibs let the
+    // OS load them directly at 16 KB boundaries, and NDK 27+ produces
+    // properly-aligned segments when its default -z max-page-size=16384
+    // linker flag runs.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
         }
     }
 }
