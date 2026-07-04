@@ -303,14 +303,22 @@ function RideCard({ ride, onCancelled }: { ride: Ride; onCancelled: (id: string)
   });
 
   const isScheduledPending = ride.scheduledAt != null && status === 'requested';
+  // Any 'requested' ride (scheduled or on-demand) can be cancelled by the
+  // rider before a driver accepts. This lets riders back out of a stuck
+  // "searching for driver" state — including when the network flapped
+  // during the initial request.
+  const canCancel = status === 'requested';
 
   const handleInlineCancel = () => {
+    const scheduledLine = ride.scheduledAt
+      ? `\n\n📅 ${new Date(ride.scheduledAt).toLocaleString('en-US', {
+          weekday: 'short', month: 'short', day: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        })}`
+      : '';
     Alert.alert(
       t('shared.rideHistory.cancelTitle'),
-      `${t('shared.rideHistory.cancelMsg')}\n\n📅 ${new Date(ride.scheduledAt!).toLocaleString('en-US', {
-        weekday: 'short', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-      })}`,
+      `${t('shared.rideHistory.cancelMsg')}${scheduledLine}`,
       [
         { text: t('shared.rideHistory.keepBtn'), style: 'cancel' },
         {
@@ -369,20 +377,30 @@ function RideCard({ ride, onCancelled }: { ride: Ride; onCancelled: (id: string)
         </View>
       )}
 
-      {/* Scheduled badge + inline cancel */}
-      {isScheduledPending && (
+      {/* Scheduled badge + inline cancel. For on-demand rides in 'requested'
+          state (no scheduledAt) we skip the calendar badge but still show the
+          cancel button, so riders can bail out of a stuck search. */}
+      {canCancel && (
         <View style={styles.scheduledRow}>
-          <View style={styles.scheduledBadge}>
-            <Text style={styles.scheduledBadgeText}>
-              🗓 {new Date(ride.scheduledAt!).toLocaleString('en-US', {
-                weekday: 'short', month: 'short', day: 'numeric',
-                hour: '2-digit', minute: '2-digit',
-              })}
-            </Text>
-          </View>
+          {isScheduledPending ? (
+            <View style={styles.scheduledBadge}>
+              <Text style={styles.scheduledBadgeText}>
+                🗓 {new Date(ride.scheduledAt!).toLocaleString('en-US', {
+                  weekday: 'short', month: 'short', day: 'numeric',
+                  hour: '2-digit', minute: '2-digit',
+                })}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.scheduledBadge}>
+              <Text style={styles.scheduledBadgeText}>
+                🔎 {t('shared.rideHistory.statusRequested')}
+              </Text>
+            </View>
+          )}
           <TouchableOpacity
             style={[styles.inlineCancelBtn, cancelling && { opacity: 0.5 }]}
-            onPress={handleInlineCancel}
+            onPress={(e) => { e.stopPropagation?.(); handleInlineCancel(); }}
             disabled={cancelling}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             {cancelling
