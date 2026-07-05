@@ -29,7 +29,7 @@
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleVersion</key>
-    <string>7</string>
+    <string>13</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>NSAppTransportSecurity</key>
@@ -47,6 +47,18 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>taxiapp</string>
+        </array>
+      </dict>
+      <!-- Google Sign-In: the SDK opens a popup with this scheme when the
+           user taps "Continue with Google". Value is the REVERSED_CLIENT_ID
+           from GoogleService-Info.plist. Without this entry, tapping the
+           button crashes the app on iOS. -->
+      <dict>
+        <key>CFBundleURLName</key>
+        <string>google-signin</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>com.googleusercontent.apps.524747770284-6eerag4l1oeij6fr2upf8v0lj0lb0jgq</string>
         </array>
       </dict>
     </array>

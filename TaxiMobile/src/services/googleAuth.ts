@@ -30,6 +30,10 @@ export function configureGoogleAuth() {
   // automatically via google-services.json.
   GoogleSignin.configure({
     webClientId: Config.GOOGLE_WEB_CLIENT_ID,
+    // iOS also needs the CLIENT_ID from GoogleService-Info.plist to open
+    // Apple's native sign-in sheet. Without this the SDK falls back to a
+    // Safari redirect that crashes with 'unrecognised URL scheme'.
+    iosClientId: '524747770284-6eerag4l1oeij6fr2upf8v0lj0lb0jgq.apps.googleusercontent.com',
     offlineAccess: false,
   });
   configured = true;
