@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { LEGAL_URLS } from '../../constants/legal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 import { authApi } from '../../api/auth';
@@ -150,6 +152,27 @@ export default function CompanyProfileScreen() {
         <Text style={styles.sectionLabel}>{t('company.profile.sectionAppearance')}</Text>
         <View style={[styles.card, { paddingVertical: 12 }]}>
           <ThemeToggle />
+        </View>
+
+        {/* ── Legal & support ── */}
+        <Text style={styles.sectionLabel}>{t('profile.legal.section')}</Text>
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => Linking.openURL(LEGAL_URLS.support)}
+            activeOpacity={0.7}
+            accessibilityRole="link">
+            <Text style={styles.actionLabel}>❓  {t('profile.legal.support')}</Text>
+            <Text style={styles.actionChevron}>↗</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionRow, { borderBottomWidth: 0 }]}
+            onPress={() => Linking.openURL(LEGAL_URLS.privacyPolicy)}
+            activeOpacity={0.7}
+            accessibilityRole="link">
+            <Text style={styles.actionLabel}>🔐  {t('profile.legal.privacy')}</Text>
+            <Text style={styles.actionChevron}>↗</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── Info box ── */}

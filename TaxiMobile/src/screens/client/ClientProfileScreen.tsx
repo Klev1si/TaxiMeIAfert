@@ -12,7 +12,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  Linking,
 } from 'react-native';
+import { LEGAL_URLS } from '../../constants/legal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
@@ -457,13 +459,33 @@ export default function ClientProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionRow, { borderBottomWidth: 0 }]}
+            style={styles.actionRow}
             onPress={() => navigation.navigate('Support')}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Help and support">
             <Text style={styles.actionLabel}>🎫  {t('client.profile.helpSupport')}</Text>
             <Text style={styles.actionChevron}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => Linking.openURL(LEGAL_URLS.support)}
+            activeOpacity={0.7}
+            accessibilityRole="link"
+            accessibilityLabel="Open the support page in your browser">
+            <Text style={styles.actionLabel}>❓  {t('profile.legal.support')}</Text>
+            <Text style={styles.actionChevron}>↗</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionRow, { borderBottomWidth: 0 }]}
+            onPress={() => Linking.openURL(LEGAL_URLS.privacyPolicy)}
+            activeOpacity={0.7}
+            accessibilityRole="link"
+            accessibilityLabel="Open the privacy policy in your browser">
+            <Text style={styles.actionLabel}>🔐  {t('profile.legal.privacy')}</Text>
+            <Text style={styles.actionChevron}>↗</Text>
           </TouchableOpacity>
         </View>
 

@@ -1178,6 +1178,12 @@ export default {
     language:        'Gjuha',
     rating:          'Vlerësim {rating} pasagjer',
 
+    legal: {
+      section: 'Ligjore & Mbështetje',
+      support: 'Mbështetje',
+      privacy: 'Politika e Privatësisë',
+    },
+
     edit: {
       title:                'Ndrysho Profilin',
       firstName:            'Emri',

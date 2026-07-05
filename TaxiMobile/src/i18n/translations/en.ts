@@ -1237,6 +1237,12 @@ export default {
     language:        'Language',
     rating:          '{rating} passenger rating',
 
+    legal: {
+      section: 'Legal & Support',
+      support: 'Support',
+      privacy: 'Privacy Policy',
+    },
+
     edit: {
       title:                'Edit Profile',
       firstName:            'First Name',
