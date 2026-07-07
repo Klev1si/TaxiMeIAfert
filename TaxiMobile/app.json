@@ -1,4 +1,22 @@
 {
   "name": "TaxiMobile",
-  "displayName": "TaxiMobile"
+  "displayName": "TaxiMobile",
+  "extra": {
+    "eas": {
+      "projectId": "4a277569-19e6-4021-b548-69042c4e50e2"
+    }
+  },
+  "expo": {
+    "ios": {
+      "buildNumber": "16"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "4a277569-19e6-4021-b548-69042c4e50e2"
+      }
+    },
+    "android": {
+      "versionCode": 6
+    }
+  }
 }
