@@ -1,8 +1,10 @@
 import { io, Socket } from 'socket.io-client';
+import { AppState, AppStateStatus, NativeEventSubscription } from 'react-native';
 import Config from '../config';
 
 class SocketService {
   private socket: Socket | null = null;
+  private appStateSub: NativeEventSubscription | null = null;
 
   /** Connect (or reconnect) with a fresh access token */
   connect(accessToken: string): void {
@@ -30,10 +32,25 @@ class SocketService {
     this.socket.on('disconnect', (reason) => {
       console.log('[Socket] Disconnected:', reason);
     });
+
+    // Android suspends/throttles background timers (Doze / App Standby) far more
+    // aggressively than iOS, so socket.io's own backoff timer often never fires
+    // while the app is backgrounded — the socket comes back to the foreground
+    // still disconnected and just sits there until the next manual action.
+    // Force an immediate reconnect attempt whenever the app becomes active.
+    this.appStateSub?.remove();
+    this.appStateSub = AppState.addEventListener('change', (state: AppStateStatus) => {
+      if (state === 'active' && this.socket && !this.socket.connected) {
+        console.log('[Socket] App foregrounded while disconnected — forcing reconnect');
+        this.socket.connect();
+      }
+    });
   }
 
   /** Gracefully disconnect */
   disconnect(): void {
+    this.appStateSub?.remove();
+    this.appStateSub = null;
     this.socket?.disconnect();
     this.socket = null;
   }
