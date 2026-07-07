@@ -435,22 +435,37 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     dropoffLat: number,
     dropoffLng: number,
     vehicleType?: VehicleType | null,
+    stops: Array<{ lat: number; lng: number }> = [],
   ) {
     // Prefer Google Maps Distance Matrix (real road distance + realistic duration).
     // Falls back to Haversine + 30 km/h average if the key is absent or the call fails.
-    let distanceKm: number;
-    let durationMinutes: number;
+    // With intermediate stops we sum the distance/duration of every leg
+    // (pickup → stop1 → stop2 → … → dropoff) so an off-route stop bumps the
+    // fare instead of silently disappearing.
+    const legs: Array<{ fromLat: number; fromLng: number; toLat: number; toLng: number }> = [];
+    let prevLat = pickupLat;
+    let prevLng = pickupLng;
+    for (const s of stops) {
+      legs.push({ fromLat: prevLat, fromLng: prevLng, toLat: s.lat, toLng: s.lng });
+      prevLat = s.lat;
+      prevLng = s.lng;
+    }
+    legs.push({ fromLat: prevLat, fromLng: prevLng, toLat: dropoffLat, toLng: dropoffLng });
 
-    const dmResult = await this.getDistanceMatrixRoute(
-      pickupLat, pickupLng, dropoffLat, dropoffLng,
-    );
-
-    if (dmResult) {
-      distanceKm     = dmResult.distanceKm;
-      durationMinutes = dmResult.durationMinutes;
-    } else {
-      distanceKm     = this.haversineKm(pickupLat, pickupLng, dropoffLat, dropoffLng);
-      durationMinutes = (distanceKm / 30) * 60;
+    let distanceKm      = 0;
+    let durationMinutes = 0;
+    for (const leg of legs) {
+      const dm = await this.getDistanceMatrixRoute(
+        leg.fromLat, leg.fromLng, leg.toLat, leg.toLng,
+      );
+      if (dm) {
+        distanceKm      += dm.distanceKm;
+        durationMinutes += dm.durationMinutes;
+      } else {
+        const km = this.haversineKm(leg.fromLat, leg.fromLng, leg.toLat, leg.toLng);
+        distanceKm      += km;
+        durationMinutes += (km / 30) * 60;
+      }
     }
 
     // Select the best matching global tariff for the current time of day.

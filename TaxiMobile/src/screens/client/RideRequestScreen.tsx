@@ -322,6 +322,7 @@ export default function RideRequestScreen({ navigation, route }: Props) {
       const { data } = await ridesApi.getFareEstimate(
         pickupLat, pickupLng, d.lat, d.lng,
         vehicleType ?? undefined,
+        stops.map(s => ({ lat: s.lat, lng: s.lng })),
       );
       setEstimate(data);
     } catch {
@@ -329,7 +330,7 @@ export default function RideRequestScreen({ navigation, route }: Props) {
     } finally {
       setEstimateLoading(false);
     }
-  }, [pickupLat, pickupLng, vehicleType]);
+  }, [pickupLat, pickupLng, vehicleType, stops]);
 
   // Debounce: fetch estimate 600 ms after dropoff changes
   useEffect(() => {

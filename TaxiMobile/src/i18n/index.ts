@@ -55,24 +55,27 @@ export const AVAILABLE_LANGUAGES: Array<{
  * Returns 'en' as a safe default if anything goes wrong.
  */
 function detectDeviceLang(): Lang {
-  let locale = 'en';
+  // Albanian is the primary market. If the OS reports a supported locale
+  // (en/es/fr/tr) we honour it; anything else — including Kosovo/Albania
+  // devices where sq is default — falls back to Albanian.
+  let locale = 'sq';
   try {
     if (Platform.OS === 'ios') {
       const settings = NativeModules.SettingsManager?.settings;
       locale =
         settings?.AppleLocale ??
         (Array.isArray(settings?.AppleLanguages) ? settings.AppleLanguages[0] : null) ??
-        'en';
+        'sq';
     } else {
-      locale = NativeModules.I18nManager?.localeIdentifier ?? 'en';
+      locale = NativeModules.I18nManager?.localeIdentifier ?? 'sq';
     }
   } catch {
-    /* fall back to 'en' */
+    /* fall back to 'sq' */
   }
 
-  // Normalise: 'en_US' / 'en-GB' → 'en'
+  // Normalise: 'sq_AL' / 'en-GB' → 'sq' / 'en'
   const code = String(locale).toLowerCase().split(/[-_]/)[0];
-  return (code in translations ? code : 'en') as Lang;
+  return (code in translations ? code : 'sq') as Lang;
 }
 
 // ── Zustand store ─────────────────────────────────────────────────────────────

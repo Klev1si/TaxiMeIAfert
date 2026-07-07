@@ -514,7 +514,7 @@ export default function DriverProfileScreen() {
             const filtered = prev.filter(d => d.type !== type);
             return [...filtered, data];
           });
-          Alert.alert(t('common.uploaded'), t('driver.profile.docSubmitted'));
+          Alert.alert(t('driver.profile.uploadedTitle'), t('driver.profile.uploadedMsg'));
         } catch (err: any) {
           const msg = err?.response?.data?.message ?? t('driver.profile.uploadFailed');
           Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);

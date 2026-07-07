@@ -99,9 +99,15 @@ export const ridesApi = {
     pickupLat: number, pickupLng: number,
     dropoffLat: number, dropoffLng: number,
     vehicleType?: VehicleType,
+    stops?: Array<{ lat: number; lng: number }>,
   ) =>
     apiClient.get<FareEstimate>('/rides/estimate', {
-      params: { pickupLat, pickupLng, dropoffLat, dropoffLng, vehicleType },
+      params: {
+        pickupLat, pickupLng, dropoffLat, dropoffLng, vehicleType,
+        stops: stops && stops.length > 0
+          ? JSON.stringify(stops.map(s => ({ lat: s.lat, lng: s.lng })))
+          : undefined,
+      },
     }),
 
   /** GET /rides/nearest-drivers */

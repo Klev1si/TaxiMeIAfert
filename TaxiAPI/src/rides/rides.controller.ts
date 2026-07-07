@@ -89,9 +89,23 @@ export class RidesController {
     @Query('dropoffLat',   ParseFloatPipe) dropoffLat:   number,
     @Query('dropoffLng',   ParseFloatPipe) dropoffLng:   number,
     @Query('vehicleType')                 vehicleType?: VehicleType,
+    // JSON-encoded array of {lat, lng} intermediate stops. Kept as a
+    // string so the query stays flat and cacheable. Optional.
+    @Query('stops')                       stopsRaw?:    string,
   ) {
+    let stops: Array<{ lat: number; lng: number }> = [];
+    if (stopsRaw) {
+      try {
+        const parsed = JSON.parse(stopsRaw);
+        if (Array.isArray(parsed)) {
+          stops = parsed
+            .filter(s => typeof s?.lat === 'number' && typeof s?.lng === 'number')
+            .slice(0, 5);
+        }
+      } catch { /* ignore malformed stops — fall back to pickup→dropoff only */ }
+    }
     return this.ridesService.estimateFare(
-      pickupLat, pickupLng, dropoffLat, dropoffLng, vehicleType ?? null,
+      pickupLat, pickupLng, dropoffLat, dropoffLng, vehicleType ?? null, stops,
     );
   }
 
