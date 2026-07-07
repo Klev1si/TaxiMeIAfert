@@ -866,6 +866,20 @@ export default function DriverProfileScreen() {
             </TouchableOpacity>
           )}
 
+          {/* Solo drivers can define their own intercity fixed fares. Drivers
+              working under a company inherit their company's routes instead. */}
+          {profile?.companyId == null && (
+            <TouchableOpacity
+              style={styles.actionRow}
+              onPress={() => navigation.navigate('IntercityRoutes')}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Intercity fares">
+              <Text style={styles.actionLabel}>🚙  Intercity Fares</Text>
+              <Text style={styles.actionChevron}>›</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={styles.actionRow}
             onPress={() => navigation.navigate('Support')}

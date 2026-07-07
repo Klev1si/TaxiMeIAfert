@@ -1,9 +1,10 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useColors } from '../stores/themeStore';
 import { useTranslation } from '../i18n';
-import type { CompanyTabParamList } from './types';
+import type { CompanyTabParamList, CompanyProfileStackParamList } from './types';
 
 import CompanyDashboardScreen     from '../screens/company/CompanyDashboardScreen';
 import CompanyDriversScreen       from '../screens/company/CompanyDriversScreen';
@@ -11,8 +12,19 @@ import CompanyFinancesScreen      from '../screens/company/CompanyFinancesScreen
 import CompanyTariffsScreen       from '../screens/company/CompanyTariffsScreen';
 import CompanySubscriptionScreen  from '../screens/company/CompanySubscriptionScreen';
 import CompanyProfileScreen       from '../screens/company/CompanyProfileScreen';
+import IntercityRoutesScreen      from '../screens/shared/IntercityRoutesScreen';
 
 const Tab = createBottomTabNavigator<CompanyTabParamList>();
+const ProfileStack = createNativeStackNavigator<CompanyProfileStackParamList>();
+
+function CompanyProfileStack() {
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStack.Screen name="CompanyProfileMain" component={CompanyProfileScreen}  />
+      <ProfileStack.Screen name="IntercityRoutes"    component={IntercityRoutesScreen} />
+    </ProfileStack.Navigator>
+  );
+}
 
 export default function CompanyNavigator() {
   const colors = useColors();
@@ -48,7 +60,7 @@ export default function CompanyNavigator() {
       <Tab.Screen name="CompanyFinances"     component={CompanyFinancesScreen}     />
       <Tab.Screen name="CompanyTariffs"      component={CompanyTariffsScreen}      />
       <Tab.Screen name="CompanySubscription" component={CompanySubscriptionScreen} />
-      <Tab.Screen name="CompanyProfile"      component={CompanyProfileScreen}      />
+      <Tab.Screen name="CompanyProfile"      component={CompanyProfileStack}       />
     </Tab.Navigator>
   );
 }

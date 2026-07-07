@@ -20,6 +20,7 @@ import { AdminModule } from './admin/admin.module';
 import { SavedLocationsModule } from './saved-locations/saved-locations.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { IntercityRoutesModule } from './intercity-routes/intercity-routes.module';
 import { PaymentsModule } from './payments/payments.module';
 import { AppVersionModule } from './app-version/app-version.module';
 import { DriverDocumentsModule } from './driver-documents/driver-documents.module';
@@ -174,6 +175,7 @@ import {
     SavedLocationsModule,
     ExpensesModule,
     SubscriptionsModule,
+    IntercityRoutesModule,
     PaymentsModule,
     AppVersionModule,
     DriverDocumentsModule,

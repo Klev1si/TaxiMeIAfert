@@ -25,6 +25,7 @@ import DriverSubscriptionScreen from '../screens/driver/DriverSubscriptionScreen
 import DriverTariffScreen from '../screens/driver/DriverTariffScreen';
 import SupportScreen from '../screens/shared/SupportScreen';
 import SupportTicketScreen from '../screens/shared/SupportTicketScreen';
+import IntercityRoutesScreen from '../screens/shared/IntercityRoutesScreen';
 
 const Tab = createBottomTabNavigator<DriverTabParamList>();
 const Stack = createNativeStackNavigator<DriverStackParamList>();
@@ -57,6 +58,7 @@ function DriverProfileStack() {
       <ProfileStack.Screen name="DriverProfileMain"  component={DriverProfileScreen}       />
       <ProfileStack.Screen name="DriverSubscription" component={DriverSubscriptionScreen}  />
       <ProfileStack.Screen name="DriverTariff"       component={DriverTariffScreen}        />
+      <ProfileStack.Screen name="IntercityRoutes"    component={IntercityRoutesScreen}     />
       <ProfileStack.Screen name="Support"            component={SupportScreen}             />
       <ProfileStack.Screen name="SupportTicket"      component={SupportTicketScreen}       />
     </ProfileStack.Navigator>

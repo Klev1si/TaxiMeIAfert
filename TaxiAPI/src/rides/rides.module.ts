@@ -8,6 +8,7 @@ import { MailerModule } from '../mailer/mailer.module.js';
 import { WalletModule } from '../wallet/wallet.module.js';
 import { FraudModule } from '../fraud/fraud.module.js';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module.js';
+import { IntercityRoutesModule } from '../intercity-routes/intercity-routes.module.js';
 import { RidesService } from './rides.service.js';
 import { RouteTrackerModule } from './route-tracker.module.js';
 import { RidesController } from './rides.controller.js';
@@ -22,6 +23,7 @@ import { PublicRidesController } from './public-rides.controller.js';
     WalletModule,
     FraudModule,
     SubscriptionsModule,
+    IntercityRoutesModule,
     RouteTrackerModule,
   ],
   controllers: [RidesController, PublicRidesController],

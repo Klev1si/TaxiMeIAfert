@@ -30,6 +30,11 @@ export interface FareEstimate {
   surgeMultiplier: number;
   /** Convenience flag: true when surgeMultiplier > 1 */
   surgeActive: boolean;
+  /** Present when a fixed intercity route matches pickup → dropoff. When
+   *  set, estimatedFare equals intercity.flatFare (already reflected above)
+   *  and tariffName holds the "Intercity: X → Y" label. Riders can be shown
+   *  a badge that this is a fixed intercity price. */
+  intercity: { fromCity: string; toCity: string; flatFare: number } | null;
 }
 
 export interface RideStopInput {

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { LEGAL_URLS } from '../../constants/legal';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
 import { authApi } from '../../api/auth';
 import { companyApi } from '../../api/company';
@@ -28,6 +29,7 @@ import type { ColorPalette } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
 
 export default function CompanyProfileScreen() {
+  const navigation = useNavigation<any>();
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
@@ -144,6 +146,20 @@ export default function CompanyProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel="Change language">
             <Text style={styles.actionLabel}>🌐  {t('profile.language')}</Text>
+            <Text style={styles.actionChevron}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Intercity fixed fares ── */}
+        <Text style={styles.sectionLabel}>Intercity Fares</Text>
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={[styles.actionRow, { borderBottomWidth: 0 }]}
+            onPress={() => navigation.navigate('IntercityRoutes')}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Intercity fixed fares">
+            <Text style={styles.actionLabel}>🚙  Manage intercity routes</Text>
             <Text style={styles.actionChevron}>›</Text>
           </TouchableOpacity>
         </View>

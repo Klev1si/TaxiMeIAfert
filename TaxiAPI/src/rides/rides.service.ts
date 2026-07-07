@@ -24,6 +24,7 @@ import { MailerService } from '../mailer/mailer.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
 import { FraudService } from '../fraud/fraud.service.js';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service.js';
+import { IntercityRoutesService } from '../intercity-routes/intercity-routes.service.js';
 import { RouteTrackerService } from './route-tracker.service.js';
 import { NearestDriverDto } from './dto/nearest-driver.dto.js';
 import { RequestRideDto } from './dto/request-ride.dto.js';
@@ -160,6 +161,7 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     private readonly walletService: WalletService,
     private readonly fraudService: FraudService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly intercityService: IntercityRoutesService,
     private readonly routeTracker: RouteTrackerService,
   ) {}
 
@@ -497,6 +499,34 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       isNightTariff = tariff.isNightTariff;
     }
 
+    // ── Intercity flat-fare override ─────────────────────────────────────
+    // If any driver or company has an active fixed intercity route matching
+    // this pickup → dropoff pair, override the calculated fare with the
+    // lowest matching flat fare so the rider sees the actual price they'll
+    // pay. Falls back silently to the tariff-based estimate if no route
+    // matches or the lookup fails.
+    let intercity: {
+      fromCity: string; toCity: string; flatFare: number;
+    } | null = null;
+    try {
+      const match = await this.intercityService.findAnyMatch(
+        { lat: pickupLat, lng: pickupLng },
+        { lat: dropoffLat, lng: dropoffLng },
+      );
+      if (match) {
+        const flat = Number(match.flatFare);
+        intercity = {
+          fromCity: match.fromCity,
+          toCity:   match.toCity,
+          flatFare: flat,
+        };
+        estimatedFare = flat;
+        tariffName    = `Intercity: ${match.fromCity} → ${match.toCity}`;
+      }
+    } catch (err) {
+      this.logger.warn(`Intercity route lookup failed: ${(err as Error).message}`);
+    }
+
     return {
       distanceKm:      Math.round(distanceKm  * 100) / 100,
       durationMinutes: Math.round(durationMinutes * 10) / 10,
@@ -507,6 +537,7 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       isNightTariff,
       surgeMultiplier: tariff ? Math.max(1, Number(tariff.surgeMultiplier ?? 1)) : 1,
       surgeActive:     tariff ? Number(tariff.surgeMultiplier ?? 1) > 1 : false,
+      intercity,
     };
   }
 

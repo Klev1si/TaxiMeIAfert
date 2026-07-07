@@ -77,6 +77,7 @@ export type DriverProfileStackParamList = {
   DriverProfileMain:    undefined;
   DriverSubscription:   undefined;
   DriverTariff:         undefined;
+  IntercityRoutes:      undefined;
   Support:              undefined;
   SupportTicket:        { ticketId: string };
 };
@@ -150,6 +151,13 @@ export type CompanyTabParamList = {
   CompanyTariffs:       undefined;
   CompanySubscription:  undefined;
   CompanyProfile:       undefined;
+};
+
+// Company profile is wrapped in its own stack so we can push sub-screens
+// (e.g. Intercity routes management) without leaving the profile tab.
+export type CompanyProfileStackParamList = {
+  CompanyProfileMain: undefined;
+  IntercityRoutes:    undefined;
 };
 
 export type CompanyTabScreenProps<T extends keyof CompanyTabParamList> =
