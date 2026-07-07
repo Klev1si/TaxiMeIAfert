@@ -614,6 +614,53 @@ export default {
       accountSection:    'Llogaria',
       vehicleSection:    'Automjeti',
       docsSection:       'Dokumentet',
+
+      // Header + row labels
+      phoneLabel:         'Telefoni',
+      roleLabel:          'Roli',
+      roleValue:          'Shofer',
+      statusLabel:        'Statusi',
+      driverRatingLabel:  'vlerësim shoferi',
+
+      // Documents section
+      docsHint:           'Ngarkoni dokumentet e kërkuara për miratimin e llogarisë. Të gjitha dokumentet duhet të jenë aktuale dhe të vlefshme.',
+      docLicense:         'Patenta e shoferit',
+      docRegistration:    'Regjistrimi i automjetit',
+      docInsurance:       'Sigurimi',
+      docStatusPending:   'Në shqyrtim',
+      docStatusApproved:  'Aprovuar',
+      docStatusRejected:  'Refuzuar',
+      docNotUploaded:     'Nuk është ngarkuar',
+      docApprovedLabel:   '{label} — aprovuar',
+      docReuploadLabel:   'Ringarko {label}',
+      docUploadLabel:     'Ngarko {label}',
+      docSubmitted:       'Dokumenti u dërgua për shqyrtim.',
+      uploadFailed:       'Dokumenti nuk mund të ngarkohej.',
+      imagePickerUnavailable: 'Zgjedhësi i imazheve nuk është i disponueshëm.',
+
+      // Edit profile modal
+      editTitle:             'Ndrysho profilin',
+      firstNameLabel:        'Emri',
+      firstNamePlaceholder:  'Shkruani emrin',
+      lastNameLabel:         'Mbiemri',
+      lastNamePlaceholder:   'Shkruani mbiemrin',
+      vehicleColorLabel:     'Ngjyra e automjetit',
+      vehicleColorPlaceholder: 'p.sh. E bardhë',
+      saveFailMsg:           'Profili nuk mund të ruhej.',
+
+      // Change password modal
+      changePwTitle:          'Ndrysho fjalëkalimin',
+      currentPwLabel:         'Fjalëkalimi aktual',
+      currentPwPlaceholder:   'Shkruani fjalëkalimin aktual',
+      newPwLabel:             'Fjalëkalimi i ri',
+      newPwPlaceholder:       'Shkruani fjalëkalimin e ri (min 6 karaktere)',
+      confirmPwLabel:         'Konfirmo fjalëkalimin e ri',
+      confirmPwPlaceholder:   'Rishkruani fjalëkalimin e ri',
+      currentPasswordRequired:'Shkruani fjalëkalimin tuaj aktual.',
+      passwordTooShort:       'Fjalëkalimi i ri duhet të ketë të paktën 6 karaktere.',
+      passwordMismatch:       'Fjalëkalimet nuk përputhen.',
+      passwordChanged:        'Fjalëkalimi u ndryshua me sukses.',
+      passwordChangeFailMsg:  'Fjalëkalimi nuk mund të ndryshohej.',
     },
   },
 
@@ -949,6 +996,10 @@ export default {
       emptyAllMsg:        'Të dhënat e portofolit të shoferëve do të shfaqen këtu pasi të kryhen udhëtimet.',
       emptyPendingTitle:  'Të gjitha të rregulluara',
       emptyPendingMsg:    'Asnjë shofer nuk ka një bilanc të papaguar tani.',
+      totalEarned:        'Të fituara gjithsej',
+      paidOut:            'Të paguara',
+      balanceLabel:       'Bilanci',
+      historyTitle:       'Historia e transaksioneve',
     },
 
     promoCodes: {
