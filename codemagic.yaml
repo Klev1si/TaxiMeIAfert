@@ -38,21 +38,24 @@ workflows:
             --create
 
       - name: Install npm dependencies
-        script: npm install
+        script: |
+          cd TaxiMobile
+          npm install
 
       - name: Install CocoaPods dependencies
         script: |
-          cd ios
+          cd TaxiMobile/ios
           pod install
 
       - name: Build iOS IPA
         script: |
+          cd TaxiMobile
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME"
 
     artifacts:
-      - build/ios/ipa/*.ipa
+      - TaxiMobile/build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
 
@@ -66,7 +69,7 @@ workflows:
         submit_to_app_store: false
       email:
         recipients:
-          - YOUR_EMAIL@example.com   # ← replace with your email
+          - klevisschool2406@gmail.com
         notify:
           success: true
           failure: true
