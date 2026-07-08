@@ -61,8 +61,11 @@ workflows:
 
     publishing:
       app_store_connect:
-        # Uses the API key variables defined above
-        auth: integration
+        # References the three vars defined above directly, so no separate
+        # "named integration" needs to be configured in Codemagic's UI.
+        api_key:   $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id:    $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         # Upload to TestFlight first for testing
         submit_to_testflight: true
         # Set to true only when ready for full App Store review
