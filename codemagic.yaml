@@ -28,7 +28,6 @@ workflows:
         BUNDLE_ID:            com.taximelafert
         XCODE_SCHEME:         TaxiMobile
         XCODE_WORKSPACE:      ios/TaxiMobile.xcworkspace
-        P12_PATH:             /tmp/ios_distribution.p12
         P12_PASSWORD:         codemagic_ci_ephemeral
 
       node: v18.20.4
@@ -40,32 +39,26 @@ workflows:
         # Keychain must exist before anything gets imported into it.
         script: keychain initialize
 
-      - name: Create IOS_DISTRIBUTION certificate
-        # fetch-signing-files has no certificate-type flag of its own and the
-        # cert type it creates internally doesn't reliably match what the
-        # IOS_APP_STORE profile it creates actually requires ("Apple
-        # Distribution" vs "iOS Distribution" — codemagic-ci-cd/cli-tools#158).
-        # Create the correctly-typed cert explicitly, save it as a .p12, and
-        # import it into the keychain ourselves — `certificates create --save`
-        # only writes the file to disk, it does NOT import it into the active
-        # keychain, so xcodebuild's identity search would never find it
-        # otherwise (this was the actual cause of the last two failures).
-        script: |
-          app-store-connect certificates create \
-            --type IOS_DISTRIBUTION \
-            --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
-            --p12-password="$P12_PASSWORD" \
-            --p12-path="$P12_PATH" \
-            --save
-          keychain add-certificates \
-            --certificate="$P12_PATH" \
-            --certificate-password="$P12_PASSWORD"
-
       - name: Set up App Store Connect API key
+        # An IOS_DISTRIBUTION certificate for this account already exists
+        # (created by an earlier run with this same CERTIFICATE_PRIVATE_KEY),
+        # so `certificates create` 409s trying to make a second one. Passing
+        # --certificate-key here instead lets fetch-signing-files find and
+        # pair that EXISTING certificate with our known private key, rather
+        # than attempting to create a new one.
         script: |
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
+            --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
+            --p12-password="$P12_PASSWORD" \
             --create
+          # fetch-signing-files saves the paired cert to the default
+          # certificates dir but does NOT import it into the active build
+          # keychain — xcodebuild's identity search only checks the actual
+          # keychain, so do that explicitly.
+          keychain add-certificates \
+            --certificate="$HOME/Library/Developer/Xcode/UserData/Certificates/*.p12" \
+            --certificate-password="$P12_PASSWORD"
 
       - name: Set up code signing settings on Xcode project
         script: |
