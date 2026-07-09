@@ -63,7 +63,8 @@ workflows:
           cd TaxiMobile
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
-            --scheme "$XCODE_SCHEME"
+            --scheme "$XCODE_SCHEME" \
+            --disable-xcpretty
 
     artifacts:
       - TaxiMobile/build/ios/ipa/*.ipa
