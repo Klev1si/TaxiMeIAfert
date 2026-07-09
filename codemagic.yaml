@@ -30,7 +30,12 @@ workflows:
         XCODE_WORKSPACE:      ios/TaxiMobile.xcworkspace
         P12_PASSWORD:         codemagic_ci_ephemeral
 
-      node: v18.20.4
+      # Metro (via @react-native/metro-config) uses Array.prototype.toReversed(),
+      # an ES2023 method requiring Node 20+ — v18 throws "toReversed is not a
+      # function" during the "Bundle React Native code and images" phase.
+      # Matches the Node version already used successfully by EAS builds (see
+      # TaxiMobile/eas.json build.production.node).
+      node: 22.11.0
       xcode: latest
       cocoapods: default
 
