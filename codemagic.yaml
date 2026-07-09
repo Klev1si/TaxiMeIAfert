@@ -34,11 +34,23 @@ workflows:
       cocoapods: default
 
     scripts:
+      - name: Create IOS_DISTRIBUTION certificate
+        # fetch-signing-files has no certificate-type flag of its own and the
+        # cert type it creates internally doesn't reliably match what the
+        # IOS_APP_STORE profile it creates actually requires ("Apple
+        # Distribution" vs "iOS Distribution" — codemagic-ci-cd/cli-tools#158).
+        # Create the correctly-typed cert explicitly first so the profile
+        # fetch below just finds and reuses it instead of guessing.
+        script: |
+          app-store-connect certificates create \
+            --type IOS_DISTRIBUTION \
+            --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
+            --save
+
       - name: Set up App Store Connect API key
         script: |
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --certificate-type DISTRIBUTION \
             --create
 
       - name: Set up signing certificate
