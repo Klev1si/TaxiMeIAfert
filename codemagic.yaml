@@ -16,15 +16,16 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.taximelafert
 
-      # These three secrets must be added in Codemagic UI → Environment variables.
-      # See setup guide below for how to create them.
+      # The three APP_STORE_CONNECT_* secrets live in this Codemagic variable
+      # group (Codemagic UI → Environment variables → group "app_store_connect"),
+      # imported here so they're available to the scripts below as $VAR.
+      groups:
+        - app_store_connect
+
       vars:
-        APP_STORE_CONNECT_ISSUER_ID:        $APP_STORE_CONNECT_ISSUER_ID
-        APP_STORE_CONNECT_KEY_IDENTIFIER:   $APP_STORE_CONNECT_KEY_IDENTIFIER
-        APP_STORE_CONNECT_PRIVATE_KEY:      $APP_STORE_CONNECT_PRIVATE_KEY
-        BUNDLE_ID:                          com.taximelafert
-        XCODE_SCHEME:                       TaxiMobile
-        XCODE_WORKSPACE:                    ios/TaxiMobile.xcworkspace
+        BUNDLE_ID:            com.taximelafert
+        XCODE_SCHEME:         TaxiMobile
+        XCODE_WORKSPACE:      ios/TaxiMobile.xcworkspace
 
       node: v18.20.4
       xcode: latest
