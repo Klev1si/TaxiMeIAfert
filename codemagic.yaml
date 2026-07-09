@@ -9,12 +9,14 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
-      # Codemagic manages code signing automatically.
-      # Add your Apple Distribution certificate + provisioning profile
-      # in Codemagic UI → Teams → Code signing identities.
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.taximelafert
+      # NOTE: deliberately no `ios_signing` block here. That triggers
+      # Codemagic's *automatic* code-signing pre-flight check, which looks
+      # for a profile via Team settings → Code signing identities — a
+      # separate setup path from the App Store Connect API key vars below.
+      # Since that identity was never configured there, it failed before
+      # any of our scripts even ran ("No matching profiles found ...").
+      # Signing is instead handled manually below via fetch-signing-files +
+      # keychain initialize + xcode-project use-profiles.
 
       # The three APP_STORE_CONNECT_* secrets live in this Codemagic variable
       # group (Codemagic UI → Environment variables → group "app_store_connect"),
@@ -37,6 +39,14 @@ workflows:
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
+
+      - name: Set up signing certificate
+        script: keychain initialize
+
+      - name: Set up code signing settings on Xcode project
+        script: |
+          cd TaxiMobile
+          xcode-project use-profiles
 
       - name: Install npm dependencies
         script: |
