@@ -96,6 +96,12 @@ export default function PayCashScreen({ navigation, route }: Props) {
 
   // ── Load saved cards ─────────────────────────────────────────────────────────
   useEffect(() => {
+    // Card payments paused — skip fetching cards so nothing can auto-select
+    // a card method and the screen stays cash-only.
+    if (!cardPaymentsEnabled) {
+      setLoadingCards(false);
+      return;
+    }
     paymentsApi.getPaymentMethods()
       .then(({ data }) => {
         setSavedCards(data);
@@ -434,7 +440,7 @@ export default function PayCashScreen({ navigation, route }: Props) {
               </TouchableOpacity>
 
               {/* Saved card (only if available) */}
-              {!loadingCards && savedCards.length > 0 && (
+              {cardPaymentsEnabled && !loadingCards && savedCards.length > 0 && (
                 <TouchableOpacity
                   style={[styles.methodBtn, method === 'saved_card' && styles.methodBtnActive]}
                   onPress={() => {
@@ -456,19 +462,23 @@ export default function PayCashScreen({ navigation, route }: Props) {
                 </TouchableOpacity>
               )}
 
-              {/* New card */}
-              <TouchableOpacity
-                style={[styles.methodBtn, method === 'card' && styles.methodBtnActive]}
-                onPress={() => { setMethod('card'); setCardState('idle'); setCardError(null); }}
-                activeOpacity={0.8}
-                accessibilityRole="radio"
-                accessibilityLabel="Pay with new card"
-                accessibilityState={{ checked: method === 'card' }}>
-                <Text style={styles.methodIcon}>➕</Text>
-                <Text style={[styles.methodLabel, method === 'card' && styles.methodLabelActive]}>
-                  {t('client.payCash.newCardOption')}
-                </Text>
-              </TouchableOpacity>
+              {/* New card — hidden entirely while card payments are paused
+                  (a visible-but-disabled option risks App Review flagging an
+                  incomplete feature). */}
+              {cardPaymentsEnabled && (
+                <TouchableOpacity
+                  style={[styles.methodBtn, method === 'card' && styles.methodBtnActive]}
+                  onPress={() => { setMethod('card'); setCardState('idle'); setCardError(null); }}
+                  activeOpacity={0.8}
+                  accessibilityRole="radio"
+                  accessibilityLabel="Pay with new card"
+                  accessibilityState={{ checked: method === 'card' }}>
+                  <Text style={styles.methodIcon}>➕</Text>
+                  <Text style={[styles.methodLabel, method === 'card' && styles.methodLabelActive]}>
+                    {t('client.payCash.newCardOption')}
+                  </Text>
+                </TouchableOpacity>
+              )}
 
             </View>
 
@@ -569,7 +579,10 @@ export default function PayCashScreen({ navigation, route }: Props) {
                       </Text>}
                 </TouchableOpacity>
               )}
-              {(!isStripeConfigured || !cardPaymentsEnabled) && (
+              {/* Only relevant while the card feature is live but Stripe is
+                  misconfigured — when cards are paused the options are hidden
+                  entirely, so no "coming soon" placeholder text should show. */}
+              {cardPaymentsEnabled && !isStripeConfigured && (
                 <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center', marginTop: 6, paddingHorizontal: 16 }}>
                   💡 Card payments are coming soon. Please pay your driver in cash for now.
                 </Text>
