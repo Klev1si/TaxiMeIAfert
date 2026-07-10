@@ -116,7 +116,8 @@ export class NotificationsService {
       this.logger.debug(`FCM sent to ${token.slice(0, 20)}...`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`FCM send failed (token …${token.slice(-8)}): ${msg}`);
+      const code = (err as { code?: string })?.code;
+      this.logger.warn(`FCM send failed (token …${token.slice(-8)}) [${code ?? 'no-code'}]: ${msg}`);
     }
   }
 }
