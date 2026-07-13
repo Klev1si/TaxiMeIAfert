@@ -6,6 +6,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { SafeText } from '../../common/validators/safe-text.decorator.js';
 
 export class RegisterClientDto {
   /** E.164 phone — must be pre-verified via /auth/send-otp + /auth/verify-otp */
@@ -30,10 +31,12 @@ export class RegisterClientDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(80)
+  @SafeText()
   firstName: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(80)
+  @SafeText()
   lastName: string;
 }

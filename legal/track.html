@@ -76,9 +76,18 @@
     let pickupMk = null;
     let dropMk   = null;
 
+    // Escape untrusted server values before inserting into innerHTML.
+    // Driver name/plate and pickup/dropoff addresses are user-supplied free
+    // text, so they must never be treated as markup.
+    function esc(v) {
+      return String(v).replace(/[&<>"']/g, function (c) {
+        return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+      });
+    }
+
     function showError(msg) {
       document.getElementById('main').innerHTML =
-        '<div class="empty"><div class="icon">⚠️</div><div>' + msg + '</div></div>';
+        '<div class="empty"><div class="icon">⚠️</div><div>' + esc(msg) + '</div></div>';
     }
 
     function renderUI(data) {
@@ -88,12 +97,12 @@
       let html = '';
       html += '<div class="card">';
       html += '  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">';
-      html += '    <span class="status">' + statusText + '</span>';
+      html += '    <span class="status">' + esc(statusText) + '</span>';
       html += '  </div>';
-      html += '  <div class="row"><span class="label">Driver</span><span class="value">' + (data.driverFirstName || '—') + '</span></div>';
-      html += '  <div class="row"><span class="label">Car plate</span><span class="value">' + (data.driverPlate || '—') + '</span></div>';
-      html += '  <div class="row"><span class="label">From</span><span class="value">' + (data.pickupAddress || (data.pickupLat.toFixed(4) + ', ' + data.pickupLng.toFixed(4))) + '</span></div>';
-      html += '  <div class="row"><span class="label">To</span><span class="value">' + (data.dropoffAddress || (data.dropoffLat.toFixed(4) + ', ' + data.dropoffLng.toFixed(4))) + '</span></div>';
+      html += '  <div class="row"><span class="label">Driver</span><span class="value">' + esc(data.driverFirstName || '—') + '</span></div>';
+      html += '  <div class="row"><span class="label">Car plate</span><span class="value">' + esc(data.driverPlate || '—') + '</span></div>';
+      html += '  <div class="row"><span class="label">From</span><span class="value">' + esc(data.pickupAddress || (data.pickupLat.toFixed(4) + ', ' + data.pickupLng.toFixed(4))) + '</span></div>';
+      html += '  <div class="row"><span class="label">To</span><span class="value">' + esc(data.dropoffAddress || (data.dropoffLat.toFixed(4) + ', ' + data.dropoffLng.toFixed(4))) + '</span></div>';
       html += '</div>';
       html += '<div id="map"></div>';
       document.getElementById('main').innerHTML = html;
@@ -126,7 +135,7 @@
           driverMk = L.circleMarker(pos, {
             radius: 9, color: '#eab308', fillColor: '#eab308', fillOpacity: 0.9,
           }).addTo(map);
-          driverMk.bindTooltip('🚕 ' + (data.driverFirstName || 'Driver'), { permanent: true, direction: 'top' });
+          driverMk.bindTooltip('🚕 ' + esc(data.driverFirstName || 'Driver'), { permanent: true, direction: 'top' });
         } else {
           driverMk.setLatLng(pos);
         }
