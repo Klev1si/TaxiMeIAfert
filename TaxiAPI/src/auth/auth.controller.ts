@@ -28,9 +28,11 @@ import {
   IsString, IsOptional, MaxLength, MinLength, IsNotEmpty, IsInt, Min, Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { SafeText } from '../common/validators/safe-text.decorator.js';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { AppleSignInDto } from './dto/apple-signin.dto';
 import { AuthTokensDto } from './dto/auth-tokens.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
@@ -67,24 +69,24 @@ function avatarFileFilter(
 // ── DTOs ──────────────────────────────────────────────────────────────────────
 
 class UpdateProfileDto {
-  @IsString() @IsNotEmpty() @MaxLength(80) @IsOptional()
+  @IsString() @IsNotEmpty() @MaxLength(80) @IsOptional() @SafeText()
   firstName?: string;
 
-  @IsString() @IsNotEmpty() @MaxLength(80) @IsOptional()
+  @IsString() @IsNotEmpty() @MaxLength(80) @IsOptional() @SafeText()
   lastName?: string;
 
   /** Drivers only — update vehicle colour without requiring admin re-approval */
-  @IsString() @MaxLength(40) @IsOptional()
+  @IsString() @MaxLength(40) @IsOptional() @SafeText()
   vehicleColor?: string;
 
   /**
    * Drivers only — vehicle make/model/year edits revoke `isApproved`. The
    * driver must wait for admin re-approval before they can accept rides.
    */
-  @IsString() @IsNotEmpty() @MaxLength(60) @IsOptional()
+  @IsString() @IsNotEmpty() @MaxLength(60) @IsOptional() @SafeText()
   vehicleMake?: string;
 
-  @IsString() @IsNotEmpty() @MaxLength(60) @IsOptional()
+  @IsString() @IsNotEmpty() @MaxLength(60) @IsOptional() @SafeText()
   vehicleModel?: string;
 
   @IsInt() @Min(1900) @Max(new Date().getFullYear() + 1) @IsOptional() @Type(() => Number)
@@ -92,13 +94,13 @@ class UpdateProfileDto {
 
   // ── Company-only fields ───────────────────────────────────────────────────
   /** Company name — changing this revokes `isApproved` until admin re-approves. */
-  @IsString() @IsNotEmpty() @MaxLength(150) @IsOptional()
+  @IsString() @IsNotEmpty() @MaxLength(150) @IsOptional() @SafeText()
   companyName?: string;
 
-  @IsString() @MaxLength(300) @IsOptional()
+  @IsString() @MaxLength(300) @IsOptional() @SafeText()
   address?: string;
 
-  @IsString() @MaxLength(100) @IsOptional()
+  @IsString() @MaxLength(100) @IsOptional() @SafeText()
   city?: string;
 
   @IsString() @MaxLength(500) @IsOptional()
@@ -240,12 +242,8 @@ export class AuthController {
   @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.OK)
   @Throttle({ strict: { limit: 10, ttl: 60_000 } })
-  appleSignIn(
-    @Body('identityToken') identityToken: string,
-    @Body('firstName')     firstName?: string,
-    @Body('lastName')      lastName?: string,
-  ): Promise<AuthTokensDto> {
-    return this.authService.appleSignIn(identityToken, firstName, lastName);
+  appleSignIn(@Body() dto: AppleSignInDto): Promise<AuthTokensDto> {
+    return this.authService.appleSignIn(dto.identityToken, dto.firstName, dto.lastName);
   }
 
   // POST /auth/refresh  — requires valid refresh token in Authorization header

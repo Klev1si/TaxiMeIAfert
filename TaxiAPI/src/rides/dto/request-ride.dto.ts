@@ -7,11 +7,13 @@ import {
   IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { VehicleType } from '../../common/enums/index.js';
+import { SafeText } from '../../common/validators/safe-text.decorator.js';
 
 export class RideStopDto {
   @IsNumber()
@@ -28,6 +30,8 @@ export class RideStopDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(300)
+  @SafeText()
   address?: string;
 }
 
@@ -48,6 +52,8 @@ export class RequestRideDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(300)
+  @SafeText()
   pickupAddress?: string;
 
   @IsOptional()
@@ -66,6 +72,8 @@ export class RequestRideDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(300)
+  @SafeText()
   dropoffAddress?: string;
 
   /** Search radius in km (default 5, max 50) */

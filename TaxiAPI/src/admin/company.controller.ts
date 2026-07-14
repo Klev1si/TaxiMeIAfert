@@ -13,6 +13,7 @@ import { IsString, IsNumber, IsBoolean, IsOptional, IsInt, Min, Max,
          MaxLength, MinLength, IsNotEmpty, Matches, IsEnum, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 import * as bcrypt from 'bcrypt';
+import { SafeText } from '../common/validators/safe-text.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -92,28 +93,28 @@ class AddDriverDto {
   @IsString() @MinLength(6) @MaxLength(64)
   password: string;
 
-  @IsString() @IsNotEmpty() @MaxLength(80)
+  @IsString() @IsNotEmpty() @MaxLength(80) @SafeText()
   firstName: string;
 
-  @IsString() @IsNotEmpty() @MaxLength(80)
+  @IsString() @IsNotEmpty() @MaxLength(80) @SafeText()
   lastName: string;
 
-  @IsString() @IsNotEmpty() @MaxLength(50)
+  @IsString() @IsNotEmpty() @MaxLength(50) @SafeText()
   licenseNumber: string;
 
-  @IsString() @IsNotEmpty() @MaxLength(60)
+  @IsString() @IsNotEmpty() @MaxLength(60) @SafeText()
   vehicleMake: string;
 
-  @IsString() @IsNotEmpty() @MaxLength(60)
+  @IsString() @IsNotEmpty() @MaxLength(60) @SafeText()
   vehicleModel: string;
 
   @IsInt() @Min(1990) @Max(2100) @Type(() => Number)
   vehicleYear: number;
 
-  @IsString() @IsNotEmpty() @MaxLength(20)
+  @IsString() @IsNotEmpty() @MaxLength(20) @SafeText()
   vehiclePlate: string;
 
-  @IsString() @IsOptional() @MaxLength(40)
+  @IsString() @IsOptional() @MaxLength(40) @SafeText()
   vehicleColor?: string;
 }
 
