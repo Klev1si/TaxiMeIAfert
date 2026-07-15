@@ -6,6 +6,11 @@ interface Client {
   id: string;
   firstName: string;
   lastName: string;
+  phone: string | null;
+  email: string | null;
+  isPhoneVerified: boolean;
+  isActive: boolean;
+  photoUrl: string | null;
   rating: number;
   totalRides: number;
   createdAt: string;
@@ -57,7 +62,7 @@ export default function PassengersPage() {
           <input
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
-            placeholder="Search by name…"
+            placeholder="Search by name, phone or email…"
             className="px-3 py-2 text-sm border border-gray-300 rounded-lg flex-1 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <button
@@ -91,12 +96,15 @@ export default function PassengersPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[480px]">
+          <table className="w-full text-sm min-w-[840px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Phone</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Email</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Rating</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Total Rides</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Status</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Joined</th>
               </tr>
             </thead>
@@ -105,19 +113,39 @@ export default function PassengersPage() {
                 <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0">
-                        {c.firstName[0]?.toUpperCase()}
-                      </div>
+                      {c.photoUrl ? (
+                        <img src={c.photoUrl} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0">
+                          {c.firstName[0]?.toUpperCase()}
+                        </div>
+                      )}
                       <div>
                         <p className="font-medium text-gray-900">{c.firstName} {c.lastName}</p>
                       </div>
                     </div>
                   </td>
+                  <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                    {c.phone ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        {c.phone}
+                        {c.isPhoneVerified && <span title="Phone verified" className="text-green-600">✓</span>}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-gray-700">{c.email ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-700">
                     {c.rating > 0 ? `⭐ ${c.rating.toFixed(1)}` : '—'}
                   </td>
                   <td className="px-4 py-3 text-gray-700">{c.totalRides}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                      c.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {c.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
                     {new Date(c.createdAt).toLocaleDateString()}
                   </td>
                 </tr>

@@ -186,11 +186,24 @@ export class AdminService {
     let total: number;
 
     if (search) {
-      const results = await this.clientRepo.find({
+      // Also match on the user's phone/email so admins can look up a
+      // passenger by contact details, not just name.
+      const matchedUsers = await this.userRepo.find({
         where: [
-          { firstName: Like(`%${search}%`) },
-          { lastName:  Like(`%${search}%`) },
+          { phone: Like(`%${search}%`), role: UserRole.CLIENT },
+          { email: Like(`%${search}%`), role: UserRole.CLIENT },
         ],
+        select: ['id'],
+      });
+      const where: FindOptionsWhere<Client>[] = [
+        { firstName: Like(`%${search}%`) },
+        { lastName:  Like(`%${search}%`) },
+      ];
+      if (matchedUsers.length > 0) {
+        where.push({ userId: In(matchedUsers.map(u => u.id)) });
+      }
+      const results = await this.clientRepo.find({
+        where,
         order: { createdAt: 'DESC' },
         take: limit,
       });
@@ -204,20 +217,33 @@ export class AdminService {
       });
     }
 
-    const phoneMap = await this.buildPhoneMap(clients.map(c => c.userId));
-    return { clients: clients.map(c => this.mapClient(c, phoneMap.get(c.userId))), total };
+    const userMap = await this.buildClientUserMap(clients.map(c => c.userId));
+    return { clients: clients.map(c => this.mapClient(c, userMap.get(c.userId))), total };
   }
 
-  private mapClient(c: Client, phone?: string) {
+  private async buildClientUserMap(userIds: string[]): Promise<Map<string, User>> {
+    if (userIds.length === 0) return new Map();
+    const users = await this.userRepo.find({
+      where: { id: In(userIds) },
+      select: ['id', 'phone', 'email', 'isPhoneVerified', 'isActive'],
+    });
+    return new Map(users.map(u => [u.id, u] as [string, User]));
+  }
+
+  private mapClient(c: Client, user?: User) {
     return {
-      id:         c.id,
-      userId:     c.userId,
-      phone:      phone ?? null,
-      firstName:  c.firstName,
-      lastName:   c.lastName,
-      rating:     Number(c.rating),
-      totalRides: c.totalRides,
-      createdAt:  c.createdAt,
+      id:              c.id,
+      userId:          c.userId,
+      phone:           user?.phone ?? null,
+      email:           user?.email ?? null,
+      isPhoneVerified: user?.isPhoneVerified ?? false,
+      isActive:        user?.isActive ?? true,
+      firstName:       c.firstName,
+      lastName:        c.lastName,
+      photoUrl:        c.photoUrl,
+      rating:          Number(c.rating),
+      totalRides:      c.totalRides,
+      createdAt:       c.createdAt,
     };
   }
 
