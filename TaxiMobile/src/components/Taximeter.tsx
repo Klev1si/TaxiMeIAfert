@@ -137,6 +137,18 @@ export default function Taximeter({
         <Text style={styles.meta}>📏 {liveDistanceKm.toFixed(2)} km</Text>
         <Text style={styles.meta}>⏱ {mm}:{ss}</Text>
       </View>
+      {/* Driver's tariff rates — visible from acceptance so the passenger
+          knows the pricing before the trip starts. */}
+      <View style={styles.tariffBlock}>
+        <Text style={styles.tariffName} numberOfLines={1}>{tariff.name}</Text>
+        <Text style={styles.tariffRates}>
+          {currency}{tariff.baseFare.toFixed(2)} + {currency}{tariff.perKmRate.toFixed(2)}/km + {currency}{tariff.perMinuteRate.toFixed(2)}/min
+        </Text>
+        <Text style={styles.tariffRates}>
+          min {currency}{tariff.minimumFare.toFixed(2)}
+          {tariff.surgeMultiplier > 1 ? `  •  ×${tariff.surgeMultiplier}` : ''}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -185,6 +197,25 @@ function getStyles(c: ColorPalette) {
       fontSize: 11,
       color: '#d1d5db',
       fontVariant: ['tabular-nums'],
+    },
+    tariffBlock: {
+      marginTop: 6,
+      paddingTop: 5,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: '#374151',
+    },
+    tariffName: {
+      fontSize: 10,
+      color: '#9ca3af',
+      fontWeight: '700',
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    tariffRates: {
+      fontSize: 10,
+      color: '#d1d5db',
+      fontVariant: ['tabular-nums'],
+      marginTop: 1,
     },
   });
 }
