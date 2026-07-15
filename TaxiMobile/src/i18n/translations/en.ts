@@ -899,7 +899,7 @@ export default {
 
     clients: {
       title:             'Clients',
-      searchPlaceholder: 'Search by phone or name…',
+      searchPlaceholder: 'Search by name, phone or email…',
       emptyMsg:          'No clients found.',
       loadError:         'Could not load clients.',
       banBtn:            'Ban',

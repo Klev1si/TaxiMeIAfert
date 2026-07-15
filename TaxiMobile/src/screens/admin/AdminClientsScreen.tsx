@@ -32,18 +32,28 @@ function ClientCard({ client }: { client: AdminClient }) {
 
   return (
     <View style={card.wrap}>
-      {/* Name + rating badge */}
+      {/* Name + status + rating badges */}
       <View style={card.topRow}>
         <Text style={card.name}>{client.firstName} {client.lastName}</Text>
+        <View style={[card.statusBadge, client.isActive ? card.statusActive : card.statusInactive]}>
+          <Text style={[card.statusText, client.isActive ? card.statusTextActive : card.statusTextInactive]}>
+            {client.isActive ? 'Active' : 'Inactive'}
+          </Text>
+        </View>
         <View style={card.ratingBadge}>
           <Text style={card.ratingText}>⭐ {client.rating.toFixed(1)}</Text>
         </View>
       </View>
 
       {client.phone ? (
-        <Text style={card.meta}>📞 {client.phone}</Text>
+        <Text style={card.meta}>📞 {client.phone}{client.isPhoneVerified ? '  ✅' : ''}</Text>
       ) : (
         <Text style={[card.meta, card.metaDim]}>📞 No phone on file</Text>
+      )}
+      {client.email ? (
+        <Text style={card.meta}>✉️ {client.email}</Text>
+      ) : (
+        <Text style={[card.meta, card.metaDim]}>✉️ No email on file</Text>
       )}
       <Text style={card.meta}>🚖 {client.totalRides} ride{client.totalRides !== 1 ? 's' : ''}</Text>
       <Text style={card.meta}>📅 Joined {formatDate(client.createdAt)}</Text>
@@ -68,6 +78,15 @@ function getCardStyles(c: ColorPalette) {
       paddingHorizontal: 8, paddingVertical: 3,
     },
     ratingText: { fontSize: 12, fontWeight: '700', color: c.primary },
+
+    statusBadge: {
+      borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginRight: 6,
+    },
+    statusActive:       { backgroundColor: '#22c55e18' },
+    statusInactive:     { backgroundColor: '#ef444418' },
+    statusText:         { fontSize: 12, fontWeight: '700' },
+    statusTextActive:   { color: '#16a34a' },
+    statusTextInactive: { color: '#dc2626' },
 
     meta:    { fontSize: 13, color: c.textSecondary, marginBottom: 2 },
     metaDim: { opacity: 0.5 },

@@ -891,7 +891,7 @@ export default {
 
     clients: {
       title:             'Klientët',
-      searchPlaceholder: 'Kërkoni sipas telefonit ose emrit…',
+      searchPlaceholder: 'Kërkoni sipas emrit, telefonit ose email-it…',
       emptyMsg:          'Asnjë klient nuk u gjet.',
       loadError:         'Nuk mund të ngarkohen klientët.',
       banBtn:            'Blloko',

@@ -61,8 +61,12 @@ export interface AdminClient {
   id: string;
   userId: string;
   phone: string | null;
+  email: string | null;
+  isPhoneVerified: boolean;
+  isActive: boolean;
   firstName: string;
   lastName: string;
+  photoUrl: string | null;
   rating: number;
   totalRides: number;
   createdAt: string;

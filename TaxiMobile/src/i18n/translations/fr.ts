@@ -806,7 +806,7 @@ export default {
 
     clients: {
       title:             'Clients',
-      searchPlaceholder: 'Rechercher par téléphone ou nom…',
+      searchPlaceholder: 'Rechercher par nom, téléphone ou e-mail…',
       emptyMsg:          'Aucun client trouvé.',
       loadError:         'Impossible de charger les clients.',
       banBtn:            'Bannir',
