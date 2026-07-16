@@ -27,6 +27,7 @@ import HealthPage from './pages/HealthPage';
 import FraudPage from './pages/FraudPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import PublicSupportPage from './pages/PublicSupportPage';
+import GetAppPage from './pages/GetAppPage';
 
 export default function App() {
   const { initialize, isInitialized, user } = useAuthStore();
@@ -47,6 +48,9 @@ export default function App() {
         {/* Public — legal pages linked from App Store / Play Store listings */}
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/support" element={<PublicSupportPage />} />
+
+        {/* Public — smart download link the printed QR code points at */}
+        <Route path="/get" element={<GetAppPage />} />
 
         {/* Public */}
         <Route
