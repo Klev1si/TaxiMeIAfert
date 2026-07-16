@@ -137,11 +137,17 @@ export function onForegroundMessage(handler: (msg: any) => void): () => void {
  * Returns an unsubscribe function — call it on logout / unmount.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractTapPayload(remoteMessage: any): { event: string; rideId?: string } | null {
+function extractTapPayload(
+  remoteMessage: any,
+): { event: string; rideId?: string; role?: string } | null {
   const data = remoteMessage?.data ?? remoteMessage?.notification?.data ?? {};
   const event = data?.event as string | undefined;
   if (!event) return null;
-  return { event, rideId: data?.rideId as string | undefined };
+  return {
+    event,
+    rideId: data?.rideId as string | undefined,
+    role: data?.role as string | undefined,
+  };
 }
 
 export async function setupFcm(): Promise<() => void> {
@@ -174,7 +180,7 @@ export async function setupFcm(): Promise<() => void> {
           title,
           body,
           onPress: tap
-            ? () => notificationNavigate(tap.event, tap.rideId)
+            ? () => notificationNavigate(tap.event, tap.rideId, tap.role)
             : undefined,
           durationMs: 5000,
         });
@@ -187,7 +193,7 @@ export async function setupFcm(): Promise<() => void> {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (remoteMessage: any) => {
         const tap = extractTapPayload(remoteMessage);
-        if (tap) notificationNavigate(tap.event, tap.rideId);
+        if (tap) notificationNavigate(tap.event, tap.rideId, tap.role);
       },
     );
     unsubscribers.push(unsubBackground);
@@ -198,7 +204,7 @@ export async function setupFcm(): Promise<() => void> {
       const tap = extractTapPayload(initial);
       // Delay slightly so the navigator is mounted and isReady() returns true
       if (tap) {
-        setTimeout(() => notificationNavigate(tap.event, tap.rideId), 500);
+        setTimeout(() => notificationNavigate(tap.event, tap.rideId, tap.role), 500);
       }
     }
 

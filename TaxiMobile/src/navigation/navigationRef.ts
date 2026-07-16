@@ -14,10 +14,23 @@ export const navigationRef = createNavigationContainerRef();
  *   Client ride message        → ClientApp > ClientHome  > ActiveRide
  *   Client scheduled reminder  → ClientApp > ClientRideHistory > RideHistoryMain
  */
-export function notificationNavigate(event: string, rideId?: string) {
+export function notificationNavigate(event: string, rideId?: string, role?: string) {
   if (!navigationRef.isReady()) return;
 
   switch (event) {
+    // ── Admin events ─────────────────────────────────────────────────────────
+    case 'admin_user_registered':
+      // New user signed up — open the admin tab that lists their role
+      navigationRef.dispatch(
+        CommonActions.navigate('AdminApp', {
+          screen:
+            role === 'driver'  ? 'AdminDrivers'   :
+            role === 'company' ? 'AdminCompanies' :
+                                 'AdminClients',
+        }),
+      );
+      break;
+
     // ── Driver events ────────────────────────────────────────────────────────
     case 'ride_request':
       navigationRef.dispatch(

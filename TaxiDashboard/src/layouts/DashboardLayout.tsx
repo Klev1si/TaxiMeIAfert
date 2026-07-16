@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import NotificationsBell from '../components/NotificationsBell';
 
 interface NavItem {
   to: string;
@@ -152,6 +153,9 @@ export default function DashboardLayout() {
           <h1 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
             {isAdmin ? 'Admin Dashboard' : 'Company Dashboard'}
           </h1>
+
+          {/* Notification bell — super-admin only (endpoint is admin-guarded) */}
+          {isAdmin && <NotificationsBell />}
         </header>
 
         {/* Page content */}

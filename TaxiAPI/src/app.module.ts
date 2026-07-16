@@ -58,6 +58,7 @@ import {
   CompanySettlement,
   CompanyMessage,
   PlatformCredit,
+  AdminNotification,
 } from './entities';
 
 @Module({
@@ -154,6 +155,7 @@ import {
           CompanySettlement,
           CompanyMessage,
           PlatformCredit,
+          AdminNotification,
         ],
         // Joi.boolean() has already coerced the env string to a real boolean
         synchronize: config.get<boolean>('DB_SYNCHRONIZE', false),

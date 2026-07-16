@@ -24,3 +24,4 @@ export * from './company-message.entity';
 export * from './platform-credit.entity';
 export * from './subscription-notification.entity';
 export * from './intercity-route.entity';
+export * from './admin-notification.entity';

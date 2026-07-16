@@ -11,6 +11,7 @@ import { UserRole } from '../common/enums/index.js';
 import { AuthService } from '../auth/auth.service.js';
 import { AuthTokensDto } from '../auth/dto/auth-tokens.dto.js';
 import { PhoneVerificationService } from '../phone-verification/phone-verification.service.js';
+import { AdminNotificationsService } from '../notifications/admin-notifications.service.js';
 import { RegisterClientDto } from './dto/register-client.dto.js';
 import { RegisterDriverDto } from './dto/register-driver.dto.js';
 import { RegisterCompanyDto } from './dto/register-company.dto.js';
@@ -34,6 +35,7 @@ export class RegistrationService {
     private readonly companyRepo: Repository<Company>,
     private readonly phoneVerification: PhoneVerificationService,
     private readonly authService: AuthService,
+    private readonly adminNotifications: AdminNotificationsService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -69,6 +71,15 @@ export class RegistrationService {
     await this.phoneVerification.clearVerifiedFlag(dto.phone);
     this.logger.log(`Client registered: ${user.phone} (id: ${user.id})`);
 
+    void this.adminNotifications.notifyUserRegistered({
+      userId: user.id,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      phone: user.phone,
+      email: user.email,
+      role: UserRole.CLIENT,
+    });
+
     return this.authService.issueTokens(user);
   }
 
@@ -80,7 +91,7 @@ export class RegistrationService {
 
     const passwordHash = await this.authService.hashPassword(dto.password);
 
-    await this.dataSource.transaction(async (em) => {
+    const newUser = await this.dataSource.transaction(async (em) => {
       const user = em.create(User, {
         phone: dto.phone,
         email,
@@ -113,6 +124,15 @@ export class RegistrationService {
     await this.phoneVerification.clearVerifiedFlag(dto.phone);
     this.logger.log(`Driver registered (pending approval): ${dto.phone}`);
 
+    void this.adminNotifications.notifyUserRegistered({
+      userId: newUser.id,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      phone: newUser.phone,
+      email: newUser.email,
+      role: UserRole.DRIVER,
+    });
+
     return { message: PENDING_MESSAGE };
   }
 
@@ -126,7 +146,7 @@ export class RegistrationService {
 
     const passwordHash = await this.authService.hashPassword(dto.password);
 
-    await this.dataSource.transaction(async (em) => {
+    const newUser = await this.dataSource.transaction(async (em) => {
       const user = em.create(User, {
         phone: dto.phone,
         email,
@@ -151,6 +171,17 @@ export class RegistrationService {
 
     await this.phoneVerification.clearVerifiedFlag(dto.phone);
     this.logger.log(`Company registered (pending approval): ${dto.phone}`);
+
+    // Companies register with a company name rather than first/last name —
+    // reuse the name fields so the notification reads naturally.
+    void this.adminNotifications.notifyUserRegistered({
+      userId: newUser.id,
+      firstName: dto.companyName,
+      lastName: '',
+      phone: newUser.phone,
+      email: newUser.email,
+      role: UserRole.COMPANY,
+    });
 
     return { message: PENDING_MESSAGE };
   }

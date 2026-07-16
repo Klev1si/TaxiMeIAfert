@@ -20,6 +20,7 @@ const appleSignin = require('apple-signin-auth') as {
 };
 import { Client, User } from '../entities';
 import { UserRole } from '../common/enums';
+import { AdminNotificationsService } from '../notifications/admin-notifications.service';
 import { LoginDto } from './dto/login.dto';
 import { AuthTokensDto } from './dto/auth-tokens.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
@@ -37,6 +38,7 @@ export class AuthService {
     private readonly clientRepo: Repository<Client>,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly adminNotifications: AdminNotificationsService,
   ) {
     // OAuth2Client without a constructor arg is used purely for verifying ID
     // tokens (no client_secret needed). We accept tokens issued for ANY of
@@ -160,6 +162,15 @@ export class AuthService {
       await this.clientRepo.save(client);
 
       this.logger.log(`Google signup: created client ${user.id} (${email})`);
+
+      void this.adminNotifications.notifyUserRegistered({
+        userId: user.id,
+        firstName,
+        lastName,
+        phone: null,
+        email,
+        role: UserRole.CLIENT,
+      });
     } else {
       this.logger.log(`Google login: existing user ${user.id} (${user.email ?? user.phone})`);
     }
@@ -250,6 +261,15 @@ export class AuthService {
       await this.clientRepo.save(client);
 
       this.logger.log(`Apple signup: created client ${user.id} (${email ?? 'email-private'})`);
+
+      void this.adminNotifications.notifyUserRegistered({
+        userId: user.id,
+        firstName: safeFirst,
+        lastName: safeLast,
+        phone: null,
+        email,
+        role: UserRole.CLIENT,
+      });
     } else {
       this.logger.log(`Apple login: existing user ${user.id} (${user.email ?? user.phone ?? 'apple-only'})`);
     }
