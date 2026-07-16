@@ -59,6 +59,8 @@ import {
   CompanyMessage,
   PlatformCredit,
   AdminNotification,
+  IntercityRoute,
+  SubscriptionNotification,
 } from './entities';
 
 @Module({
@@ -156,7 +158,13 @@ import {
           CompanyMessage,
           PlatformCredit,
           AdminNotification,
+          IntercityRoute,
+          SubscriptionNotification,
         ],
+        // Safety net: also register every entity passed to forFeature() by a
+        // feature module, so a class missing from the list above can't cause
+        // EntityMetadataNotFoundError at runtime.
+        autoLoadEntities: true,
         // Joi.boolean() has already coerced the env string to a real boolean
         synchronize: config.get<boolean>('DB_SYNCHRONIZE', false),
         logging:     config.get<boolean>('DB_LOGGING', false),

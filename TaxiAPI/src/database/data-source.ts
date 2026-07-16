@@ -1,28 +1,7 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
-import {
-  User,
-  Company,
-  Driver,
-  Client,
-  SubscriptionPlan,
-  CompanySubscription,
-  DriverSubscription,
-  Tariff,
-  Ride,
-  RideStop,
-  RideWaypoint,
-  Expense,
-  PromoCode,
-  SavedLocation,
-  DriverDocument,
-  AuditLog,
-  DriverLedger,
-  SupportTicket,
-  SupportMessage,
-  FraudEvent,
-} from '../entities';
+import * as Entities from '../entities';
 
 dotenv.config();
 
@@ -35,28 +14,13 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME ?? 'taxiapp_db',
   synchronize: false,
   logging: process.env.DB_LOGGING === 'true',
-  entities: [
-    User,
-    Company,
-    Driver,
-    Client,
-    SubscriptionPlan,
-    CompanySubscription,
-    DriverSubscription,
-    Tariff,
-    Ride,
-    RideStop,
-    RideWaypoint,
-    Expense,
-    PromoCode,
-    SavedLocation,
-    DriverDocument,
-    AuditLog,
-    DriverLedger,
-    SupportTicket,
-    SupportMessage,
-    FraudEvent,
-  ],
+  // Every class exported from src/entities (the filter drops the enums the
+  // barrel also exports) — a hand-maintained list here had drifted behind
+  // index.ts, which makes migration:generate emit DROPs for tables it
+  // can't see.
+  entities: Object.values(Entities).filter(
+    (e) => typeof e === 'function',
+  ) as Function[],
   migrations: [__dirname + '/migrations/*.ts'],
   migrationsTableName: 'migrations',
 });
