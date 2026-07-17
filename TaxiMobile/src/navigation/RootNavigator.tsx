@@ -10,7 +10,7 @@ import AdminNavigator from './AdminNavigator';
 import AppLoadingScreen from '../components/AppLoadingScreen';
 import AddEmailScreen from '../screens/auth/AddEmailScreen';
 import { authApi } from '../api/auth';
-import { setupFcm, clearFcmToken } from '../services/fcm';
+import { setupFcm } from '../services/fcm';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -41,20 +41,22 @@ export default function RootNavigator() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  // Set up FCM when the user logs in; tear it down on logout
+  // Set up FCM when the user logs in; tear it down on logout.
+  // Do NOT clear the server-side FCM token here: this effect also fires with
+  // user=null during cold start (before the session rehydrates), and the
+  // stored keychain token still authenticates that PATCH — it raced the
+  // setupFcm registration and randomly wiped the token. The server now clears
+  // fcmToken itself in POST /auth/logout.
   useEffect(() => {
     if (user) {
       // User just authenticated — register token and attach listeners
       setupFcm().then((cleanup) => {
         fcmCleanupRef.current = cleanup;
       });
-    } else {
-      // User logged out — remove listeners and clear the token from the server
-      if (fcmCleanupRef.current) {
-        fcmCleanupRef.current();
-        fcmCleanupRef.current = null;
-      }
-      clearFcmToken();
+    } else if (fcmCleanupRef.current) {
+      // User logged out — remove the local listeners
+      fcmCleanupRef.current();
+      fcmCleanupRef.current = null;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);     // only re-run when the logged-in user actually changes

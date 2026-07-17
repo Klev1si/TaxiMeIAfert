@@ -108,10 +108,6 @@ export async function registerFcmToken(): Promise<void> {
   }
 }
 
-export async function clearFcmToken(): Promise<void> {
-  await sendTokenToServer(null);
-}
-
 // ── Foreground handler ────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function onForegroundMessage(handler: (msg: any) => void): () => void {

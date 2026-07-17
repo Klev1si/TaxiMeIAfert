@@ -284,8 +284,11 @@ export class AuthService {
   }
 
   // ── Logout ─────────────────────────────────────────────────────────────────
+  // fcmToken is cleared here (server-side) because the app can't reliably do
+  // it: by the time its user state is null, the auth tokens are already gone,
+  // so a client-side clear PATCH would 401.
   async logout(userId: string): Promise<void> {
-    await this.userRepo.update(userId, { refreshToken: null });
+    await this.userRepo.update(userId, { refreshToken: null, fcmToken: null });
   }
 
   // ── Validate password (used during registration) ───────────────────────────

@@ -139,7 +139,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    // FCM token is cleared by RootNavigator when user becomes null
+    // FCM token is cleared server-side by POST /auth/logout
     try {
       await authApi.logout();
     } catch {
