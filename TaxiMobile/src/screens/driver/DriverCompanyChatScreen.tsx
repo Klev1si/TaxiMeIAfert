@@ -16,6 +16,7 @@ import { driverMessagesApi, type CompanyMessage } from '../../api/company-messag
 import { useColors } from '../../stores/themeStore';
 import type { ColorPalette } from '../../constants/colors';
 import { socketService } from '../../services/socket';
+import { useTranslation } from '../../i18n';
 
 interface Props {
   visible: boolean;
@@ -31,6 +32,7 @@ export default function DriverCompanyChatScreen({ visible, onClose }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => getStyles(colors), [colors]);
+  const { t } = useTranslation();
 
   const [messages,    setMessages]    = useState<CompanyMessage[]>([]);
   const [companyName, setCompanyName] = useState<string | null>(null);
@@ -88,11 +90,11 @@ export default function DriverCompanyChatScreen({ visible, onClose }: Props) {
       setDraft(text);
       const status   = err?.response?.status;
       const apiMsg   = err?.response?.data?.message;
-      const fallback = err?.message ?? 'Could not send';
+      const fallback = err?.message ?? t('driver.companyChat.sendFailTitle');
       let msg = apiMsg ?? fallback;
       if (Array.isArray(msg)) msg = msg.join('\n');
       Alert.alert(
-        'Could not send',
+        t('driver.companyChat.sendFailTitle'),
         status ? `${msg}\n\n(HTTP ${status})` : String(msg),
       );
     } finally {
@@ -124,11 +126,11 @@ export default function DriverCompanyChatScreen({ visible, onClose }: Props) {
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <View style={[styles.header, { paddingTop: insets.top > 0 ? 0 : 8 }]}>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.headerBtn}>‹ Back</Text>
+            <Text style={styles.headerBtn}>‹ {t('common.back')}</Text>
           </TouchableOpacity>
           <View style={{ alignItems: 'center' }}>
-            <Text style={styles.headerTitle}>{companyName ?? 'Company'}</Text>
-            <Text style={styles.headerSub}>Direct chat</Text>
+            <Text style={styles.headerTitle}>{companyName ?? t('driver.companyChat.companyFallback')}</Text>
+            <Text style={styles.headerSub}>{t('driver.companyChat.subtitle')}</Text>
           </View>
           <View style={{ width: 60 }} />
         </View>
@@ -140,9 +142,9 @@ export default function DriverCompanyChatScreen({ visible, onClose }: Props) {
         ) : !hasCompany ? (
           <View style={styles.centered}>
             <Text style={styles.emptyIcon}>🚖</Text>
-            <Text style={styles.emptyTitle}>Not in a company</Text>
+            <Text style={styles.emptyTitle}>{t('driver.companyChat.noCompanyTitle')}</Text>
             <Text style={styles.emptySub}>
-              You're a solo driver, so there's no company to message.
+              {t('driver.companyChat.noCompanyMsg')}
             </Text>
           </View>
         ) : (
@@ -159,9 +161,9 @@ export default function DriverCompanyChatScreen({ visible, onClose }: Props) {
               ListEmptyComponent={
                 <View style={styles.emptyChat}>
                   <Text style={styles.emptyChatIcon}>💬</Text>
-                  <Text style={styles.emptyChatTitle}>No messages yet</Text>
+                  <Text style={styles.emptyChatTitle}>{t('driver.companyChat.emptyTitle')}</Text>
                   <Text style={styles.emptyChatSub}>
-                    Start a conversation with {companyName ?? 'your company'}.
+                    {t('driver.companyChat.emptySub', { name: companyName ?? t('driver.companyChat.companyFallback') })}
                   </Text>
                 </View>
               }
@@ -171,7 +173,7 @@ export default function DriverCompanyChatScreen({ visible, onClose }: Props) {
                 style={styles.input}
                 value={draft}
                 onChangeText={setDraft}
-                placeholder="Type a message…"
+                placeholder={t('driver.companyChat.typePlaceholder')}
                 placeholderTextColor={colors.textDisabled}
                 multiline
                 maxLength={2000}
@@ -182,7 +184,7 @@ export default function DriverCompanyChatScreen({ visible, onClose }: Props) {
                 disabled={!draft.trim() || sending}>
                 {sending
                   ? <ActivityIndicator color={colors.textOnPrimary} />
-                  : <Text style={styles.sendBtnText}>Send</Text>}
+                  : <Text style={styles.sendBtnText}>{t('common.send')}</Text>}
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>

@@ -20,18 +20,20 @@ import { adminDocumentsApi, type DriverDocument, type DocumentType, type Documen
 import { toAlertString } from '../../utils/errorMessage';
 import Config from '../../config';
 import type { AdminDriverStackScreenProps } from '../../navigation/types';
-import { useTranslation } from '../../i18n';
+import { t as tr, useTranslation } from '../../i18n';
 
 type Props = AdminDriverStackScreenProps<'AdminDriverDocuments'>;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const DOC_TYPE_LABELS: Record<DocumentType, string> = {
-  license:              "Driver's License",
-  vehicle_registration: 'Vehicle Registration',
-  insurance:            'Insurance Certificate',
-  other:                'Other Document',
-};
+function docTypeLabel(type: DocumentType): string {
+  switch (type) {
+    case 'license':              return tr('admin.driverDocuments.docLicense');
+    case 'vehicle_registration': return tr('admin.driverDocuments.docRegistration');
+    case 'insurance':            return tr('admin.driverDocuments.docInsurance');
+    default:                     return tr('admin.driverDocuments.docOther');
+  }
+}
 
 function statusColor(status: DocumentStatus, colors: ColorPalette): string {
   switch (status) {
@@ -43,9 +45,9 @@ function statusColor(status: DocumentStatus, colors: ColorPalette): string {
 
 function statusLabel(status: DocumentStatus): string {
   switch (status) {
-    case 'approved': return '✓ Approved';
-    case 'rejected': return '✕ Rejected';
-    default:         return '○ Pending';
+    case 'approved': return `✓ ${tr('admin.driverDocuments.approvedLabel')}`;
+    case 'rejected': return `✕ ${tr('admin.driverDocuments.rejectedLabel')}`;
+    default:         return `○ ${tr('admin.driverDocuments.pendingLabel')}`;
   }
 }
 
@@ -89,11 +91,7 @@ function RejectModal({
         <View style={modal.box}>
           <Text style={modal.title}>{t('admin.driverDocuments.rejectTitle')}</Text>
           <Text style={modal.sub}>
-            Rejecting{' '}
-            <Text style={{ fontWeight: '700' }}>
-              {docType ? DOC_TYPE_LABELS[docType] : 'document'}
-            </Text>
-            . Optionally provide a reason for the driver.
+            {t('admin.driverDocuments.rejectingMsg', { type: docType ? docTypeLabel(docType) : t('admin.driverDocuments.docOther') })}
           </Text>
           <TextInput
             style={modal.input}
@@ -117,7 +115,7 @@ function RejectModal({
               style={modal.btnReject}
               onPress={() => { onConfirm(reason); setReason(''); }}
               accessibilityRole="button"
-              accessibilityLabel={`Reject ${docType ? DOC_TYPE_LABELS[docType] : 'document'}`}>
+              accessibilityLabel={`Reject ${docType ? docTypeLabel(docType) : 'document'}`}>
               <Text style={modal.btnRejectText}>{t('admin.driverDocuments.rejectBtn')}</Text>
             </TouchableOpacity>
           </View>
@@ -171,7 +169,7 @@ function ImageLightbox({
           style={lb.image}
           resizeMode="contain"
         />
-        <Text style={lb.hint}>Tap anywhere to close</Text>
+        <Text style={lb.hint}>{tr('admin.driverDocuments.tapToClose')}</Text>
       </TouchableOpacity>
     </Modal>
   );
@@ -219,14 +217,14 @@ function DocumentCard({
       </View>
 
       {/* Type label */}
-      <Text style={card.type}>{DOC_TYPE_LABELS[doc.type]}</Text>
-      <Text style={card.meta}>📎 {doc.originalName ?? 'Uploaded file'}</Text>
-      <Text style={card.meta}>📅 Uploaded {formatDate(doc.uploadedAt)}</Text>
+      <Text style={card.type}>{docTypeLabel(doc.type)}</Text>
+      <Text style={card.meta}>📎 {doc.originalName ?? t('admin.driverDocuments.uploadedFile')}</Text>
+      <Text style={card.meta}>📅 {t('admin.driverDocuments.uploadedOn', { date: formatDate(doc.uploadedAt) })}</Text>
       {doc.reviewedAt && (
-        <Text style={card.meta}>🔍 Reviewed {formatDate(doc.reviewedAt)}</Text>
+        <Text style={card.meta}>🔍 {t('admin.driverDocuments.reviewedOn', { date: formatDate(doc.reviewedAt) })}</Text>
       )}
       {doc.status === 'rejected' && doc.rejectionReason && (
-        <Text style={card.reason}>Reason: {doc.rejectionReason}</Text>
+        <Text style={card.reason}>{t('admin.driverDocuments.reasonPrefix', { reason: doc.rejectionReason })}</Text>
       )}
 
       {/* Thumbnail (image only) */}
@@ -236,18 +234,18 @@ function DocumentCard({
           onPress={() => onPreview(absUrl)}
           activeOpacity={0.85}
           accessibilityRole="button"
-          accessibilityLabel={`Preview ${DOC_TYPE_LABELS[doc.type]} image`}>
+          accessibilityLabel={`Preview ${docTypeLabel(doc.type)} image`}>
           <Image
             source={{ uri: absUrl }}
             style={card.thumb}
             resizeMode="cover"
           />
-          <Text style={card.thumbHint}>Tap to enlarge</Text>
+          <Text style={card.thumbHint}>{t('admin.driverDocuments.tapToEnlarge')}</Text>
         </TouchableOpacity>
       )}
       {isPdf_ && (
         <View style={card.pdfBadge}>
-          <Text style={card.pdfText}>📄 PDF document</Text>
+          <Text style={card.pdfText}>📄 {t('admin.driverDocuments.pdfDocument')}</Text>
         </View>
       )}
 
@@ -262,14 +260,14 @@ function DocumentCard({
                 style={card.approveBtn}
                 onPress={() => onApprove(doc)}
                 accessibilityRole="button"
-                accessibilityLabel={`Approve ${DOC_TYPE_LABELS[doc.type]}`}>
+                accessibilityLabel={`Approve ${docTypeLabel(doc.type)}`}>
                 <Text style={card.approveBtnText}>{t('admin.driverDocuments.approveBtn')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={card.rejectBtn}
                 onPress={() => onReject(doc)}
                 accessibilityRole="button"
-                accessibilityLabel={`Reject ${DOC_TYPE_LABELS[doc.type]}`}>
+                accessibilityLabel={`Reject ${docTypeLabel(doc.type)}`}>
                 <Text style={card.rejectBtnText}>{t('admin.driverDocuments.rejectBtn')}</Text>
               </TouchableOpacity>
             </>
@@ -355,7 +353,7 @@ export default function AdminDriverDocumentsScreen({ route, navigation }: Props)
   const handleApprove = async (doc: DriverDocument) => {
     Alert.alert(
       t('admin.driverDocuments.approveTitle'),
-      t('admin.driverDocuments.approveMsg', { type: DOC_TYPE_LABELS[doc.type] }),
+      t('admin.driverDocuments.approveMsg', { type: docTypeLabel(doc.type) }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {

@@ -103,15 +103,15 @@ export default function IntercityRoutesScreen() {
       bidirectional: modal.bidirectional,
     };
     if (!dto.fromCity || !dto.toCity) {
-      Alert.alert(t('common.error'), 'Enter both city names.');
+      Alert.alert(t('common.error'), t('shared.intercity.citiesRequired'));
       return;
     }
     if (!dto.flatFare || dto.flatFare <= 0) {
-      Alert.alert(t('common.error'), 'Flat fare must be positive.');
+      Alert.alert(t('common.error'), t('shared.intercity.fareInvalid'));
       return;
     }
     if (![dto.fromLat, dto.fromLng, dto.toLat, dto.toLng].every(Number.isFinite)) {
-      Alert.alert(t('common.error'), 'City coordinates must be valid numbers.');
+      Alert.alert(t('common.error'), t('shared.intercity.coordsInvalid'));
       return;
     }
     setSaving(true);
@@ -121,7 +121,7 @@ export default function IntercityRoutesScreen() {
       setModal(null);
       await load();
     } catch (err: any) {
-      Alert.alert(t('common.error'), err?.response?.data?.message ?? 'Save failed.');
+      Alert.alert(t('common.error'), err?.response?.data?.message ?? t('shared.intercity.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -129,7 +129,7 @@ export default function IntercityRoutesScreen() {
 
   const handleDelete = (r: IntercityRoute) => {
     Alert.alert(
-      'Delete route?',
+      t('shared.intercity.deleteTitle'),
       `${r.fromCity} → ${r.toCity} · $${Number(r.flatFare).toFixed(2)}`,
       [
         { text: t('common.cancel'), style: 'cancel' },
@@ -137,7 +137,7 @@ export default function IntercityRoutesScreen() {
           text: t('common.delete'), style: 'destructive',
           onPress: async () => {
             try { await intercityRoutesApi.remove(r.id); load(); }
-            catch { Alert.alert(t('common.error'), 'Delete failed.'); }
+            catch { Alert.alert(t('common.error'), t('shared.intercity.deleteFailed')); }
           },
         },
       ],
@@ -150,16 +150,14 @@ export default function IntercityRoutesScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.back}>‹ {t('common.back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Intercity Fares</Text>
+        <Text style={styles.title}>{t('shared.intercity.title')}</Text>
         <TouchableOpacity onPress={openCreate}>
-          <Text style={styles.addBtn}>+ Add</Text>
+          <Text style={styles.addBtn}>+ {t('common.add')}</Text>
         </TouchableOpacity>
       </View>
 
       <Text style={styles.hint}>
-        Fixed prices for popular routes (e.g. Prizren → Prishtina). When a
-        rider's pickup and dropoff both fall inside the city radii, this
-        flat fare replaces the normal per-km calculation.
+        {t('shared.intercity.hint')}
       </Text>
 
       {loading ? (
@@ -167,8 +165,8 @@ export default function IntercityRoutesScreen() {
       ) : routes.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>🚙</Text>
-          <Text style={styles.emptyText}>No intercity routes yet.</Text>
-          <Text style={styles.emptySub}>Tap "+ Add" to create your first fixed-fare route.</Text>
+          <Text style={styles.emptyText}>{t('shared.intercity.emptyTitle')}</Text>
+          <Text style={styles.emptySub}>{t('shared.intercity.emptyHint')}</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
@@ -178,18 +176,18 @@ export default function IntercityRoutesScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.route}>{r.fromCity} → {r.toCity}</Text>
                   <Text style={styles.meta}>
-                    {r.bidirectional ? '↔ both directions' : '→ one-way'} ·
-                    {' '}from {r.fromRadiusKm}km · to {r.toRadiusKm}km
+                    {r.bidirectional ? `↔ ${t('shared.intercity.bothDirectionsShort')}` : `→ ${t('shared.intercity.oneWayShort')}`} ·
+                    {' '}{t('shared.intercity.fromKm', { km: r.fromRadiusKm })} · {t('shared.intercity.toKm', { km: r.toRadiusKm })}
                   </Text>
                 </View>
                 <Text style={styles.fare}>${Number(r.flatFare).toFixed(2)}</Text>
               </View>
               <View style={styles.cardActions}>
                 <TouchableOpacity onPress={() => openEdit(r)}>
-                  <Text style={styles.editBtn}>Edit</Text>
+                  <Text style={styles.editBtn}>{t('common.edit')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleDelete(r)}>
-                  <Text style={styles.deleteBtn}>Delete</Text>
+                  <Text style={styles.deleteBtn}>{t('common.delete')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -208,51 +206,51 @@ export default function IntercityRoutesScreen() {
                 <TouchableOpacity onPress={() => setModal(null)}>
                   <Text style={styles.back}>‹ {t('common.cancel')}</Text>
                 </TouchableOpacity>
-                <Text style={styles.title}>{modal.id ? 'Edit Route' : 'New Route'}</Text>
+                <Text style={styles.title}>{modal.id ? t('shared.intercity.editRouteTitle') : t('shared.intercity.newRouteTitle')}</Text>
                 <View style={{ width: 60 }} />
               </View>
 
               <ScrollView contentContainerStyle={styles.form}>
-                <Text style={styles.section}>From city</Text>
-                <Field label="City name" value={modal.fromCity}
+                <Text style={styles.section}>{t('shared.intercity.fromCitySection')}</Text>
+                <Field label={t('shared.intercity.cityNameLabel')} value={modal.fromCity}
                   onChange={v => setModal({ ...modal, fromCity: v })} placeholder="Prizren" />
                 <Row>
-                  <Field label="Latitude" value={modal.fromLat}
+                  <Field label={t('shared.intercity.latitudeLabel')} value={modal.fromLat}
                     onChange={v => setModal({ ...modal, fromLat: v })} keyboardType="numbers-and-punctuation"
                     placeholder="42.2139" />
-                  <Field label="Longitude" value={modal.fromLng}
+                  <Field label={t('shared.intercity.longitudeLabel')} value={modal.fromLng}
                     onChange={v => setModal({ ...modal, fromLng: v })} keyboardType="numbers-and-punctuation"
                     placeholder="20.7397" />
                 </Row>
-                <Field label="Radius (km)" value={modal.fromRadiusKm}
+                <Field label={t('shared.intercity.radiusLabel')} value={modal.fromRadiusKm}
                   onChange={v => setModal({ ...modal, fromRadiusKm: v })} keyboardType="numeric"
                   placeholder="8" />
 
-                <Text style={styles.section}>To city</Text>
-                <Field label="City name" value={modal.toCity}
+                <Text style={styles.section}>{t('shared.intercity.toCitySection')}</Text>
+                <Field label={t('shared.intercity.cityNameLabel')} value={modal.toCity}
                   onChange={v => setModal({ ...modal, toCity: v })} placeholder="Prishtina" />
                 <Row>
-                  <Field label="Latitude" value={modal.toLat}
+                  <Field label={t('shared.intercity.latitudeLabel')} value={modal.toLat}
                     onChange={v => setModal({ ...modal, toLat: v })} keyboardType="numbers-and-punctuation"
                     placeholder="42.6629" />
-                  <Field label="Longitude" value={modal.toLng}
+                  <Field label={t('shared.intercity.longitudeLabel')} value={modal.toLng}
                     onChange={v => setModal({ ...modal, toLng: v })} keyboardType="numbers-and-punctuation"
                     placeholder="21.1655" />
                 </Row>
-                <Field label="Radius (km)" value={modal.toRadiusKm}
+                <Field label={t('shared.intercity.radiusLabel')} value={modal.toRadiusKm}
                   onChange={v => setModal({ ...modal, toRadiusKm: v })} keyboardType="numeric"
                   placeholder="8" />
 
-                <Text style={styles.section}>Fare</Text>
-                <Field label="Flat fare ($)" value={modal.flatFare}
+                <Text style={styles.section}>{t('shared.intercity.fareSection')}</Text>
+                <Field label={t('shared.intercity.flatFareLabel')} value={modal.flatFare}
                   onChange={v => setModal({ ...modal, flatFare: v })} keyboardType="numeric"
                   placeholder="50" />
 
                 <View style={styles.switchRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.switchLabel}>Both directions</Text>
+                    <Text style={styles.switchLabel}>{t('shared.intercity.bothDirections')}</Text>
                     <Text style={styles.switchSub}>
-                      Also apply this fare for the return trip ({modal.toCity || 'B'} → {modal.fromCity || 'A'}).
+                      {t('shared.intercity.bothDirectionsSub', { to: modal.toCity || 'B', from: modal.fromCity || 'A' })}
                     </Text>
                   </View>
                   <Switch
@@ -267,7 +265,7 @@ export default function IntercityRoutesScreen() {
                   disabled={saving}>
                   {saving
                     ? <ActivityIndicator color="#fff" />
-                    : <Text style={styles.saveBtnText}>{modal.id ? t('common.save') : 'Create'}</Text>}
+                    : <Text style={styles.saveBtnText}>{modal.id ? t('common.save') : t('shared.intercity.createBtn')}</Text>}
                 </TouchableOpacity>
               </ScrollView>
             </KeyboardAvoidingView>

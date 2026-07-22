@@ -23,6 +23,7 @@ import {
 import { Sizes } from '../../constants';
 import { useColors } from '../../stores/themeStore';
 import type { ColorPalette } from '../../constants/colors';
+import { t } from '../../i18n';
 
 interface Props {
   visible: boolean;
@@ -32,20 +33,20 @@ interface Props {
 function discountLabel(c: CompanyPromoCode): string {
   if (c.discountType === 'percent') {
     const cap = c.maxDiscountAmount != null ? ` (max €${c.maxDiscountAmount})` : '';
-    return `${c.discountValue}% off${cap}`;
+    return `${t('company.promoCodes.percentOffLabel', { value: c.discountValue })}${cap}`;
   }
-  return `€${c.discountValue} off`;
+  return t('company.promoCodes.fixedOffLabel', { value: c.discountValue });
 }
 
 function expiryLabel(c: CompanyPromoCode): string {
-  if (!c.expiresAt) return 'No expiry';
+  if (!c.expiresAt) return t('company.promoCodes.noExpiry');
   const d = new Date(c.expiresAt);
   const days = Math.ceil((d.getTime() - Date.now()) / 86400000);
   const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  if (days < 0)  return `⚠️ Expired ${label}`;
-  if (days === 0) return `⚠️ Expires today`;
-  if (days <= 7) return `⚠️ Expires in ${days}d`;
-  return `Expires ${label}`;
+  if (days < 0)  return `⚠️ ${t('company.promoCodes.expiredOn', { date: label })}`;
+  if (days === 0) return `⚠️ ${t('company.promoCodes.expiresToday')}`;
+  if (days <= 7) return `⚠️ ${t('company.promoCodes.expiresInDays', { days })}`;
+  return t('company.promoCodes.expiresOn', { date: label });
 }
 
 // ── Create Promo Modal ───────────────────────────────────────────────────────
@@ -79,14 +80,14 @@ function CreatePromoModal({
   useEffect(() => { if (visible) reset(); }, [visible]);
 
   const handleSave = async () => {
-    if (!code.trim()) { Alert.alert('Validation', 'Code is required'); return; }
+    if (!code.trim()) { Alert.alert(t('common.validation'), t('company.promoCodes.codeRequired')); return; }
     const dv = Number(discountValue);
     if (!Number.isFinite(dv) || dv <= 0) {
-      Alert.alert('Validation', 'Discount value must be a positive number');
+      Alert.alert(t('common.validation'), t('company.promoCodes.discountInvalid'));
       return;
     }
     if (discountType === 'percent' && dv > 100) {
-      Alert.alert('Validation', 'Percent discount must be 100 or less');
+      Alert.alert(t('common.validation'), t('company.promoCodes.discountPercentMax'));
       return;
     }
 
@@ -102,7 +103,7 @@ function CreatePromoModal({
     if (expiresAt.trim()) {
       // Accept YYYY-MM-DD and turn into end-of-day ISO
       const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(expiresAt.trim());
-      if (!m) { Alert.alert('Validation', 'Expiry date must be YYYY-MM-DD'); return; }
+      if (!m) { Alert.alert(t('common.validation'), t('company.promoCodes.expiryInvalid')); return; }
       payload.expiresAt = new Date(`${expiresAt.trim()}T23:59:59`).toISOString();
     }
 
@@ -112,8 +113,8 @@ function CreatePromoModal({
       onCreated(data);
       onClose();
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not create promo code';
-      Alert.alert('Error', Array.isArray(msg) ? msg.join('\n') : msg);
+      const msg = err?.response?.data?.message ?? t('company.promoCodes.createError');
+      Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     } finally {
       setSaving(false);
     }
@@ -125,37 +126,37 @@ function CreatePromoModal({
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
           <Pressable style={modal.sheet} onPress={() => {}}>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Text style={modal.title}>New promo code</Text>
+              <Text style={modal.title}>{t('company.promoCodes.newCodeTitle')}</Text>
 
-              <Text style={modal.fieldLabel}>Code</Text>
+              <Text style={modal.fieldLabel}>{t('company.promoCodes.codeLabel')}</Text>
               <TextInput
                 style={modal.input} value={code} onChangeText={setCode}
                 placeholder="e.g. SUMMER20" autoCapitalize="characters"
                 maxLength={50}
               />
 
-              <Text style={modal.fieldLabel}>Description (optional)</Text>
+              <Text style={modal.fieldLabel}>{t('company.promoCodes.descriptionLabel')}</Text>
               <TextInput
                 style={modal.input} value={description} onChangeText={setDescription}
-                placeholder="e.g. Weekend special"
+                placeholder={t('company.promoCodes.descriptionPlaceholder')}
                 maxLength={200}
               />
 
-              <Text style={modal.fieldLabel}>Discount type</Text>
+              <Text style={modal.fieldLabel}>{t('company.promoCodes.discountTypeLabel')}</Text>
               <View style={modal.typeRow}>
-                {(['percent', 'fixed'] as PromoDiscountType[]).map(t => (
+                {(['percent', 'fixed'] as PromoDiscountType[]).map(dt => (
                   <TouchableOpacity
-                    key={t}
-                    style={[modal.typeBtn, discountType === t && modal.typeBtnActive]}
-                    onPress={() => setDiscountType(t)}>
-                    <Text style={[modal.typeBtnText, discountType === t && modal.typeBtnTextActive]}>
-                      {t === 'percent' ? '% off' : '€ off'}
+                    key={dt}
+                    style={[modal.typeBtn, discountType === dt && modal.typeBtnActive]}
+                    onPress={() => setDiscountType(dt)}>
+                    <Text style={[modal.typeBtnText, discountType === dt && modal.typeBtnTextActive]}>
+                      {dt === 'percent' ? t('company.promoCodes.percentOff') : t('company.promoCodes.fixedOff')}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <Text style={modal.fieldLabel}>Discount value</Text>
+              <Text style={modal.fieldLabel}>{t('company.promoCodes.discountValueLabel')}</Text>
               <TextInput
                 style={modal.input} value={discountValue} onChangeText={setDiscountValue}
                 placeholder={discountType === 'percent' ? '15' : '5.00'}
@@ -164,7 +165,7 @@ function CreatePromoModal({
 
               {discountType === 'percent' && (
                 <>
-                  <Text style={modal.fieldLabel}>Max discount cap (optional)</Text>
+                  <Text style={modal.fieldLabel}>{t('company.promoCodes.maxCapLabel')}</Text>
                   <TextInput
                     style={modal.input} value={maxDiscount} onChangeText={setMaxDiscount}
                     placeholder="e.g. 5.00"
@@ -173,21 +174,21 @@ function CreatePromoModal({
                 </>
               )}
 
-              <Text style={modal.fieldLabel}>Minimum fare to qualify (optional)</Text>
+              <Text style={modal.fieldLabel}>{t('company.promoCodes.minFareLabel')}</Text>
               <TextInput
                 style={modal.input} value={minFare} onChangeText={setMinFare}
                 placeholder="e.g. 3.00"
                 keyboardType="numeric"
               />
 
-              <Text style={modal.fieldLabel}>Max uses (optional)</Text>
+              <Text style={modal.fieldLabel}>{t('company.promoCodes.maxUsesLabel')}</Text>
               <TextInput
                 style={modal.input} value={maxUses} onChangeText={setMaxUses}
-                placeholder="Leave empty for unlimited"
+                placeholder={t('company.promoCodes.maxUsesPlaceholder')}
                 keyboardType="numeric"
               />
 
-              <Text style={modal.fieldLabel}>Expires on (YYYY-MM-DD, optional)</Text>
+              <Text style={modal.fieldLabel}>{t('company.promoCodes.expiresLabel')}</Text>
               <TextInput
                 style={modal.input} value={expiresAt} onChangeText={setExpiresAt}
                 placeholder="e.g. 2026-12-31"
@@ -196,12 +197,12 @@ function CreatePromoModal({
 
               <View style={modal.btnRow}>
                 <TouchableOpacity style={modal.btnCancel} onPress={onClose} disabled={saving}>
-                  <Text style={modal.btnCancelText}>Cancel</Text>
+                  <Text style={modal.btnCancelText}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={modal.btnCreate} onPress={handleSave} disabled={saving}>
                   {saving
                     ? <ActivityIndicator color={colors.textOnPrimary} />
-                    : <Text style={modal.btnCreateText}>Create</Text>}
+                    : <Text style={modal.btnCreateText}>{t('company.promoCodes.createBtn')}</Text>}
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -225,8 +226,8 @@ function PromoCard({
   const styles = useMemo(() => getStyles(colors), [colors]);
 
   const usageText = item.maxUses != null
-    ? `${item.usedCount}/${item.maxUses} used`
-    : `${item.usedCount} used`;
+    ? t('company.promoCodes.usedCountMax', { used: item.usedCount, max: item.maxUses })
+    : t('company.promoCodes.usedCount', { used: item.usedCount });
 
   return (
     <View style={[styles.card, !item.isActive && styles.cardInactive]}>
@@ -249,9 +250,9 @@ function PromoCard({
         <Text style={styles.statChip}>🗓 {expiryLabel(item)}</Text>
       </View>
       <View style={styles.cardBottom}>
-        <Text style={styles.scopeText}>Applies only to your company's drivers</Text>
+        <Text style={styles.scopeText}>{t('company.promoCodes.scopeNote')}</Text>
         <TouchableOpacity onPress={() => onDelete(item.id, item.code)}>
-          <Text style={styles.deleteText}>Delete</Text>
+          <Text style={styles.deleteText}>{t('common.delete')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -294,26 +295,26 @@ export default function CompanyPromoCodesScreen({ visible, onClose }: Props) {
       await companyApi.updatePromoCode(id, { isActive: active });
     } catch (err: any) {
       setCodes(prev => prev.map(c => c.id === id ? { ...c, isActive: !active } : c));
-      const msg = err?.response?.data?.message ?? 'Could not update';
-      Alert.alert('Error', Array.isArray(msg) ? msg.join('\n') : msg);
+      const msg = err?.response?.data?.message ?? t('company.promoCodes.updateError');
+      Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     }
   }, []);
 
   const handleDelete = useCallback((id: string, code: string) => {
     Alert.alert(
-      'Delete promo code',
-      `Permanently delete "${code}"? This can't be undone.`,
+      t('company.promoCodes.deleteTitle'),
+      t('company.promoCodes.deleteMsg', { code }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete', style: 'destructive',
+          text: t('common.delete'), style: 'destructive',
           onPress: async () => {
             try {
               await companyApi.deletePromoCode(id);
               setCodes(prev => prev.filter(c => c.id !== id));
             } catch (err: any) {
-              const msg = err?.response?.data?.message ?? 'Could not delete';
-              Alert.alert('Error', Array.isArray(msg) ? msg.join('\n') : msg);
+              const msg = err?.response?.data?.message ?? t('company.promoCodes.deleteError');
+              Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
             }
           },
         },
@@ -326,11 +327,11 @@ export default function CompanyPromoCodesScreen({ visible, onClose }: Props) {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.backArrow}>‹ Back</Text>
+            <Text style={styles.backArrow}>‹ {t('common.back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Promo Codes</Text>
+          <Text style={styles.headerTitle}>{t('company.promoCodes.title')}</Text>
           <TouchableOpacity onPress={() => setShowCreate(true)}>
-            <Text style={styles.addBtn}>＋ New</Text>
+            <Text style={styles.addBtn}>＋ {t('company.promoCodes.newBtn')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -341,12 +342,12 @@ export default function CompanyPromoCodesScreen({ visible, onClose }: Props) {
         ) : codes.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>🏷️</Text>
-            <Text style={styles.emptyTitle}>No promo codes yet</Text>
+            <Text style={styles.emptyTitle}>{t('company.promoCodes.emptyTitle')}</Text>
             <Text style={styles.emptySub}>
-              Create discount codes that only apply when one of your drivers takes the ride.
+              {t('company.promoCodes.emptySub')}
             </Text>
             <TouchableOpacity style={styles.emptyBtn} onPress={() => setShowCreate(true)}>
-              <Text style={styles.emptyBtnText}>Create your first code</Text>
+              <Text style={styles.emptyBtnText}>{t('company.promoCodes.createFirstBtn')}</Text>
             </TouchableOpacity>
           </View>
         ) : (

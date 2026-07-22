@@ -79,7 +79,7 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
           {isCredit
             ? `${methodIcon}  ${entry.commissionPct != null
                 ? t('driver.wallet.rideEarnings', { pct: entry.commissionPct })
-                : 'Ride earnings'}`
+                : t('driver.wallet.rideEarningsPlain')}`
             : `${t('driver.wallet.payout')}${entry.note ? ` — ${entry.note}` : ''}`}
         </Text>
         <Text style={styles.rowDate}>{fmtDate(entry.createdAt)}</Text>
@@ -87,14 +87,14 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
         {hasBreakdown && (
           <View style={styles.breakdownBlock}>
             <View style={styles.breakdownLine}>
-              <Text style={styles.breakdownLineLabel}>Gross fare</Text>
+              <Text style={styles.breakdownLineLabel}>{t('driver.wallet.grossFare')}</Text>
               <Text style={styles.breakdownLineValue}>
                 {fmtMoney(entry.grossFare ?? 0)}
               </Text>
             </View>
             {entry.platformFee != null && entry.platformFee > 0 && (
               <View style={styles.breakdownLine}>
-                <Text style={styles.breakdownLineLabel}>− 🌐 Platform fee (10%)</Text>
+                <Text style={styles.breakdownLineLabel}>− 🌐 {t('driver.wallet.platformFee')}</Text>
                 <Text style={[styles.breakdownLineValue, { color: colors.textSecondary }]}>
                   −{fmtMoney(entry.platformFee)}
                 </Text>
@@ -102,7 +102,7 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
             )}
             {entry.companyShare != null && entry.companyShare > 0 && (
               <View style={styles.breakdownLine}>
-                <Text style={styles.breakdownLineLabel}>− 🏢 Company share</Text>
+                <Text style={styles.breakdownLineLabel}>− 🏢 {t('driver.wallet.companyShare')}</Text>
                 <Text style={[styles.breakdownLineValue, { color: colors.textSecondary }]}>
                   −{fmtMoney(entry.companyShare)}
                 </Text>
@@ -110,7 +110,7 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
             )}
             <View style={styles.breakdownLine}>
               <Text style={[styles.breakdownLineLabel, { fontWeight: '700' }]}>
-                Your earning
+                {t('driver.wallet.yourEarning')}
               </Text>
               <Text style={[styles.breakdownLineValue, { fontWeight: '700', color: colors.success }]}>
                 {fmtMoney(entry.amount)}

@@ -29,11 +29,12 @@ import { useTranslation } from '../../i18n';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const VEHICLE_TYPES: { label: string; value: VehicleType | null }[] = [
-  { label: 'All',     value: null      },
-  { label: 'Economy', value: 'economy' },
-  { label: 'Comfort', value: 'comfort' },
-  { label: 'XL',      value: 'xl'      },
+// Labels resolve through i18n at render time so language switches apply.
+const VEHICLE_TYPES: { labelKey: string; value: VehicleType | null }[] = [
+  { labelKey: 'admin.globalTariffs.vehicleAll',     value: null      },
+  { labelKey: 'admin.globalTariffs.vehicleEconomy', value: 'economy' },
+  { labelKey: 'admin.globalTariffs.vehicleComfort', value: 'comfort' },
+  { labelKey: 'admin.globalTariffs.vehicleXL',      value: 'xl'      },
 ];
 
 // ── TariffCard ────────────────────────────────────────────────────────────────
@@ -59,18 +60,18 @@ function TariffCard({
           {tariff.vehicleType && (
             <View style={cardStyles.typeBadge}>
               <Text style={cardStyles.typeBadgeText}>
-                {VEHICLE_TYPES.find(v => v.value === tariff.vehicleType)?.label ?? tariff.vehicleType}
+                {(() => { const vt = VEHICLE_TYPES.find(v => v.value === tariff.vehicleType); return vt ? t(vt.labelKey) : tariff.vehicleType; })()}
               </Text>
             </View>
           )}
           {tariff.isNightTariff && (
             <View style={cardStyles.nightBadge}>
-              <Text style={cardStyles.nightBadgeText}>🌙 Night</Text>
+              <Text style={cardStyles.nightBadgeText}>🌙 {t('admin.globalTariffs.nightBadge')}</Text>
             </View>
           )}
           {!tariff.isActive && (
             <View style={cardStyles.inactiveBadge}>
-              <Text style={cardStyles.inactiveBadgeText}>Inactive</Text>
+              <Text style={cardStyles.inactiveBadgeText}>{t('admin.globalTariffs.inactiveBadge')}</Text>
             </View>
           )}
         </View>
@@ -93,23 +94,26 @@ function TariffCard({
       </View>
 
       <View style={cardStyles.grid}>
-        <FareItem label="Base fare"    value={`$${Number(tariff.baseFare).toFixed(2)}`}       cardStyles={cardStyles} />
-        <FareItem label="Per km"       value={`$${Number(tariff.perKmRate).toFixed(2)}`}      cardStyles={cardStyles} />
-        <FareItem label="Per minute"   value={`$${Number(tariff.perMinuteRate).toFixed(2)}`}  cardStyles={cardStyles} />
-        <FareItem label="Minimum fare" value={`$${Number(tariff.minimumFare).toFixed(2)}`}    cardStyles={cardStyles} />
+        <FareItem label={t('admin.globalTariffs.baseFare')}    value={`$${Number(tariff.baseFare).toFixed(2)}`}       cardStyles={cardStyles} />
+        <FareItem label={t('admin.globalTariffs.perKm')}       value={`$${Number(tariff.perKmRate).toFixed(2)}`}      cardStyles={cardStyles} />
+        <FareItem label={t('admin.globalTariffs.perMinute')}   value={`$${Number(tariff.perMinuteRate).toFixed(2)}`}  cardStyles={cardStyles} />
+        <FareItem label={t('admin.globalTariffs.minimumFare')} value={`$${Number(tariff.minimumFare).toFixed(2)}`}    cardStyles={cardStyles} />
       </View>
 
       {tariff.surgeMultiplier !== 1 && (
         <View style={cardStyles.surgeRow}>
           <Text style={cardStyles.surgeText}>
-            ⚡ Surge ×{Number(tariff.surgeMultiplier).toFixed(2)}
+            ⚡ {t('admin.globalTariffs.surgeBadge', { mult: Number(tariff.surgeMultiplier).toFixed(2) })}
           </Text>
         </View>
       )}
 
       {tariff.isNightTariff && tariff.nightStartHour != null && tariff.nightEndHour != null && (
         <Text style={cardStyles.nightHours}>
-          🕙 Night hours: {String(tariff.nightStartHour).padStart(2, '0')}:00 – {String(tariff.nightEndHour).padStart(2, '0')}:00
+          🕙 {t('admin.globalTariffs.nightHours', {
+            start: String(tariff.nightStartHour).padStart(2, '0'),
+            end:   String(tariff.nightEndHour).padStart(2, '0'),
+          })}
         </Text>
       )}
     </View>
@@ -318,10 +322,10 @@ function TariffModal({
               </View>
             )}
 
-            <MField label="Tariff name" value={form.name} onChange={set('name')} placeholder="Standard / Night / XL…" mStyles={mStyles} colors={colors} />
+            <MField label={t('admin.globalTariffs.tariffNameLabel')} value={form.name} onChange={set('name')} placeholder={t('admin.globalTariffs.tariffNamePlaceholder')} mStyles={mStyles} colors={colors} />
 
             {/* Vehicle type selector */}
-            <Text style={mStyles.sectionHeader}>Vehicle Type</Text>
+            <Text style={mStyles.sectionHeader}>{t('admin.globalTariffs.vehicleTypeSection')}</Text>
             <View style={mStyles.typeRow}>
               {VEHICLE_TYPES.map(vt => (
                 <TouchableOpacity
@@ -329,36 +333,36 @@ function TariffModal({
                   style={[mStyles.typePill, form.vehicleType === vt.value && mStyles.typePillActive]}
                   onPress={() => set('vehicleType')(vt.value)}
                   accessibilityRole="radio"
-                  accessibilityLabel={`Vehicle type: ${vt.label}`}
+                  accessibilityLabel={`Vehicle type: ${t(vt.labelKey)}`}
                   accessibilityState={{ checked: form.vehicleType === vt.value }}>
                   <Text style={[mStyles.typePillText, form.vehicleType === vt.value && mStyles.typePillTextActive]}>
-                    {vt.label}
+                    {t(vt.labelKey)}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <Text style={mStyles.sectionHeader}>Rates</Text>
+            <Text style={mStyles.sectionHeader}>{t('admin.globalTariffs.ratesSection')}</Text>
             <View style={mStyles.twoCol}>
               <View style={{ flex: 1 }}>
-                <MField label="Base fare ($)" value={form.baseFare} onChange={set('baseFare')} keyboardType="decimal-pad" placeholder="1.50" mStyles={mStyles} colors={colors} />
+                <MField label={t('admin.globalTariffs.baseFareLabel')} value={form.baseFare} onChange={set('baseFare')} keyboardType="decimal-pad" placeholder="1.50" mStyles={mStyles} colors={colors} />
               </View>
               <View style={{ flex: 1 }}>
-                <MField label="Minimum fare ($)" value={form.minimumFare} onChange={set('minimumFare')} keyboardType="decimal-pad" placeholder="3.00" mStyles={mStyles} colors={colors} />
+                <MField label={t('admin.globalTariffs.minimumFareLabel')} value={form.minimumFare} onChange={set('minimumFare')} keyboardType="decimal-pad" placeholder="3.00" mStyles={mStyles} colors={colors} />
               </View>
             </View>
             <View style={mStyles.twoCol}>
               <View style={{ flex: 1 }}>
-                <MField label="Per km ($)" value={form.perKmRate} onChange={set('perKmRate')} keyboardType="decimal-pad" placeholder="0.50" mStyles={mStyles} colors={colors} />
+                <MField label={t('admin.globalTariffs.perKmLabel')} value={form.perKmRate} onChange={set('perKmRate')} keyboardType="decimal-pad" placeholder="0.50" mStyles={mStyles} colors={colors} />
               </View>
               <View style={{ flex: 1 }}>
-                <MField label="Per minute ($)" value={form.perMinuteRate} onChange={set('perMinuteRate')} keyboardType="decimal-pad" placeholder="0.10" mStyles={mStyles} colors={colors} />
+                <MField label={t('admin.globalTariffs.perMinuteLabel')} value={form.perMinuteRate} onChange={set('perMinuteRate')} keyboardType="decimal-pad" placeholder="0.10" mStyles={mStyles} colors={colors} />
               </View>
             </View>
 
-            <Text style={mStyles.sectionHeader}>Surge</Text>
+            <Text style={mStyles.sectionHeader}>{t('admin.globalTariffs.surgeSection')}</Text>
             <MField
-              label="Surge multiplier (1.00 = normal)"
+              label={t('admin.globalTariffs.surgeLabel')}
               value={form.surgeMultiplier}
               onChange={set('surgeMultiplier')}
               keyboardType="decimal-pad"
@@ -367,9 +371,9 @@ function TariffModal({
               colors={colors}
             />
 
-            <Text style={mStyles.sectionHeader}>Night tariff</Text>
+            <Text style={mStyles.sectionHeader}>{t('admin.globalTariffs.nightSection')}</Text>
             <View style={mStyles.switchRow}>
-              <Text style={mStyles.switchLabel}>Enable night tariff</Text>
+              <Text style={mStyles.switchLabel}>{t('admin.globalTariffs.enableNight')}</Text>
               <Switch
                 value={form.isNightTariff}
                 onValueChange={v => set('isNightTariff')(v)}
@@ -383,10 +387,10 @@ function TariffModal({
             {form.isNightTariff && (
               <View style={mStyles.twoCol}>
                 <View style={{ flex: 1 }}>
-                  <MField label="Night start (0–23)" value={form.nightStartHour} onChange={set('nightStartHour')} keyboardType="number-pad" placeholder="22" mStyles={mStyles} colors={colors} />
+                  <MField label={t('admin.globalTariffs.nightStartLabel')} value={form.nightStartHour} onChange={set('nightStartHour')} keyboardType="number-pad" placeholder="22" mStyles={mStyles} colors={colors} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <MField label="Night end (0–23)" value={form.nightEndHour} onChange={set('nightEndHour')} keyboardType="number-pad" placeholder="6" mStyles={mStyles} colors={colors} />
+                  <MField label={t('admin.globalTariffs.nightEndLabel')} value={form.nightEndHour} onChange={set('nightEndHour')} keyboardType="number-pad" placeholder="6" mStyles={mStyles} colors={colors} />
                 </View>
               </View>
             )}
@@ -622,7 +626,7 @@ export default function AdminGlobalTariffsScreen({ navigation }: Props) {
             <>
               {activeTariffs.length > 0 && (
                 <>
-                  <Text style={styles.sectionLabel}>Active ({activeTariffs.length})</Text>
+                  <Text style={styles.sectionLabel}>{t('admin.globalTariffs.activeSection', { n: activeTariffs.length })}</Text>
                   {activeTariffs.map(t => (
                     <TariffCard
                       key={t.id}
@@ -637,7 +641,7 @@ export default function AdminGlobalTariffsScreen({ navigation }: Props) {
               {inactiveTariffs.length > 0 && (
                 <>
                   <Text style={[styles.sectionLabel, { marginTop: 16 }]}>
-                    Inactive ({inactiveTariffs.length})
+                    {t('admin.globalTariffs.inactiveSection', { n: inactiveTariffs.length })}
                   </Text>
                   {inactiveTariffs.map(t => (
                     <TariffCard

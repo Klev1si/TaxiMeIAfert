@@ -242,7 +242,7 @@ function PlanCard({
           accessibilityLabel={`Pay ${plan.name} by card`}>
           {loading
             ? <ActivityIndicator size="small" color={colors.white} />
-            : <Text style={planStyles.payCardBtnText}>Pay with card</Text>}
+            : <Text style={planStyles.payCardBtnText}>{t('common.payWithCard')}</Text>}
         </TouchableOpacity>
         <TouchableOpacity
           style={planStyles.payCashBtn}
@@ -250,7 +250,7 @@ function PlanCard({
           disabled={loading}
           accessibilityRole="button"
           accessibilityLabel={`Request cash payment for ${plan.name}`}>
-          <Text style={planStyles.payCashBtnText}>Pay in cash</Text>
+          <Text style={planStyles.payCashBtnText}>{t('common.payInCash')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -414,20 +414,20 @@ export default function CompanySubscriptionScreen() {
 
   const handlePickCash = (plan: SubscriptionPlan) => {
     Alert.alert(
-      'Pay in cash',
-      `Request a cash payment for "${plan.name}" (${formatPrice(plan.price)})?\n\nYour subscription will activate once the admin confirms the payment.`,
+      t('common.payInCash'),
+      t('common.cashRequestMsg', { name: plan.name, price: formatPrice(plan.price) }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Request',
+          text: t('common.requestBtn'),
           onPress: async () => {
             setSubscribingId(plan.id);
             try {
               await subscriptionsApi.requestCashPayment(plan.id);
-              Alert.alert(t('common.success'), 'Cash payment requested. The admin will confirm shortly.');
+              Alert.alert(t('common.success'), t('common.cashRequested'));
               await load();
             } catch (err: any) {
-              Alert.alert(t('common.error'), toAlertString(err?.response?.data?.message, 'Could not request cash payment.'));
+              Alert.alert(t('common.error'), toAlertString(err?.response?.data?.message, t('common.cashRequestFail')));
             } finally {
               setSubscribingId(null);
             }

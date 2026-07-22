@@ -39,7 +39,7 @@ export default function AddEmailScreen({ onCompleted }: Props) {
   const handleSave = async () => {
     const v = email.trim();
     if (!isValidEmail(v)) {
-      Alert.alert(t('common.validation'), 'Please enter a valid email address.');
+      Alert.alert(t('common.validation'), t('auth.invalidEmail'));
       return;
     }
     setLoading(true);
@@ -47,7 +47,7 @@ export default function AddEmailScreen({ onCompleted }: Props) {
       await authApi.setEmail(v);
       onCompleted();
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not save email.';
+      const msg = err?.response?.data?.message ?? t('auth.addEmail.saveError');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     } finally {
       setLoading(false);
@@ -59,10 +59,9 @@ export default function AddEmailScreen({ onCompleted }: Props) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <Text style={styles.emoji}>📧</Text>
-          <Text style={styles.title}>Add your email</Text>
+          <Text style={styles.title}>{t('auth.addEmail.title')}</Text>
           <Text style={styles.subtitle}>
-            We need your email so you can reset your password if you ever forget it.
-            We won't send marketing or share it with anyone.
+            {t('auth.addEmail.subtitle')}
           </Text>
 
           <TextInput
@@ -86,7 +85,7 @@ export default function AddEmailScreen({ onCompleted }: Props) {
             activeOpacity={0.85}>
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.btnText}>Save and continue</Text>}
+              : <Text style={styles.btnText}>{t('auth.addEmail.saveBtn')}</Text>}
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -34,9 +34,10 @@ type Props = AdminProfileStackScreenProps<'AdminPlans'>;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const AUDIENCES: { label: string; value: PlanAudience }[] = [
-  { label: '🏢 Company', value: 'company' },
-  { label: '🚗 Driver',  value: 'driver'  },
+// labelKey resolves through i18n at render time
+const AUDIENCES: { labelKey: string; emoji: string; value: PlanAudience }[] = [
+  { labelKey: 'admin.subscriptionPlans.typeCompany', emoji: '🏢', value: 'company' },
+  { labelKey: 'admin.subscriptionPlans.typeDriver',  emoji: '🚗', value: 'driver'  },
 ];
 
 type BillingPeriodLocal = 'monthly' | 'quarterly' | 'yearly';
@@ -49,10 +50,10 @@ function formatPrice(p: number, period: BillingPeriodLocal = 'monthly'): string 
   return `€${Number(p).toFixed(2)}${periodSuffix(period)}`;
 }
 
-const PERIODS: { value: BillingPeriodLocal; label: string }[] = [
-  { value: 'monthly',   label: 'Monthly' },
-  { value: 'quarterly', label: '3-Month' },
-  { value: 'yearly',    label: 'Yearly'  },
+const PERIODS: { value: BillingPeriodLocal; labelKey: string }[] = [
+  { value: 'monthly',   labelKey: 'admin.subscriptionPlans.periodMonthly'   },
+  { value: 'quarterly', labelKey: 'admin.subscriptionPlans.periodQuarterly' },
+  { value: 'yearly',    labelKey: 'admin.subscriptionPlans.periodYearly'    },
 ];
 
 // ── Plan Form Modal ───────────────────────────────────────────────────────────
@@ -153,7 +154,7 @@ function PlanFormModal({
                     accessibilityLabel={a.value === 'company' ? 'Company' : 'Driver'}
                     accessibilityState={{ checked: form.targetAudience === a.value }}>
                     <Text style={[fm.segText, form.targetAudience === a.value && fm.segTextActive]}>
-                      {a.label}
+                      {a.emoji} {t(a.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -165,13 +166,13 @@ function PlanFormModal({
                 style={fm.input}
                 value={form.name}
                 onChangeText={v => set('name', v)}
-                placeholder="e.g. Standard, Pro, Enterprise"
+                placeholder={t('admin.subscriptionPlans.namePlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 accessibilityLabel="Plan name"
               />
 
               {/* Billing period */}
-              <Text style={fm.label}>Billing period</Text>
+              <Text style={fm.label}>{t('admin.subscriptionPlans.billingPeriodLabel')}</Text>
               <View style={fm.segRow}>
                 {PERIODS.map(p => (
                   <TouchableOpacity
@@ -179,17 +180,17 @@ function PlanFormModal({
                     style={[fm.seg, form.billingPeriod === p.value && fm.segActive]}
                     onPress={() => set('billingPeriod', p.value)}
                     accessibilityRole="radio"
-                    accessibilityLabel={p.label}
+                    accessibilityLabel={t(p.labelKey)}
                     accessibilityState={{ checked: form.billingPeriod === p.value }}>
                     <Text style={[fm.segText, form.billingPeriod === p.value && fm.segTextActive]}>
-                      {p.label}
+                      {t(p.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               {/* Price */}
-              <Text style={fm.label}>Price (€)</Text>
+              <Text style={fm.label}>{t('admin.subscriptionPlans.priceEuroLabel')}</Text>
               <TextInput
                 style={fm.input}
                 value={form.price}
@@ -202,7 +203,7 @@ function PlanFormModal({
 
               {/* Max Drivers */}
               <Text style={fm.label}>
-                {form.targetAudience === 'driver' ? 'Seats (set to 1 for drivers)' : 'Max Drivers *'}
+                {form.targetAudience === 'driver' ? t('admin.subscriptionPlans.seatsLabel') : t('admin.subscriptionPlans.maxDriversReq')}
               </Text>
               <TextInput
                 style={fm.input}
@@ -230,7 +231,7 @@ function PlanFormModal({
               {/* Active toggle — only for existing plans */}
               {editing && (
                 <View style={fm.switchRow}>
-                  <Text style={fm.switchLabel}>Active</Text>
+                  <Text style={fm.switchLabel}>{t('common.active')}</Text>
                   <Switch
                     value={form.isActive}
                     onValueChange={v => set('isActive', v)}
@@ -345,7 +346,7 @@ function PlanCard({
             </View>
             {!plan.isActive && (
               <View style={pc.badgeInactive}>
-                <Text style={pc.badgeInactiveText}>Inactive</Text>
+                <Text style={pc.badgeInactiveText}>{t('common.inactive')}</Text>
               </View>
             )}
           </View>

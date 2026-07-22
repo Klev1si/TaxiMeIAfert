@@ -42,7 +42,7 @@ export default function RegisterCompanyScreen({ navigation, route }: Props) {
       return;
     }
     if (!isValidEmail(email)) {
-      Alert.alert(t('common.validation'), 'Please enter a valid email address.');
+      Alert.alert(t('common.validation'), t('auth.invalidEmail'));
       return;
     }
     if (password.length < 6) {
@@ -119,7 +119,7 @@ export default function RegisterCompanyScreen({ navigation, route }: Props) {
               />
             </Field>
 
-            <Field label="Email" colors={colors}>
+            <Field label={t('auth.emailLabel')} colors={colors}>
               <TextInput
                 style={styles.input}
                 placeholder="admin@acmetaxi.com"
@@ -167,7 +167,7 @@ export default function RegisterCompanyScreen({ navigation, route }: Props) {
             <Field label={t('auth.registerDriver.passwordLabel')} colors={colors}>
               <TextInput
                 style={styles.input}
-                placeholder="Min. 6 characters"
+                placeholder={t('auth.registerCompany.passwordPlaceholder')}
                 placeholderTextColor={colors.textDisabled}
                 value={password}
                 onChangeText={setPassword}

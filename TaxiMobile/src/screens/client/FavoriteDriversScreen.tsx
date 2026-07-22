@@ -54,10 +54,10 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
       const msg = err?.response?.data?.message ?? err?.message ?? 'Unknown error';
       setLoadError(
         status === 404
-          ? 'Saved drivers is not available yet. Please update the app or try again later.'
+          ? t('client.favorites.notAvailable')
           : status === 401
-            ? 'Your session expired. Please sign in again.'
-            : `Could not load saved drivers (${status ?? 'network'}): ${msg}`,
+            ? t('client.favorites.sessionExpired')
+            : t('client.favorites.loadFailed', { status: status ?? 'network', msg }),
       );
     } finally {
       setLoading(false);
@@ -69,30 +69,30 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
 
   const handleCall = async (driver: FavoriteDriver) => {
     if (!driver.phone) {
-      Alert.alert('No phone number', 'This driver doesn\'t have a phone on file.');
+      Alert.alert(t('client.favorites.noPhoneTitle'), t('client.favorites.noPhoneMsg'));
       return;
     }
     const url = `tel:${driver.phone}`;
     try {
       const supported = await Linking.canOpenURL(url);
       if (!supported) {
-        Alert.alert('Cannot place call', 'Your device doesn\'t support phone calls.');
+        Alert.alert(t('client.favorites.cannotCallTitle'), t('client.favorites.cannotCallMsg'));
         return;
       }
       await Linking.openURL(url);
     } catch {
-      Alert.alert(t('common.error'), 'Could not open the dialer.');
+      Alert.alert(t('common.error'), t('client.favorites.dialerError'));
     }
   };
 
   const handleRequestRide = (driver: FavoriteDriver) => {
     if (!driver.isOnline) {
       Alert.alert(
-        'Driver is offline',
-        `${driver.firstName} is not online right now. Would you like to request a regular ride instead?`,
+        t('client.favorites.offlineTitle'),
+        t('client.favorites.offlineMsg', { name: driver.firstName }),
         [
           { text: t('common.cancel'), style: 'cancel' },
-          { text: 'Regular ride', onPress: () => goToRideRequest(driver, false) },
+          { text: t('client.favorites.regularRideBtn'), onPress: () => goToRideRequest(driver, false) },
         ],
       );
       return;
@@ -110,7 +110,7 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tabNav = navigation.getParent() as any;
         if (!tabNav) {
-          Alert.alert(t('common.error'), 'Could not open the ride request screen.');
+          Alert.alert(t('common.error'), t('client.favorites.navError'));
           return;
         }
         tabNav.navigate('ClientHome', {
@@ -123,8 +123,8 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
         });
       },
       () => Alert.alert(
-        'Location unavailable',
-        'Turn on your phone\'s Location to request a ride from the home screen.',
+        t('client.favorites.locationTitle'),
+        t('client.favorites.locationMsg'),
       ),
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
@@ -132,12 +132,12 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
 
   const handleRemove = (driver: FavoriteDriver) => {
     Alert.alert(
-      'Remove from favorites?',
-      `${driver.firstName} ${driver.lastName} will no longer appear in your saved drivers.`,
+      t('client.favorites.removeTitle'),
+      t('client.favorites.removeMsg', { name: `${driver.firstName} ${driver.lastName}` }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('common.remove'),
           style: 'destructive',
           onPress: async () => {
             setRemovingId(driver.driverId);
@@ -145,7 +145,7 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
               await clientFavoritesApi.remove(driver.driverId);
               setFavorites(prev => prev.filter(f => f.driverId !== driver.driverId));
             } catch {
-              Alert.alert(t('common.error'), 'Could not remove driver.');
+              Alert.alert(t('common.error'), t('client.favorites.removeError'));
             } finally {
               setRemovingId(null);
             }
@@ -169,7 +169,7 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button">
           <Text style={styles.headerBack}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Saved Drivers</Text>
+        <Text style={styles.headerTitle}>{t('client.favorites.title')}</Text>
         <View style={{ width: 28 }} />
       </View>
 
@@ -184,18 +184,18 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
           loadError ? (
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>⚠️</Text>
-              <Text style={styles.emptyTitle}>Could not load</Text>
+              <Text style={styles.emptyTitle}>{t('client.favorites.loadErrorTitle')}</Text>
               <Text style={styles.emptyText}>{loadError}</Text>
               <TouchableOpacity onPress={() => load(true)} style={{ marginTop: 16, padding: 12 }}>
-                <Text style={{ color: colors.primary, fontWeight: '700' }}>Retry</Text>
+                <Text style={{ color: colors.primary, fontWeight: '700' }}>{t('common.retry')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>⭐</Text>
-              <Text style={styles.emptyTitle}>No saved drivers yet</Text>
+              <Text style={styles.emptyTitle}>{t('client.favorites.emptyTitle')}</Text>
               <Text style={styles.emptyText}>
-                After a great ride, tap the heart on the rating screen to save the driver here.
+                {t('client.favorites.emptyHint')}
               </Text>
             </View>
           )
@@ -220,7 +220,7 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
                 <Text style={styles.meta}>
                   {item.rating != null ? `⭐ ${item.rating.toFixed(1)}` : '⭐ —'}
                   {' · '}
-                  {item.totalRides} rides
+                  {t('client.favorites.ridesCount', { n: item.totalRides })}
                 </Text>
                 <Text style={styles.vehicle}>
                   🚗 {item.vehicleMake} {item.vehicleModel}{item.vehiclePlate ? ` · ${item.vehiclePlate}` : ''}
@@ -235,7 +235,7 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel={`Call ${item.firstName}`}>
-                <Text style={styles.actionBtnText}>📞  Call</Text>
+                <Text style={styles.actionBtnText}>📞  {t('client.favorites.callBtn')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -244,7 +244,7 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel={`Request a ride from ${item.firstName}`}>
-                <Text style={[styles.actionBtnText, { color: '#fff' }]}>🚕  Request Ride</Text>
+                <Text style={[styles.actionBtnText, { color: '#fff' }]}>🚕  {t('client.favorites.requestRideBtn')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -254,7 +254,7 @@ export default function FavoriteDriversScreen({ navigation }: Props) {
               disabled={removingId === item.driverId}
               activeOpacity={0.6}>
               <Text style={styles.removeText}>
-                {removingId === item.driverId ? '…' : 'Remove from saved'}
+                {removingId === item.driverId ? '…' : t('client.favorites.removeFromSaved')}
               </Text>
             </TouchableOpacity>
           </View>

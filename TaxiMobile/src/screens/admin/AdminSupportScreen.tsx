@@ -28,7 +28,7 @@ import {
   type TicketStatus,
   type TicketPriority,
 } from '../../api/support';
-import { useTranslation } from '../../i18n';
+import { t as tr, useTranslation } from '../../i18n';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -415,7 +415,7 @@ function MessageBubble({ msg, bubble, colors }: { msg: SupportMessage; bubble: R
   return (
     <View style={[bubble.row, isAdmin ? bubble.rowAdmin : bubble.rowUser]}>
       <View style={[bubble.bubble, isAdmin ? bubble.bubbleAdmin : bubble.bubbleUser]}>
-        {isAdmin && <Text style={bubble.adminLabel}>Support</Text>}
+        {isAdmin && <Text style={bubble.adminLabel}>{tr('shared.supportTicket.supportTeamLabel')}</Text>}
         <Text style={[bubble.body, isAdmin ? bubble.bodyAdmin : bubble.bodyUser]}>
           {msg.body}
         </Text>

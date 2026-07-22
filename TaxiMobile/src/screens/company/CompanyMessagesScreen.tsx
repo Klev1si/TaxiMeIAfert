@@ -20,6 +20,7 @@ import {
 import { useColors } from '../../stores/themeStore';
 import { socketService } from '../../services/socket';
 import type { ColorPalette } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 interface Props {
   visible: boolean;
@@ -45,6 +46,7 @@ function CompanyChatThread({
 }) {
   const colors = useColors();
   const styles = useMemo(() => getThreadStyles(colors), [colors]);
+  const { t } = useTranslation();
 
   const [messages, setMessages] = useState<CompanyMessage[]>([]);
   const [loading,  setLoading]  = useState(true);
@@ -88,11 +90,11 @@ function CompanyChatThread({
       setDraft(text);
       const status   = err?.response?.status;
       const apiMsg   = err?.response?.data?.message;
-      const fallback = err?.message ?? 'Could not send';
+      const fallback = err?.message ?? t('company.messages.sendFailTitle');
       let msg = apiMsg ?? fallback;
       if (Array.isArray(msg)) msg = msg.join('\n');
       Alert.alert(
-        'Could not send',
+        t('company.messages.sendFailTitle'),
         status ? `${msg}\n\n(HTTP ${status})` : String(msg),
       );
     } finally {
@@ -119,7 +121,7 @@ function CompanyChatThread({
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.headerBtn}>‹ Back</Text>
+            <Text style={styles.headerBtn}>‹ {t('common.back')}</Text>
           </TouchableOpacity>
           <View style={{ alignItems: 'center' }}>
             <Text style={styles.headerTitle}>
@@ -150,8 +152,8 @@ function CompanyChatThread({
               ListEmptyComponent={
                 <View style={styles.emptyChat}>
                   <Text style={styles.emptyChatIcon}>💬</Text>
-                  <Text style={styles.emptyChatTitle}>No messages yet</Text>
-                  <Text style={styles.emptyChatSub}>Send the first message below.</Text>
+                  <Text style={styles.emptyChatTitle}>{t('company.messages.chatEmptyTitle')}</Text>
+                  <Text style={styles.emptyChatSub}>{t('company.messages.chatEmptySub')}</Text>
                 </View>
               }
             />
@@ -160,7 +162,7 @@ function CompanyChatThread({
                 style={styles.input}
                 value={draft}
                 onChangeText={setDraft}
-                placeholder="Type a message…"
+                placeholder={t('company.messages.typePlaceholder')}
                 placeholderTextColor={colors.textDisabled}
                 multiline
                 maxLength={2000}
@@ -171,7 +173,7 @@ function CompanyChatThread({
                 disabled={!draft.trim() || sending}>
                 {sending
                   ? <ActivityIndicator color={colors.textOnPrimary} />
-                  : <Text style={styles.sendBtnText}>Send</Text>}
+                  : <Text style={styles.sendBtnText}>{t('common.send')}</Text>}
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
@@ -186,6 +188,7 @@ function CompanyChatThread({
 export default function CompanyMessagesScreen({ visible, onClose }: Props) {
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
+  const { t } = useTranslation();
 
   const [threads,    setThreads]    = useState<CompanyThread[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -224,8 +227,8 @@ export default function CompanyMessagesScreen({ visible, onClose }: Props) {
     const last  = item.lastMessage;
     const lastFromMe = last?.fromRole === 'company';
     const preview = last
-      ? `${lastFromMe ? 'You: ' : ''}${last.text}`
-      : 'No messages yet — tap to start a conversation';
+      ? `${lastFromMe ? t('company.messages.youPrefix') : ''}${last.text}`
+      : t('company.messages.noMessagesPreview');
     return (
       <TouchableOpacity
         style={styles.row}
@@ -269,9 +272,9 @@ export default function CompanyMessagesScreen({ visible, onClose }: Props) {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.headerBtn}>‹ Back</Text>
+            <Text style={styles.headerBtn}>‹ {t('common.back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Messages</Text>
+          <Text style={styles.headerTitle}>{t('company.messages.title')}</Text>
           <View style={{ width: 60 }} />
         </View>
 
@@ -282,15 +285,15 @@ export default function CompanyMessagesScreen({ visible, onClose }: Props) {
         ) : threads.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>👥</Text>
-            <Text style={styles.emptyTitle}>No drivers yet</Text>
+            <Text style={styles.emptyTitle}>{t('company.messages.emptyTitle')}</Text>
             <Text style={styles.emptySub}>
-              Add drivers to your company to start chatting with them.
+              {t('company.messages.emptySub')}
             </Text>
           </View>
         ) : (
           <FlatList
             data={threads}
-            keyExtractor={t => t.driverId}
+            keyExtractor={th => th.driverId}
             renderItem={renderItem}
             ItemSeparatorComponent={() => <View style={styles.sep} />}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}

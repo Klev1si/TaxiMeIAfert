@@ -16,15 +16,17 @@ import type { ColorPalette } from '../../constants/colors';
 
 // ── Label quick-suggestions ───────────────────────────────────────────────────
 
+// Suffixes of the i18n keys client.savedLocations.suggest<Name>
 const SUGGESTIONS = ['Home', 'Work', 'Gym', 'School', 'Airport', 'Other'];
 
 function labelEmoji(label: string): string {
   const l = label.toLowerCase();
-  if (l === 'home')    return '🏠';
-  if (l === 'work')    return '💼';
-  if (l === 'gym')     return '🏋️';
-  if (l === 'school')  return '🎓';
-  if (l === 'airport') return '✈️';
+  // Match the label in any supported language (en / sq / es / fr)
+  if (['home', 'shtëpi', 'shtepi', 'casa', 'maison'].some(w => l.includes(w)))            return '🏠';
+  if (['work', 'punë', 'pune', 'trabajo', 'travail'].some(w => l.includes(w)))            return '💼';
+  if (['gym', 'palestër', 'palester', 'gimnasio', 'salle de sport'].some(w => l.includes(w))) return '🏋️';
+  if (['school', 'shkollë', 'shkolle', 'escuela', 'école', 'ecole'].some(w => l.includes(w))) return '🎓';
+  if (['airport', 'aeroport', 'aeropuerto', 'aéroport'].some(w => l.includes(w)))         return '✈️';
   return '📍';
 }
 
@@ -118,7 +120,7 @@ function EditModal({ visible, initial, onClose, onSaved }: EditModalProps) {
   const doAddressSearch = async () => {
     const q = address.trim();
     if (q.length < 2) {
-      Alert.alert(t('common.validation'), 'Type at least 2 characters in the address field, then tap "Find on map".');
+      Alert.alert(t('common.validation'), t('client.savedLocations.typeMoreChars'));
       return;
     }
     setSearching(true);
@@ -126,7 +128,7 @@ function EditModal({ visible, initial, onClose, onSaved }: EditModalProps) {
     setSearching(false);
     setSearchResults(results);
     if (results.length === 0) {
-      Alert.alert('No matches', 'No places found for that address. Try a different spelling.');
+      Alert.alert(t('client.savedLocations.noMatchesTitle'), t('client.savedLocations.noMatchesMsg'));
     }
   };
 
@@ -179,25 +181,28 @@ function EditModal({ visible, initial, onClose, onSaved }: EditModalProps) {
             {/* Label suggestions */}
             <Text style={modal.fieldLabel}>{t('client.savedLocations.labelField')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modal.chipRow}>
-              {SUGGESTIONS.map(s => (
-                <TouchableOpacity
-                  key={s}
-                  onPress={() => setLabel(s)}
-                  style={[modal.chip, label === s && modal.chipActive]}
-                  accessibilityRole="radio"
-                  accessibilityLabel={`Label: ${s}`}
-                  accessibilityState={{ checked: label === s }}>
-                  <Text style={[modal.chipText, label === s && modal.chipTextActive]}>
-                    {labelEmoji(s)} {s}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {SUGGESTIONS.map(s => {
+                const sugLabel = t(`client.savedLocations.suggest${s}`);
+                return (
+                  <TouchableOpacity
+                    key={s}
+                    onPress={() => setLabel(sugLabel)}
+                    style={[modal.chip, label === sugLabel && modal.chipActive]}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`Label: ${sugLabel}`}
+                    accessibilityState={{ checked: label === sugLabel }}>
+                    <Text style={[modal.chipText, label === sugLabel && modal.chipTextActive]}>
+                      {labelEmoji(sugLabel)} {sugLabel}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
             <TextInput
               style={modal.input}
               value={label}
               onChangeText={setLabel}
-              placeholder="Or type a custom label"
+              placeholder={t('client.savedLocations.customLabelPlaceholder')}
               placeholderTextColor={colors.textDisabled}
               maxLength={40}
               returnKeyType="next"
@@ -210,7 +215,7 @@ function EditModal({ visible, initial, onClose, onSaved }: EditModalProps) {
               style={modal.input}
               value={address}
               onChangeText={setAddress}
-              placeholder="e.g. 123 Main St (optional)"
+              placeholder={t('client.savedLocations.addressPlaceholder')}
               placeholderTextColor={colors.textDisabled}
               maxLength={200}
               returnKeyType="done"

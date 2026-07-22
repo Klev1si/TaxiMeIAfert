@@ -62,7 +62,7 @@ export default function SignUpScreen({ navigation }: Props) {
     const outcome = await signInWithGoogle();
     if (outcome.kind === 'cancelled' || outcome.kind === 'in_progress') return;
     if (outcome.kind === 'play_services_unavailable') {
-      Alert.alert(t('common.error'), 'Google Play services are not available on this device.');
+      Alert.alert(t('common.error'), t('auth.login.googlePlayUnavailable'));
       return;
     }
     if (outcome.kind === 'error') {
@@ -72,7 +72,7 @@ export default function SignUpScreen({ navigation }: Props) {
     try {
       await loginWithGoogle(outcome.idToken);
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not sign in.';
+      const msg = err?.response?.data?.message ?? t('auth.login.signInFailed');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     }
   };
@@ -81,7 +81,7 @@ export default function SignUpScreen({ navigation }: Props) {
     const outcome = await signInWithApple();
     if (outcome.kind === 'cancelled') return;
     if (outcome.kind === 'unsupported') {
-      Alert.alert(t('common.error'), 'Sign in with Apple is not available on this device.');
+      Alert.alert(t('common.error'), t('auth.login.appleUnavailable'));
       return;
     }
     if (outcome.kind === 'error') {
@@ -91,7 +91,7 @@ export default function SignUpScreen({ navigation }: Props) {
     try {
       await loginWithApple(outcome.identityToken, outcome.firstName, outcome.lastName);
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not sign in.';
+      const msg = err?.response?.data?.message ?? t('auth.login.signInFailed');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     }
   };
@@ -116,11 +116,11 @@ export default function SignUpScreen({ navigation }: Props) {
             <View style={styles.logoBox}>
               <Text style={styles.logoEmoji}>🚕</Text>
             </View>
-            <Text style={styles.welcome}>Create account 👋</Text>
-            <Text style={styles.subtitle}>Pick how you want to use TaxiMeIAfert</Text>
+            <Text style={styles.welcome}>{t('auth.signUp.title')}</Text>
+            <Text style={styles.subtitle}>{t('auth.signUp.subtitle')}</Text>
           </View>
 
-          <Text style={styles.sectionLabel}>I'm signing up as a…</Text>
+          <Text style={styles.sectionLabel}>{t('auth.signUp.roleQuestion')}</Text>
           <View style={styles.roleRow}>
             {ROLES.map(r => (
               <TouchableOpacity
@@ -135,7 +135,7 @@ export default function SignUpScreen({ navigation }: Props) {
             ))}
           </View>
 
-          <Text style={styles.fieldLabel}>Phone Number</Text>
+          <Text style={styles.fieldLabel}>{t('auth.signUp.phoneLabel')}</Text>
           <View style={styles.inputWrap}>
             <Text style={styles.inputIcon}>📱</Text>
             <TextInput
@@ -151,7 +151,7 @@ export default function SignUpScreen({ navigation }: Props) {
             />
           </View>
           <Text style={styles.fieldHint}>
-            We'll text you a code to confirm it's you.
+            {t('auth.signUp.phoneHint')}
           </Text>
 
           <TouchableOpacity
@@ -161,14 +161,14 @@ export default function SignUpScreen({ navigation }: Props) {
             activeOpacity={0.85}>
             {sending
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.primaryBtnText}>Send verification code</Text>}
+              : <Text style={styles.primaryBtnText}>{t('auth.signUp.sendCodeBtn')}</Text>}
           </TouchableOpacity>
 
           {isGoogleConfigured && role === 'client' && (
             <>
               <View style={styles.orRow}>
                 <View style={styles.orLine} />
-                <Text style={styles.orText}>Or continue with</Text>
+                <Text style={styles.orText}>{t('auth.signUp.orContinueWith')}</Text>
                 <View style={styles.orLine} />
               </View>
               <View style={styles.socialRow}>
@@ -195,7 +195,7 @@ export default function SignUpScreen({ navigation }: Props) {
                 )}
               </View>
               <Text style={styles.googleHint}>
-                Passengers can also sign up with Google in one tap.
+                {t('auth.signUp.googleHint')}
               </Text>
             </>
           )}
@@ -206,7 +206,7 @@ export default function SignUpScreen({ navigation }: Props) {
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}>
             <Text style={styles.bottomLinkText}>
-              Already have an account? <Text style={styles.bottomLinkAccent}>Sign in</Text>
+              {t('auth.signUp.haveAccount')} <Text style={styles.bottomLinkAccent}>{t('auth.signUp.signInLink')}</Text>
             </Text>
           </TouchableOpacity>
         </ScrollView>

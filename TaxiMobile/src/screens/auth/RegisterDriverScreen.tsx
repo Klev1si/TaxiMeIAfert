@@ -59,7 +59,7 @@ export default function RegisterDriverScreen({ navigation, route }: Props) {
       return;
     }
     if (!isValidEmail(email)) {
-      Alert.alert(t('common.validation'), 'Please enter a valid email address.');
+      Alert.alert(t('common.validation'), t('auth.invalidEmail'));
       return;
     }
     if (password.length < 8) {
@@ -177,7 +177,7 @@ export default function RegisterDriverScreen({ navigation, route }: Props) {
               />
             </Field>
 
-            <Field label="Email" colors={colors}>
+            <Field label={t('auth.emailLabel')} colors={colors}>
               <TextInput
                 style={styles.input}
                 placeholder="you@example.com"

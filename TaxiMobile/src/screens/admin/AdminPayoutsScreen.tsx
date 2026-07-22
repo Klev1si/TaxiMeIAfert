@@ -189,8 +189,8 @@ function PayoutModal({
 
   const handleSave = async () => {
     const amt = parseFloat(amount);
-    if (isNaN(amt) || amt <= 0)       { setErr('Enter a valid amount greater than $0.'); return; }
-    if (amt > balance)                 { setErr(`Amount exceeds available balance (${fmt(balance)}).`); return; }
+    if (isNaN(amt) || amt <= 0)       { setErr(t('admin.payouts.amountInvalid')); return; }
+    if (amt > balance)                 { setErr(t('admin.payouts.amountExceeds', { balance: fmt(balance) })); return; }
 
     setErr(null);
     setSaving(true);
@@ -199,7 +199,7 @@ function PayoutModal({
       onPaid(res.data);
       onClose();
     } catch (e: any) {
-      setErr(toAlertString(e?.response?.data?.message, 'Could not record payout.'));
+      setErr(toAlertString(e?.response?.data?.message, t('admin.payouts.payoutError')));
     } finally {
       setSaving(false);
     }
@@ -234,7 +234,7 @@ function PayoutModal({
             <View style={pm.driverRow}>
               <Text style={pm.driverName}>{driverName}</Text>
               <View style={pm.availRow}>
-                <Text style={pm.availLabel}>Available balance: </Text>
+                <Text style={pm.availLabel}>{t('admin.payouts.availableBalance')} </Text>
                 <Text style={pm.availAmount}>{fmt(balance)}</Text>
               </View>
             </View>
@@ -246,7 +246,7 @@ function PayoutModal({
             )}
 
             {/* Amount */}
-            <Text style={pm.label}>Amount ($)</Text>
+            <Text style={pm.label}>{t('admin.payouts.amountLabel')}</Text>
             <TextInput
               style={pm.input}
               value={amount}
@@ -277,17 +277,17 @@ function PayoutModal({
                 onPress={() => setAmount(balance.toFixed(2))}
                 accessibilityRole="button"
                 accessibilityLabel={`Set amount to full balance, ${fmt(balance)}`}>
-                <Text style={pm.quickBtnText}>Full · {fmt(balance)}</Text>
+                <Text style={pm.quickBtnText}>{t('admin.payouts.fullLabel')} · {fmt(balance)}</Text>
               </TouchableOpacity>
             </View>
 
             {/* Note */}
-            <Text style={pm.label}>Note (optional)</Text>
+            <Text style={pm.label}>{t('admin.payouts.noteLabel')}</Text>
             <TextInput
               style={[pm.input, pm.inputMulti]}
               value={note}
               onChangeText={setNote}
-              placeholder="e.g. Bank transfer, cash handover…"
+              placeholder={t('admin.payouts.notePlaceholder')}
               placeholderTextColor={colors.textSecondary}
               multiline
               numberOfLines={3}

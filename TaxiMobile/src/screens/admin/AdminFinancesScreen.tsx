@@ -27,8 +27,9 @@ import {
 } from '../../api/admin-finances';
 import { useColors } from '../../stores/themeStore';
 import type { ColorPalette } from '../../constants/colors';
-import { useTranslation } from '../../i18n';
+import { t as tr, useTranslation } from '../../i18n';
 
+// label is the suffix of the i18n key company.finances.period<Label>
 const PERIODS: { value: FinancePeriod; label: string }[] = [
   { value: 'today', label: 'Today' },
   { value: 'week',  label: 'Week'  },
@@ -63,7 +64,7 @@ export default function AdminFinancesScreen() {
       setDrivers(dRes.data);
       setCompanies(cRes.data);
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not load finances.';
+      const msg = err?.response?.data?.message ?? t('company.finances.loadError');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     } finally {
       setLoading(false);
@@ -111,7 +112,7 @@ export default function AdminFinancesScreen() {
           accessibilityLabel={t('common.back')}>
           <Text style={styles.backBtn}>‹ {t('common.back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Platform Finances</Text>
+        <Text style={styles.topBarTitle}>{t('admin.finances.title')}</Text>
         <View style={{ width: 60 }} />
       </View>
       <FlatList
@@ -131,14 +132,14 @@ export default function AdminFinancesScreen() {
                 style={[styles.tab, tab === 'drivers' && styles.tabActive]}
                 onPress={() => setTab('drivers')}>
                 <Text style={[styles.tabText, tab === 'drivers' && styles.tabTextActive]}>
-                  🚗 Drivers
+                  🚗 {t('admin.finances.tabDrivers')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.tab, tab === 'companies' && styles.tabActive]}
                 onPress={() => setTab('companies')}>
                 <Text style={[styles.tabText, tab === 'companies' && styles.tabTextActive]}>
-                  🏢 Companies
+                  🏢 {t('admin.finances.tabCompanies')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -152,7 +153,7 @@ export default function AdminFinancesScreen() {
                   onPress={() => setPeriod(p.value)}
                   activeOpacity={0.75}>
                   <Text style={[styles.pillText, period === p.value && styles.pillTextActive]}>
-                    {p.label}
+                    {t(`company.finances.period${p.label}`)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -161,18 +162,18 @@ export default function AdminFinancesScreen() {
             {/* Totals card */}
             <View style={styles.summaryCard}>
               <Text style={styles.summaryLabel}>
-                Platform earnings · {tab === 'drivers' ? drivers.length : companies.length}
-                {' '}{tab === 'drivers' ? 'drivers' : 'companies'}
+                {t('admin.finances.earningsLabel')} · {tab === 'drivers' ? drivers.length : companies.length}
+                {' '}{tab === 'drivers' ? t('admin.finances.driversWord') : t('admin.finances.companiesWord')}
               </Text>
               <Text style={styles.summaryValue}>{money(totals.platform)}</Text>
               <View style={styles.summaryRow}>
                 <View style={styles.summaryCol}>
-                  <Text style={styles.summaryColLabel}>🚗 Drivers</Text>
+                  <Text style={styles.summaryColLabel}>🚗 {t('admin.finances.tabDrivers')}</Text>
                   <Text style={styles.summaryColValue}>{money(totals.driver)}</Text>
                 </View>
                 <View style={styles.summaryDivider} />
                 <View style={styles.summaryCol}>
-                  <Text style={styles.summaryColLabel}>🏢 Companies</Text>
+                  <Text style={styles.summaryColLabel}>🏢 {t('admin.finances.tabCompanies')}</Text>
                   <Text style={styles.summaryColValue}>{money(totals.company)}</Text>
                 </View>
               </View>
@@ -180,16 +181,16 @@ export default function AdminFinancesScreen() {
 
             {/* "Owed to drivers from card" callout */}
             <View style={styles.owedCard}>
-              <Text style={styles.owedCardLabel}>💳 Platform owes drivers (card share)</Text>
+              <Text style={styles.owedCardLabel}>💳 {t('admin.finances.owedCardLabel')}</Text>
               <Text style={styles.owedCardValue}>{money(totals.cardDue)}</Text>
               <Text style={styles.owedCardHint}>
-                Card revenue minus the 10% platform fee, owed to drivers
+                {t('admin.finances.owedCardHint')}
               </Text>
             </View>
 
             {/* Section header */}
             <Text style={styles.sectionHeader}>
-              {tab === 'drivers' ? 'Per Driver' : 'Per Company'}
+              {tab === 'drivers' ? t('admin.finances.perDriver') : t('admin.finances.perCompany')}
             </Text>
           </View>
         }
@@ -201,7 +202,7 @@ export default function AdminFinancesScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>📊</Text>
-            <Text style={styles.emptyText}>No data for this period yet.</Text>
+            <Text style={styles.emptyText}>{t('admin.finances.emptyMsg')}</Text>
           </View>
         }
       />
@@ -219,7 +220,7 @@ function DriverRow({
         <View style={{ flex: 1 }}>
           <Text style={styles.rowTitle}>{item.firstName} {item.lastName}</Text>
           <Text style={styles.rowSub}>
-            {item.companyName ? `🏢 ${item.companyName}` : '👤 Solo'}
+            {item.companyName ? `🏢 ${item.companyName}` : `👤 ${tr('admin.finances.soloLabel')}`}
             {' · '}{item.vehiclePlate}
           </Text>
         </View>
@@ -229,22 +230,22 @@ function DriverRow({
       </View>
 
       <View style={styles.miniBreakdown}>
-        <BreakCol label="🚗 Driver"   value={item.driverEarning}   color={colors.warning} styles={styles} />
-        <BreakCol label="🏢 Company"  value={item.companyEarning}  color={colors.primary} styles={styles} />
-        <BreakCol label="🌐 Platform" value={item.platformEarning} color={colors.textSecondary} styles={styles} />
+        <BreakCol label={`🚗 ${tr('admin.finances.rowDriver')}`}   value={item.driverEarning}   color={colors.warning} styles={styles} />
+        <BreakCol label={`🏢 ${tr('admin.finances.rowCompany')}`}  value={item.companyEarning}  color={colors.primary} styles={styles} />
+        <BreakCol label={`🌐 ${tr('admin.finances.rowPlatform')}`} value={item.platformEarning} color={colors.textSecondary} styles={styles} />
       </View>
 
       <View style={styles.statsLine}>
-        <Text style={styles.statsLineLabel}>💵 Cash</Text>
+        <Text style={styles.statsLineLabel}>💵 {tr('company.finances.cashLabel')}</Text>
         <Text style={styles.statsLineValue}>{money(item.cashTotal)}</Text>
       </View>
       <View style={styles.statsLine}>
-        <Text style={styles.statsLineLabel}>💳 Card</Text>
+        <Text style={styles.statsLineLabel}>💳 {tr('company.finances.cardLabel')}</Text>
         <Text style={styles.statsLineValue}>{money(item.cardTotal)}</Text>
       </View>
       <View style={[styles.statsLine, styles.statsLineHi]}>
         <Text style={[styles.statsLineLabel, { fontWeight: '700', color: colors.text }]}>
-          Platform owes driver (card)
+          {tr('admin.finances.owesDriverCard')}
         </Text>
         <Text style={[styles.statsLineValue, { color: colors.warning }]}>
           {money(item.cardDueToDriver)}
@@ -262,27 +263,31 @@ function CompanyRow({
       <View style={styles.rowHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.rowTitle}>🏢 {item.companyName}</Text>
-          <Text style={styles.rowSub}>{item.driverCount} driver{item.driverCount === 1 ? '' : 's'}</Text>
+          <Text style={styles.rowSub}>
+            {item.driverCount === 1
+              ? tr('admin.finances.driverCount', { n: item.driverCount })
+              : tr('admin.finances.driverCountPlural', { n: item.driverCount })}
+          </Text>
         </View>
       </View>
 
       <View style={styles.miniBreakdown}>
-        <BreakCol label="🚗 Drivers"  value={item.driverEarning}   color={colors.warning} styles={styles} />
-        <BreakCol label="🏢 Company"  value={item.companyEarning}  color={colors.primary} styles={styles} />
-        <BreakCol label="🌐 Platform" value={item.platformEarning} color={colors.textSecondary} styles={styles} />
+        <BreakCol label={`🚗 ${tr('admin.finances.tabDrivers')}`}  value={item.driverEarning}   color={colors.warning} styles={styles} />
+        <BreakCol label={`🏢 ${tr('admin.finances.rowCompany')}`}  value={item.companyEarning}  color={colors.primary} styles={styles} />
+        <BreakCol label={`🌐 ${tr('admin.finances.rowPlatform')}`} value={item.platformEarning} color={colors.textSecondary} styles={styles} />
       </View>
 
       <View style={styles.statsLine}>
-        <Text style={styles.statsLineLabel}>💵 Cash</Text>
+        <Text style={styles.statsLineLabel}>💵 {tr('company.finances.cashLabel')}</Text>
         <Text style={styles.statsLineValue}>{money(item.cashTotal)}</Text>
       </View>
       <View style={styles.statsLine}>
-        <Text style={styles.statsLineLabel}>💳 Card</Text>
+        <Text style={styles.statsLineLabel}>💳 {tr('company.finances.cardLabel')}</Text>
         <Text style={styles.statsLineValue}>{money(item.cardTotal)}</Text>
       </View>
       <View style={[styles.statsLine, styles.statsLineHi]}>
         <Text style={[styles.statsLineLabel, { fontWeight: '700', color: colors.text }]}>
-          Platform owes drivers (card)
+          {tr('admin.finances.owesDriversCard')}
         </Text>
         <Text style={[styles.statsLineValue, { color: colors.warning }]}>
           {money(item.cardDueToDrivers)}

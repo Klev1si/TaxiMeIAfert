@@ -57,7 +57,7 @@ export default function DriverTariffScreen({ navigation }: Props) {
   const [saving,      setSaving]      = useState(false);
   const [companyLock, setCompanyLock] = useState(false);
   const [tariffId,    setTariffId]    = useState<string | null>(null);
-  const [form,        setForm]        = useState<FormState>(EMPTY_FORM);
+  const [form,        setForm]        = useState<FormState>(() => ({ ...EMPTY_FORM, name: t('driver.tariff.defaultName') }));
 
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -92,11 +92,11 @@ export default function DriverTariffScreen({ navigation }: Props) {
     const perMinuteRate = parseFloat(form.perMinuteRate);
     const minimumFare   = parseFloat(form.minimumFare);
 
-    if (!form.name.trim())            { Alert.alert(t('common.validation'), 'Tariff name is required.'); return; }
-    if (!Number.isFinite(baseFare)      || baseFare      < 0) { Alert.alert(t('common.validation'), 'Base fare must be 0 or higher.'); return; }
-    if (!Number.isFinite(perKmRate)     || perKmRate     < 0) { Alert.alert(t('common.validation'), 'Per-km rate must be 0 or higher.'); return; }
-    if (!Number.isFinite(perMinuteRate) || perMinuteRate < 0) { Alert.alert(t('common.validation'), 'Per-minute rate must be 0 or higher.'); return; }
-    if (!Number.isFinite(minimumFare)   || minimumFare   < 0) { Alert.alert(t('common.validation'), 'Minimum fare must be 0 or higher.'); return; }
+    if (!form.name.trim())            { Alert.alert(t('common.validation'), t('driver.tariff.nameRequired')); return; }
+    if (!Number.isFinite(baseFare)      || baseFare      < 0) { Alert.alert(t('common.validation'), t('driver.tariff.baseFareInvalid')); return; }
+    if (!Number.isFinite(perKmRate)     || perKmRate     < 0) { Alert.alert(t('common.validation'), t('driver.tariff.perKmInvalid')); return; }
+    if (!Number.isFinite(perMinuteRate) || perMinuteRate < 0) { Alert.alert(t('common.validation'), t('driver.tariff.perMinuteInvalid')); return; }
+    if (!Number.isFinite(minimumFare)   || minimumFare   < 0) { Alert.alert(t('common.validation'), t('driver.tariff.minFareInvalid')); return; }
 
     setSaving(true);
     try {
@@ -108,17 +108,17 @@ export default function DriverTariffScreen({ navigation }: Props) {
         minimumFare,
       });
       setTariffId(data.id);
-      Alert.alert(t('common.success'), 'Your tariff has been saved. It will apply to your next ride.');
+      Alert.alert(t('common.success'), t('driver.tariff.savedMsg'));
     } catch (err: any) {
       // Company driver — backend returns 403 with a helpful message
       if (err?.response?.status === 403) {
         setCompanyLock(true);
         Alert.alert(
-          'Company-managed',
-          err?.response?.data?.message ?? 'Your tariff is managed by your company. Contact your company admin to change it.',
+          t('driver.tariff.companyManagedTitle'),
+          err?.response?.data?.message ?? t('driver.tariff.companyManagedMsg'),
         );
       } else {
-        Alert.alert(t('common.error'), err?.response?.data?.message ?? 'Failed to save tariff.');
+        Alert.alert(t('common.error'), err?.response?.data?.message ?? t('driver.tariff.saveFailed'));
       }
     } finally {
       setSaving(false);
@@ -148,7 +148,7 @@ export default function DriverTariffScreen({ navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel={t('common.back')}>
           <Text style={styles.headerBack}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Tariff</Text>
+        <Text style={styles.headerTitle}>{t('driver.tariff.title')}</Text>
         <View style={{ width: 28 }} />
       </View>
 
@@ -156,35 +156,35 @@ export default function DriverTariffScreen({ navigation }: Props) {
         <ScrollView contentContainerStyle={styles.scroll}>
           {companyLock && (
             <View style={styles.lockCard}>
-              <Text style={styles.lockTitle}>🔒 Company-managed</Text>
+              <Text style={styles.lockTitle}>🔒 {t('driver.tariff.companyManagedTitle')}</Text>
               <Text style={styles.lockText}>
-                Your tariff is set by your company. Only the company admin can change it.
+                {t('driver.tariff.lockText')}
               </Text>
             </View>
           )}
 
           <Text style={styles.hint}>
-            Set your own taximeter rates. The fare is computed as:{'\n'}
+            {t('driver.tariff.hint')}{'\n'}
             <Text style={styles.formula}>
               fare = max(baseFare + km × perKmRate + min × perMinuteRate, minimumFare)
             </Text>
           </Text>
 
-          <Field label="Name"             value={form.name}
+          <Field label={t('driver.tariff.nameLabel')} value={form.name}
             onChangeText={v => setForm(f => ({ ...f, name: v }))}
-            placeholder="e.g. My Tariff" />
-          <Field label="Base fare ($)"    value={form.baseFare}
+            placeholder={t('driver.tariff.namePlaceholder')} />
+          <Field label={t('driver.tariff.baseFareLabel')} value={form.baseFare}
             onChangeText={v => setForm(f => ({ ...f, baseFare: v }))} keyboardType="decimal-pad" />
-          <Field label="Per km ($)"       value={form.perKmRate}
+          <Field label={t('driver.tariff.perKmLabel')} value={form.perKmRate}
             onChangeText={v => setForm(f => ({ ...f, perKmRate: v }))} keyboardType="decimal-pad" />
-          <Field label="Per minute ($)"   value={form.perMinuteRate}
+          <Field label={t('driver.tariff.perMinuteLabel')} value={form.perMinuteRate}
             onChangeText={v => setForm(f => ({ ...f, perMinuteRate: v }))} keyboardType="decimal-pad" />
-          <Field label="Minimum fare ($)" value={form.minimumFare}
+          <Field label={t('driver.tariff.minFareLabel')} value={form.minimumFare}
             onChangeText={v => setForm(f => ({ ...f, minimumFare: v }))} keyboardType="decimal-pad" />
 
           {/* Live preview */}
           <View style={styles.previewCard}>
-            <Text style={styles.previewTitle}>Example fares</Text>
+            <Text style={styles.previewTitle}>{t('driver.tariff.previewTitle')}</Text>
             <View style={styles.previewRow}>
               <Text style={styles.previewLabel}>2 km · 5 min</Text>
               <Text style={styles.previewValue}>{preview(2, 5)}</Text>
@@ -209,7 +209,7 @@ export default function DriverTariffScreen({ navigation }: Props) {
           >
             {saving
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.saveBtnText}>{tariffId ? 'Update Tariff' : 'Save Tariff'}</Text>
+              : <Text style={styles.saveBtnText}>{tariffId ? t('driver.tariff.updateBtn') : t('driver.tariff.saveBtn')}</Text>
             }
           </TouchableOpacity>
         </ScrollView>

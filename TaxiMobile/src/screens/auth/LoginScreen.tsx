@@ -61,7 +61,7 @@ export default function LoginScreen({ navigation }: Props) {
     const outcome = await signInWithGoogle();
     if (outcome.kind === 'cancelled' || outcome.kind === 'in_progress') return;
     if (outcome.kind === 'play_services_unavailable') {
-      Alert.alert(t('common.error'), 'Google Play services are not available on this device.');
+      Alert.alert(t('common.error'), t('auth.login.googlePlayUnavailable'));
       return;
     }
     if (outcome.kind === 'error') {
@@ -71,7 +71,7 @@ export default function LoginScreen({ navigation }: Props) {
     try {
       await loginWithGoogle(outcome.idToken);
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not sign in.';
+      const msg = err?.response?.data?.message ?? t('auth.login.signInFailed');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     }
   };
@@ -80,7 +80,7 @@ export default function LoginScreen({ navigation }: Props) {
     const outcome = await signInWithApple();
     if (outcome.kind === 'cancelled') return;
     if (outcome.kind === 'unsupported') {
-      Alert.alert(t('common.error'), 'Sign in with Apple is not available on this device.');
+      Alert.alert(t('common.error'), t('auth.login.appleUnavailable'));
       return;
     }
     if (outcome.kind === 'error') {
@@ -90,7 +90,7 @@ export default function LoginScreen({ navigation }: Props) {
     try {
       await loginWithApple(outcome.identityToken, outcome.firstName, outcome.lastName);
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not sign in.';
+      const msg = err?.response?.data?.message ?? t('auth.login.signInFailed');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     }
   };
@@ -114,9 +114,9 @@ export default function LoginScreen({ navigation }: Props) {
           </View>
 
           {/* Welcome */}
-          <Text style={styles.welcome}>Welcome Back! 👋</Text>
+          <Text style={styles.welcome}>{t('auth.login.welcome')}</Text>
           <Text style={styles.subtitle}>
-            Sign in to your TaxiMeIAfert account
+            {t('auth.login.subtitle')}
           </Text>
 
           {/* Tab switcher: Phone / Email */}
@@ -126,7 +126,7 @@ export default function LoginScreen({ navigation }: Props) {
               onPress={() => setMethod('phone')}
               activeOpacity={0.8}>
               <Text style={[styles.tabText, method === 'phone' && styles.tabTextActive]}>
-                Phone Number
+                {t('auth.login.tabPhone')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -134,13 +134,13 @@ export default function LoginScreen({ navigation }: Props) {
               onPress={() => setMethod('email')}
               activeOpacity={0.8}>
               <Text style={[styles.tabText, method === 'email' && styles.tabTextActive]}>
-                Email
+                {t('auth.login.tabEmail')}
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Identifier field — switches between phone and email */}
-          <Text style={styles.fieldLabel}>{method === 'phone' ? 'Phone Number' : 'Email'}</Text>
+          <Text style={styles.fieldLabel}>{method === 'phone' ? t('auth.login.phoneLabel') : t('auth.login.emailLabel')}</Text>
           {method === 'phone' ? (
             <View style={styles.inputWrap}>
               <Text style={styles.inputIcon}>📱</Text>
@@ -160,7 +160,7 @@ export default function LoginScreen({ navigation }: Props) {
               <Text style={styles.inputIcon}>✉️</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your email"
+                placeholder={t('auth.login.emailPlaceholder')}
                 placeholderTextColor={colors.textDisabled}
                 value={email}
                 onChangeText={setEmail}
@@ -173,12 +173,12 @@ export default function LoginScreen({ navigation }: Props) {
           )}
 
           {/* Password */}
-          <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Password</Text>
+          <Text style={[styles.fieldLabel, { marginTop: 16 }]}>{t('auth.login.passwordLabel')}</Text>
           <View style={styles.inputWrap}>
             <Text style={styles.inputIcon}>🔒</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your password"
+              placeholder={t('auth.login.passwordPlaceholder')}
               placeholderTextColor={colors.textDisabled}
               value={password}
               onChangeText={setPassword}
@@ -201,10 +201,10 @@ export default function LoginScreen({ navigation }: Props) {
               <View style={[styles.checkbox, rememberMe && styles.checkboxOn]}>
                 {rememberMe && <Text style={styles.checkboxTick}>✓</Text>}
               </View>
-              <Text style={styles.rememberText}>Remember me</Text>
+              <Text style={styles.rememberText}>{t('auth.login.rememberMe')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} activeOpacity={0.7}>
-              <Text style={styles.forgotText}>Forgot password?</Text>
+              <Text style={styles.forgotText}>{t('auth.login.forgotPassword')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -216,7 +216,7 @@ export default function LoginScreen({ navigation }: Props) {
             activeOpacity={0.85}>
             {isLoading
               ? <ActivityIndicator color={colors.textOnPrimary} />
-              : <Text style={styles.primaryBtnText}>Sign in</Text>}
+              : <Text style={styles.primaryBtnText}>{t('auth.login.signInBtn')}</Text>}
           </TouchableOpacity>
 
           {/* "Or continue with" with Google in a circle */}
@@ -224,7 +224,7 @@ export default function LoginScreen({ navigation }: Props) {
             <>
               <View style={styles.orRow}>
                 <View style={styles.orLine} />
-                <Text style={styles.orText}>Or continue with</Text>
+                <Text style={styles.orText}>{t('auth.login.orContinueWith')}</Text>
                 <View style={styles.orLine} />
               </View>
               <View style={styles.socialRow}>
@@ -262,7 +262,7 @@ export default function LoginScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('SignUp')}
             activeOpacity={0.7}>
             <Text style={styles.bottomLinkText}>
-              Don't have an account? <Text style={styles.bottomLinkAccent}>Sign up</Text>
+              {t('auth.login.noAccount')} <Text style={styles.bottomLinkAccent}>{t('auth.login.signUpLink')}</Text>
             </Text>
           </TouchableOpacity>
         </ScrollView>

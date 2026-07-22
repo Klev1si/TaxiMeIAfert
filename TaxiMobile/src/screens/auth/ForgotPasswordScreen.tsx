@@ -42,15 +42,15 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
   const handleSend = async () => {
     const v = identifier.trim();
     if (!v) {
-      Alert.alert(t('common.validation'), 'Please enter your email or phone.');
+      Alert.alert(t('common.validation'), t('auth.forgotPassword.missingIdentifier'));
       return;
     }
     if (method === 'email' && !isValidEmail(v)) {
-      Alert.alert(t('common.validation'), 'Please enter a valid email address.');
+      Alert.alert(t('common.validation'), t('auth.invalidEmail'));
       return;
     }
     if (method === 'sms' && !isValidE164Phone(v)) {
-      Alert.alert(t('common.validation'), 'Please enter your phone in E.164 format (e.g. +37491123456).');
+      Alert.alert(t('common.validation'), t('auth.forgotPassword.invalidPhone'));
       return;
     }
     setLoading(true);
@@ -61,7 +61,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
       // will surface as "incorrect code" on the reset screen.
       navigation.navigate('ResetPassword', { method, identifier: v });
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not send code. Please try again.';
+      const msg = err?.response?.data?.message ?? t('auth.forgotPassword.sendError');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     } finally {
       setLoading(false);
@@ -76,9 +76,9 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
             <Text style={styles.backText}>‹ {t('common.back')}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.title}>Forgot password?</Text>
+          <Text style={styles.title}>{t('auth.forgotPassword.title')}</Text>
           <Text style={styles.subtitle}>
-            Pick how you'd like to receive your reset code.
+            {t('auth.forgotPassword.subtitle')}
           </Text>
 
           <View style={styles.toggleRow}>
@@ -87,7 +87,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
               onPress={() => setMethod('email')}
               activeOpacity={0.75}>
               <Text style={[styles.toggleText, method === 'email' && styles.toggleTextActive]}>
-                📧  Email
+                📧  {t('auth.forgotPassword.tabEmail')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -95,13 +95,13 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
               onPress={() => setMethod('sms')}
               activeOpacity={0.75}>
               <Text style={[styles.toggleText, method === 'sms' && styles.toggleTextActive]}>
-                💬  SMS
+                💬  {t('auth.forgotPassword.tabSms')}
               </Text>
             </TouchableOpacity>
           </View>
 
           <Text style={styles.fieldLabel}>
-            {method === 'email' ? 'Email address' : 'Phone number'}
+            {method === 'email' ? t('auth.forgotPassword.emailLabel') : t('auth.forgotPassword.phoneLabel')}
           </Text>
           <TextInput
             style={styles.input}
@@ -123,7 +123,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
             activeOpacity={0.85}>
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.sendBtnText}>Send code</Text>}
+              : <Text style={styles.sendBtnText}>{t('auth.forgotPassword.sendBtn')}</Text>}
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

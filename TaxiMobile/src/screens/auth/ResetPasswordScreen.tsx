@@ -41,15 +41,15 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
 
   const handleSubmit = async () => {
     if (code.trim().length < 4) {
-      Alert.alert(t('common.validation'), 'Please enter the code from your ' + (method === 'email' ? 'email' : 'SMS') + '.');
+      Alert.alert(t('common.validation'), method === 'email' ? t('auth.resetPassword.codeFromEmail') : t('auth.resetPassword.codeFromSms'));
       return;
     }
     if (newPassword.length < 6) {
-      Alert.alert(t('common.validation'), 'New password must be at least 6 characters.');
+      Alert.alert(t('common.validation'), t('auth.resetPassword.pwTooShort'));
       return;
     }
     if (newPassword !== confirmPwd) {
-      Alert.alert(t('common.validation'), 'Passwords do not match.');
+      Alert.alert(t('common.validation'), t('auth.resetPassword.pwMismatch'));
       return;
     }
 
@@ -57,12 +57,12 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
     try {
       await authApi.resetPassword({ method, identifier, code: code.trim(), newPassword });
       Alert.alert(
-        'Password reset',
-        'Your password has been updated. Please sign in with the new password.',
-        [{ text: 'Sign in', onPress: () => navigation.popToTop() }],
+        t('auth.resetPassword.successTitle'),
+        t('auth.resetPassword.successMsg'),
+        [{ text: t('auth.resetPassword.signInBtn'), onPress: () => navigation.popToTop() }],
       );
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not reset password.';
+      const msg = err?.response?.data?.message ?? t('auth.resetPassword.resetError');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     } finally {
       setLoading(false);
@@ -73,9 +73,9 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
     setResending(true);
     try {
       await authApi.forgotPassword({ method, identifier });
-      Alert.alert('Code sent', `A new code was sent to your ${method === 'email' ? 'email' : 'phone'}.`);
+      Alert.alert(t('auth.resetPassword.codeSentTitle'), method === 'email' ? t('auth.resetPassword.codeSentEmail') : t('auth.resetPassword.codeSentPhone'));
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not send a new code right now.';
+      const msg = err?.response?.data?.message ?? t('auth.resetPassword.resendError');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     } finally {
       setResending(false);
@@ -90,12 +90,12 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
             <Text style={styles.backText}>‹ {t('common.back')}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.title}>Enter the code</Text>
+          <Text style={styles.title}>{t('auth.resetPassword.title')}</Text>
           <Text style={styles.subtitle}>
-            We sent a 6-digit code to{'\n'}<Text style={styles.identifier}>{identifier}</Text>
+            {t('auth.resetPassword.subtitle')}{'\n'}<Text style={styles.identifier}>{identifier}</Text>
           </Text>
 
-          <Text style={styles.fieldLabel}>Code</Text>
+          <Text style={styles.fieldLabel}>{t('auth.resetPassword.codeLabel')}</Text>
           <TextInput
             style={[styles.input, styles.codeInput]}
             value={code}
@@ -107,22 +107,22 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
             maxLength={6}
           />
 
-          <Text style={styles.fieldLabel}>New password</Text>
+          <Text style={styles.fieldLabel}>{t('auth.resetPassword.newPwLabel')}</Text>
           <TextInput
             style={styles.input}
             value={newPassword}
             onChangeText={setNewPassword}
-            placeholder="At least 6 characters"
+            placeholder={t('auth.resetPassword.newPwPlaceholder')}
             placeholderTextColor={colors.textDisabled}
             secureTextEntry
           />
 
-          <Text style={styles.fieldLabel}>Confirm new password</Text>
+          <Text style={styles.fieldLabel}>{t('auth.resetPassword.confirmPwLabel')}</Text>
           <TextInput
             style={styles.input}
             value={confirmPwd}
             onChangeText={setConfirmPwd}
-            placeholder="Re-enter password"
+            placeholder={t('auth.resetPassword.confirmPwPlaceholder')}
             placeholderTextColor={colors.textDisabled}
             secureTextEntry
             returnKeyType="done"
@@ -136,14 +136,14 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
             activeOpacity={0.85}>
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.submitBtnText}>Reset password</Text>}
+              : <Text style={styles.submitBtnText}>{t('auth.resetPassword.submitBtn')}</Text>}
           </TouchableOpacity>
 
           <View style={styles.resendWrap}>
-            <Text style={styles.resendHint}>Didn't get a code?</Text>
+            <Text style={styles.resendHint}>{t('auth.resetPassword.resendHint')}</Text>
             <TouchableOpacity onPress={handleResend} disabled={resending} activeOpacity={0.7}>
               <Text style={[styles.resendLink, resending && { opacity: 0.5 }]}>
-                {resending ? 'Sending…' : 'Resend'}
+                {resending ? t('auth.resetPassword.sending') : t('auth.resetPassword.resendLink')}
               </Text>
             </TouchableOpacity>
           </View>

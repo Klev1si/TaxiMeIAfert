@@ -160,7 +160,7 @@ export default function RideDetailScreen({ route }: Props) {
   const handleSaveFare = async () => {
     const newFare = parseFloat(editFareValue);
     if (!Number.isFinite(newFare) || newFare < 0) {
-      Alert.alert(t('common.validation'), 'Enter a valid fare amount.');
+      Alert.alert(t('common.validation'), t('shared.rideDetail.fareInvalid'));
       return;
     }
     const newDist = parseFloat(editFareDist);
@@ -172,9 +172,9 @@ export default function RideDetailScreen({ route }: Props) {
       });
       setRide(data);
       setEditFareOpen(false);
-      Alert.alert(t('common.success'), 'Fare updated and your wallet has been re-credited.');
+      Alert.alert(t('common.success'), t('shared.rideDetail.fareUpdated'));
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Failed to update fare.';
+      const msg = err?.response?.data?.message ?? t('shared.rideDetail.fareUpdateFailed');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     } finally {
       setEditFareSaving(false);
@@ -469,7 +469,7 @@ export default function RideDetailScreen({ route }: Props) {
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Edit fare">
-                <Text style={styles.editFareBtnText}>✏️  Edit Fare</Text>
+                <Text style={styles.editFareBtnText}>✏️  {t('shared.rideDetail.editFareTitle')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -478,16 +478,15 @@ export default function RideDetailScreen({ route }: Props) {
         {/* Driver: ride completed but with no fare → prompt to set one */}
         {isOwnRide && isCompleted && (ride.totalFare == null || ride.totalFare === 0) && (
           <View style={[styles.card, { borderColor: colors.warning, borderWidth: 1 }]}>
-            <Text style={[styles.sectionTitle, { color: colors.warning }]}>⚠️ Missing fare</Text>
+            <Text style={[styles.sectionTitle, { color: colors.warning }]}>⚠️ {t('shared.rideDetail.missingFareTitle')}</Text>
             <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 12, lineHeight: 18 }}>
-              This ride was completed without a fare, so it wasn't added to your earnings.
-              Tap below to enter the correct amount.
+              {t('shared.rideDetail.missingFareMsg')}
             </Text>
             <TouchableOpacity
               style={styles.editFareBtn}
               onPress={openEditFare}
               activeOpacity={0.8}>
-              <Text style={styles.editFareBtnText}>✏️  Set Fare Now</Text>
+              <Text style={styles.editFareBtnText}>✏️  {t('shared.rideDetail.setFareNowBtn')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -554,12 +553,12 @@ export default function RideDetailScreen({ route }: Props) {
         <Pressable style={styles.editFareBackdrop} onPress={() => setEditFareOpen(false)}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <Pressable style={styles.editFareSheet} onPress={() => {}}>
-              <Text style={styles.editFareTitle}>Edit Fare</Text>
+              <Text style={styles.editFareTitle}>{t('shared.rideDetail.editFareTitle')}</Text>
               <Text style={styles.editFareHint}>
-                Update the total fare for this ride. Your wallet will be re-credited with the corrected amount.
+                {t('shared.rideDetail.editFareHint')}
               </Text>
 
-              <Text style={styles.editFareLabel}>Total fare ($)</Text>
+              <Text style={styles.editFareLabel}>{t('shared.rideDetail.totalFareLabel')}</Text>
               <TextInput
                 style={styles.editFareInput}
                 value={editFareValue}
@@ -570,7 +569,7 @@ export default function RideDetailScreen({ route }: Props) {
                 autoFocus
               />
 
-              <Text style={styles.editFareLabel}>Distance (km) — optional</Text>
+              <Text style={styles.editFareLabel}>{t('shared.rideDetail.distanceOptionalLabel')}</Text>
               <TextInput
                 style={styles.editFareInput}
                 value={editFareDist}

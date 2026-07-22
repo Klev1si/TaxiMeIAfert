@@ -36,6 +36,7 @@ import { useColors } from '../../stores/themeStore';
 import type { ColorPalette } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
 
+// label is the suffix of the i18n key company.finances.period<Label>
 const PERIODS: { value: FinancePeriod; label: string }[] = [
   { value: 'today', label: 'Today' },
   { value: 'week',  label: 'Week'  },
@@ -71,7 +72,7 @@ export default function CompanyFinancesScreen() {
       setSummary(sumRes.data);
       setDrivers(drvRes.data);
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not load finances.';
+      const msg = err?.response?.data?.message ?? t('company.finances.loadError');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     } finally {
       setLoading(false);
@@ -101,7 +102,7 @@ export default function CompanyFinancesScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Finances</Text>
+            <Text style={styles.title}>{t('company.finances.title')}</Text>
 
             {/* Period selector */}
             <View style={styles.periodRow}>
@@ -112,7 +113,7 @@ export default function CompanyFinancesScreen() {
                   onPress={() => setPeriod(p.value)}
                   activeOpacity={0.75}>
                   <Text style={[styles.pillText, period === p.value && styles.pillTextActive]}>
-                    {p.label}
+                    {t(`company.finances.period${p.label}`)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -120,17 +121,17 @@ export default function CompanyFinancesScreen() {
 
             {/* Summary card */}
             <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Your revenue</Text>
+              <Text style={styles.summaryLabel}>{t('company.finances.yourRevenue')}</Text>
               <Text style={styles.summaryValue}>{money(summary?.totalRevenue ?? 0)}</Text>
 
               <View style={styles.statsRow}>
                 <View style={styles.stat}>
-                  <Text style={styles.statLabel}>💵 Cash</Text>
+                  <Text style={styles.statLabel}>💵 {t('company.finances.cashLabel')}</Text>
                   <Text style={styles.statValue}>{money(summary?.cashRevenue ?? 0)}</Text>
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.stat}>
-                  <Text style={styles.statLabel}>💳 Card</Text>
+                  <Text style={styles.statLabel}>💳 {t('company.finances.cardLabel')}</Text>
                   <Text style={styles.statValue}>{money(summary?.cardRevenue ?? 0)}</Text>
                 </View>
               </View>
@@ -140,11 +141,11 @@ export default function CompanyFinancesScreen() {
             {summary && summary.cardGross > 0 && (
               <View style={styles.breakdownCard}>
                 <Text style={styles.breakdownTitle}>
-                  Card payment breakdown · {money(summary.cardGross)} gross
+                  {t('company.finances.cardBreakdownTitle', { gross: money(summary.cardGross) })}
                 </Text>
                 <View style={styles.breakdownRow}>
                   <Text style={styles.breakdownLabel}>
-                    🌐 Platform fee ({summary.platformCommissionPct}%)
+                    🌐 {t('company.finances.platformFeeLine', { pct: summary.platformCommissionPct })}
                   </Text>
                   <Text style={[styles.breakdownAmount, { color: colors.textSecondary }]}>
                     −{money(summary.platformFee)}
@@ -152,7 +153,7 @@ export default function CompanyFinancesScreen() {
                 </View>
                 <View style={styles.breakdownRow}>
                   <Text style={styles.breakdownLabel}>
-                    🏢 You ({summary.companyCommissionPct}% of remainder)
+                    🏢 {t('company.finances.youRemainderLine', { pct: summary.companyCommissionPct })}
                   </Text>
                   <Text style={[styles.breakdownAmount, { color: colors.primary }]}>
                     +{money(summary.cardRevenue)}
@@ -160,7 +161,7 @@ export default function CompanyFinancesScreen() {
                 </View>
                 <View style={styles.breakdownRow}>
                   <Text style={styles.breakdownLabel}>
-                    🚗 Drivers ({summary.driverCommissionPct}% of remainder)
+                    🚗 {t('company.finances.driversRemainderLine', { pct: summary.driverCommissionPct })}
                   </Text>
                   <Text style={[styles.breakdownAmount, { color: colors.warning }]}>
                     +{money(summary.cardDriverShare)}
@@ -172,10 +173,10 @@ export default function CompanyFinancesScreen() {
             {/* Driver expenses card */}
             {summary && summary.driverExpenses > 0 && (
               <View style={styles.expensesCard}>
-                <Text style={styles.breakdownTitle}>📋 Driver expenses this period</Text>
+                <Text style={styles.breakdownTitle}>📋 {t('company.finances.driverExpensesTitle')}</Text>
                 <Text style={styles.expensesAmount}>{money(summary.driverExpenses)}</Text>
                 <Text style={styles.expensesHint}>
-                  Fuel, repairs, etc. logged by your drivers
+                  {t('company.finances.driverExpensesHint')}
                 </Text>
               </View>
             )}
@@ -183,24 +184,24 @@ export default function CompanyFinancesScreen() {
             {/* Outstanding cards */}
             <View style={styles.owedRow}>
               <View style={[styles.owedCard, { backgroundColor: colors.successLight ?? '#D1FAE5' }]}>
-                <Text style={styles.owedLabel}>Drivers owe you</Text>
+                <Text style={styles.owedLabel}>{t('company.finances.driversOweYou')}</Text>
                 <Text style={[styles.owedValue, { color: colors.success ?? '#065F46' }]}>
                   {money(summary?.cashOwedByDrivers ?? 0)}
                 </Text>
-                <Text style={styles.owedHint}>cash to collect</Text>
+                <Text style={styles.owedHint}>{t('company.finances.cashToCollect')}</Text>
               </View>
               <View style={[styles.owedCard, { backgroundColor: colors.warningLight ?? '#FEF3C7' }]}>
-                <Text style={styles.owedLabel}>You owe drivers</Text>
+                <Text style={styles.owedLabel}>{t('company.finances.youOweDrivers')}</Text>
                 <Text style={[styles.owedValue, { color: colors.warning ?? '#92400E' }]}>
                   {money(summary?.cardOwedToDrivers ?? 0)}
                 </Text>
-                <Text style={styles.owedHint}>card share to pay</Text>
+                <Text style={styles.owedHint}>{t('company.finances.cardShareToPay')}</Text>
               </View>
             </View>
 
             {/* Section header */}
             {drivers.length > 0 && (
-              <Text style={styles.sectionHeader}>Per Driver</Text>
+              <Text style={styles.sectionHeader}>{t('company.finances.perDriver')}</Text>
             )}
           </View>
         }
@@ -229,19 +230,19 @@ export default function CompanyFinancesScreen() {
             {/* 3-way breakdown */}
             <View style={styles.miniBreakdown}>
               <View style={styles.miniBreakdownCol}>
-                <Text style={styles.miniBreakdownLabel}>🚗 Driver</Text>
+                <Text style={styles.miniBreakdownLabel}>🚗 {t('company.finances.driverCol')}</Text>
                 <Text style={[styles.miniBreakdownValue, { color: colors.warning }]}>
                   {money(item.driverEarning)}
                 </Text>
               </View>
               <View style={styles.miniBreakdownCol}>
-                <Text style={styles.miniBreakdownLabel}>🏢 You</Text>
+                <Text style={styles.miniBreakdownLabel}>🏢 {t('company.finances.youCol')}</Text>
                 <Text style={[styles.miniBreakdownValue, { color: colors.primary }]}>
                   {money(item.companyEarning)}
                 </Text>
               </View>
               <View style={styles.miniBreakdownCol}>
-                <Text style={styles.miniBreakdownLabel}>🌐 Platform</Text>
+                <Text style={styles.miniBreakdownLabel}>🌐 {t('company.finances.platformCol')}</Text>
                 <Text style={[styles.miniBreakdownValue, { color: colors.textSecondary }]}>
                   {money(item.platformEarning)}
                 </Text>
@@ -249,28 +250,28 @@ export default function CompanyFinancesScreen() {
             </View>
 
             <View style={styles.rowOwed}>
-              <Text style={styles.rowLabel}>💵 Cash collected</Text>
+              <Text style={styles.rowLabel}>💵 {t('company.finances.cashCollected')}</Text>
               <Text style={styles.rowAmount}>{money(item.cashCollected)}</Text>
             </View>
             <View style={styles.rowOwed}>
-              <Text style={styles.rowLabel}>↑ Owes you</Text>
+              <Text style={styles.rowLabel}>↑ {t('company.finances.owesYou')}</Text>
               <Text style={[styles.rowAmount, { color: colors.success }]}>
                 {money(item.cashOwedToCompany)}
               </Text>
             </View>
             <View style={styles.rowOwed}>
-              <Text style={styles.rowLabel}>💳 Card total</Text>
+              <Text style={styles.rowLabel}>💳 {t('company.finances.cardTotal')}</Text>
               <Text style={styles.rowAmount}>{money(item.cardTotal)}</Text>
             </View>
             <View style={styles.rowOwed}>
-              <Text style={styles.rowLabel}>↓ You owe</Text>
+              <Text style={styles.rowLabel}>↓ {t('company.finances.youOwe')}</Text>
               <Text style={[styles.rowAmount, { color: colors.warning }]}>
                 {money(item.cardOwedToDriver)}
               </Text>
             </View>
             {item.expensesTotal > 0 && (
               <View style={styles.rowOwed}>
-                <Text style={styles.rowLabel}>📋 Expenses logged</Text>
+                <Text style={styles.rowLabel}>📋 {t('company.finances.expensesLogged')}</Text>
                 <Text style={[styles.rowAmount, { color: colors.textSecondary }]}>
                   {money(item.expensesTotal)}
                 </Text>
@@ -282,13 +283,13 @@ export default function CompanyFinancesScreen() {
                 style={[styles.btn, { backgroundColor: colors.success, opacity: item.cashOwedToCompany > 0 ? 1 : 0.4 }]}
                 disabled={item.cashOwedToCompany <= 0}
                 onPress={() => setSettleTarget({ driver: item, direction: 'cash_in' })}>
-                <Text style={styles.btnText}>Got cash</Text>
+                <Text style={styles.btnText}>{t('company.finances.gotCashBtn')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.btn, { backgroundColor: colors.warning, opacity: item.cardOwedToDriver > 0 ? 1 : 0.4 }]}
                 disabled={item.cardOwedToDriver <= 0}
                 onPress={() => setSettleTarget({ driver: item, direction: 'card_out' })}>
-                <Text style={styles.btnText}>Paid driver</Text>
+                <Text style={styles.btnText}>{t('company.finances.paidDriverBtn')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -296,7 +297,7 @@ export default function CompanyFinancesScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>📊</Text>
-            <Text style={styles.emptyText}>No drivers under your company yet.</Text>
+            <Text style={styles.emptyText}>{t('company.finances.emptyMsg')}</Text>
           </View>
         }
       />
@@ -343,7 +344,7 @@ function CommissionModal({
     if (!clear) {
       const n = parseFloat(pct);
       if (!Number.isFinite(n) || n < 0 || n > 100) {
-        Alert.alert(t('common.validation'), 'Enter a number between 0 and 100.');
+        Alert.alert(t('common.validation'), t('company.profile.commissionError'));
         return;
       }
     }
@@ -352,7 +353,7 @@ function CommissionModal({
       await companyFinancesApi.setCommission(driver.driverId, clear ? null : parseFloat(pct));
       onDone();
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not update commission.';
+      const msg = err?.response?.data?.message ?? t('company.profile.commissionSaveError');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     } finally {
       setSaving(false);
@@ -364,15 +365,15 @@ function CommissionModal({
       <Pressable style={styles.modalBackdrop} onPress={onClose}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={styles.modalSheet} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Edit commission %</Text>
+            <Text style={styles.modalTitle}>{t('company.finances.editCommissionTitle')}</Text>
             <Text style={styles.modalSub}>
               {driver.firstName} {driver.lastName} · {driver.vehiclePlate}
             </Text>
             <Text style={[styles.modalSub, { marginTop: 0, marginBottom: 8 }]}>
-              Company default: {companyDefaultPct}%
+              {t('company.finances.companyDefault', { pct: companyDefaultPct })}
             </Text>
 
-            <Text style={styles.fieldLabel}>Driver's share (0–100)</Text>
+            <Text style={styles.fieldLabel}>{t('company.finances.driverShareLabel')}</Text>
             <TextInput
               style={styles.input}
               value={pct}
@@ -381,8 +382,7 @@ function CommissionModal({
               autoFocus
             />
             <Text style={[styles.modalSub, { marginTop: 0, marginBottom: 12 }]}>
-              The remainder goes to you. Platform fee (10%) is taken from card
-              rides before this split.
+              {t('company.finances.commissionHint')}
             </Text>
 
             <View style={styles.btnRow}>
@@ -397,7 +397,7 @@ function CommissionModal({
                 disabled={saving}>
                 {saving
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.btnText}>Save</Text>}
+                  : <Text style={styles.btnText}>{t('common.save')}</Text>}
               </TouchableOpacity>
             </View>
 
@@ -407,7 +407,7 @@ function CommissionModal({
                 onPress={() => handleSave(true)}
                 disabled={saving}>
                 <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-                  Revert to company default ({companyDefaultPct}%)
+                  {t('company.finances.revertDefault', { pct: companyDefaultPct })}
                 </Text>
               </TouchableOpacity>
             )}
@@ -443,7 +443,7 @@ function SettleModal({
   const handleSave = async () => {
     const n = parseFloat(amount);
     if (!Number.isFinite(n) || n <= 0) {
-      Alert.alert(t('common.validation'), 'Enter a positive amount.');
+      Alert.alert(t('common.validation'), t('company.finances.amountInvalid'));
       return;
     }
     setSaving(true);
@@ -455,14 +455,16 @@ function SettleModal({
       });
       onDone();
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Could not record settlement.';
+      const msg = err?.response?.data?.message ?? t('company.finances.settleError');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     } finally {
       setSaving(false);
     }
   };
 
-  const title = target.direction === 'cash_in' ? 'Received cash from driver' : 'Paid driver card share';
+  const title = target.direction === 'cash_in'
+    ? t('company.finances.settleCashInTitle')
+    : t('company.finances.settleCardOutTitle');
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -474,7 +476,7 @@ function SettleModal({
               {target.driver.firstName} {target.driver.lastName} · {target.driver.vehiclePlate}
             </Text>
 
-            <Text style={styles.fieldLabel}>Amount ($)</Text>
+            <Text style={styles.fieldLabel}>{t('company.finances.amountLabel')}</Text>
             <TextInput
               style={styles.input}
               value={amount}
@@ -483,12 +485,12 @@ function SettleModal({
               autoFocus
             />
 
-            <Text style={styles.fieldLabel}>Note (optional)</Text>
+            <Text style={styles.fieldLabel}>{t('company.finances.noteLabel')}</Text>
             <TextInput
               style={styles.input}
               value={note}
               onChangeText={setNote}
-              placeholder="e.g. Friday cash settlement"
+              placeholder={t('company.finances.notePlaceholder')}
               placeholderTextColor={colors.textDisabled}
             />
 
@@ -502,7 +504,7 @@ function SettleModal({
                 disabled={saving}>
                 {saving
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.btnText}>Confirm</Text>}
+                  : <Text style={styles.btnText}>{t('common.confirm')}</Text>}
               </TouchableOpacity>
             </View>
           </Pressable>

@@ -87,17 +87,17 @@ export default function CompanyProfileScreen() {
         </View>
 
         {/* ── Company info card ── */}
-        <Text style={styles.sectionLabel}>Company info</Text>
+        <Text style={styles.sectionLabel}>{t('company.profile.companyInfoSection')}</Text>
         <View style={styles.card}>
-          <Row label="Name"    value={info?.companyName ?? '—'} />
+          <Row label={t('company.profile.nameLabel')}    value={info?.companyName ?? '—'} />
           <Divider />
-          <Row label="Address" value={info?.address     ?? '—'} />
+          <Row label={t('company.profile.addressLabel')} value={info?.address     ?? '—'} />
           <Divider />
-          <Row label="City"    value={info?.city        ?? '—'} />
+          <Row label={t('company.profile.cityLabel')}    value={info?.city        ?? '—'} />
           <Divider />
           <Row
-            label="Approved"
-            value={info ? (info.isApproved ? '✓ Yes' : '⏳ Pending') : '—'}
+            label={t('company.profile.approvedLabel')}
+            value={info ? (info.isApproved ? `✓ ${t('common.yes')}` : `⏳ ${t('common.pending')}`) : '—'}
           />
           <Divider />
           <TouchableOpacity
@@ -105,7 +105,7 @@ export default function CompanyProfileScreen() {
             onPress={() => setInfoModal(true)}
             accessibilityRole="button"
             accessibilityLabel="Edit company info">
-            <Text style={styles.actionLabel}>✏️  Edit company info</Text>
+            <Text style={styles.actionLabel}>✏️  {t('company.profile.editCompanyInfo')}</Text>
             <Text style={styles.actionChevron}>›</Text>
           </TouchableOpacity>
         </View>
@@ -127,7 +127,7 @@ export default function CompanyProfileScreen() {
             onPress={() => setPromoModal(true)}
             accessibilityRole="button"
             accessibilityLabel="Manage promo codes">
-            <Text style={styles.actionLabel}>🏷️  Promo Codes</Text>
+            <Text style={styles.actionLabel}>🏷️  {t('company.profile.promoCodesAction')}</Text>
             <Text style={styles.actionChevron}>›</Text>
           </TouchableOpacity>
 
@@ -136,7 +136,7 @@ export default function CompanyProfileScreen() {
             onPress={() => setMessagesModal(true)}
             accessibilityRole="button"
             accessibilityLabel="Messages with drivers">
-            <Text style={styles.actionLabel}>💬  Messages</Text>
+            <Text style={styles.actionLabel}>💬  {t('company.profile.messagesAction')}</Text>
             <Text style={styles.actionChevron}>›</Text>
           </TouchableOpacity>
 
@@ -151,7 +151,7 @@ export default function CompanyProfileScreen() {
         </View>
 
         {/* ── Intercity fixed fares ── */}
-        <Text style={styles.sectionLabel}>Intercity Fares</Text>
+        <Text style={styles.sectionLabel}>{t('company.profile.intercitySection')}</Text>
         <View style={styles.card}>
           <TouchableOpacity
             style={[styles.actionRow, { borderBottomWidth: 0 }]}
@@ -159,7 +159,7 @@ export default function CompanyProfileScreen() {
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Intercity fixed fares">
-            <Text style={styles.actionLabel}>🚙  Manage intercity routes</Text>
+            <Text style={styles.actionLabel}>🚙  {t('company.profile.manageIntercity')}</Text>
             <Text style={styles.actionChevron}>›</Text>
           </TouchableOpacity>
         </View>
@@ -274,7 +274,7 @@ function CompanyInfoModal({
       });
       onSaved();
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Failed to update company info.';
+      const msg = err?.response?.data?.message ?? t('company.profile.updateFailed');
       Alert.alert(t('common.error'), Array.isArray(msg) ? msg.join('\n') : msg);
     } finally {
       setSaving(false);
@@ -283,16 +283,16 @@ function CompanyInfoModal({
 
   const handleSave = () => {
     if (!name.trim()) {
-      Alert.alert(t('common.validation'), 'Company name is required.');
+      Alert.alert(t('common.validation'), t('company.profile.nameRequiredMsg'));
       return;
     }
     if (nameChanged && initial.isApproved) {
       Alert.alert(
-        'Re-approval required',
-        'Changing the company name revokes your approved status. An admin will need to re-approve you.\n\nContinue?',
+        t('company.profile.reapprovalTitle'),
+        t('company.profile.reapprovalMsg'),
         [
           { text: t('common.cancel'), style: 'cancel' },
-          { text: 'Save anyway', style: 'destructive', onPress: submit },
+          { text: t('company.profile.saveAnywayBtn'), style: 'destructive', onPress: submit },
         ],
       );
     } else {
@@ -308,7 +308,7 @@ function CompanyInfoModal({
             <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Cancel">
               <Text style={cmStyles.cancel}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={cmStyles.title}>Company info</Text>
+            <Text style={cmStyles.title}>{t('company.profile.companyInfoSection')}</Text>
             <TouchableOpacity onPress={handleSave} disabled={saving} accessibilityRole="button" accessibilityLabel="Save">
               {saving
                 ? <ActivityIndicator size="small" color={colors.primary} />
@@ -318,12 +318,11 @@ function CompanyInfoModal({
 
           <ScrollView contentContainerStyle={{ padding: 24, gap: 8 }}>
             <Text style={cmStyles.description}>
-              Address, city, and logo are safe self-edits. Changing the company
-              name will require admin re-approval.
+              {t('company.profile.infoModalDesc')}
             </Text>
 
             <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-              Company name
+              {t('company.profile.companyNameLabel')}
             </Text>
             <TextInput
               style={cmStyles.input}
@@ -336,36 +335,36 @@ function CompanyInfoModal({
             />
             {nameChanged && initial.isApproved && (
               <Text style={{ fontSize: 12, color: '#92400E' }}>
-                ⚠ Saving will revoke your approval until an admin re-approves.
+                ⚠ {t('company.profile.nameChangeWarn')}
               </Text>
             )}
 
             <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-              Address
+              {t('company.profile.addressLabel')}
             </Text>
             <TextInput
               style={cmStyles.input}
               value={address}
               onChangeText={setAddress}
-              placeholder="Street, building, etc."
+              placeholder={t('company.profile.addressPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               maxLength={300}
             />
 
             <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-              City
+              {t('company.profile.cityLabel')}
             </Text>
             <TextInput
               style={cmStyles.input}
               value={city}
               onChangeText={setCity}
-              placeholder="e.g. Pristina"
+              placeholder={t('company.profile.cityPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               maxLength={100}
             />
 
             <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-              Logo URL
+              {t('company.profile.logoUrlLabel')}
             </Text>
             <TextInput
               style={cmStyles.input}
@@ -377,7 +376,7 @@ function CompanyInfoModal({
               maxLength={500}
             />
             <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: -2 }}>
-              Paste a public image URL — file upload isn't supported yet for company logos.
+              {t('company.profile.logoHint')}
             </Text>
           </ScrollView>
         </SafeAreaView>

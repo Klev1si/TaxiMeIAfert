@@ -136,11 +136,11 @@ function CreatePromoModal({ visible, onClose, onCreated }: CreateModalProps) {
               <Text style={modal.title}>{t('admin.promoCodes.newCodeTitle')}</Text>
 
               {/* Code */}
-              <Text style={modal.label}>Code *</Text>
+              <Text style={modal.label}>{t('admin.promoCodes.codeFieldLabel')}</Text>
               <TextInput
                 style={modal.input}
                 value={code}
-                onChangeText={t => setCode(t.toUpperCase())}
+                onChangeText={v => setCode(v.toUpperCase())}
                 placeholder="e.g. SAVE20"
                 placeholderTextColor={colors.textDisabled}
                 autoCapitalize="characters"
@@ -149,37 +149,37 @@ function CreatePromoModal({ visible, onClose, onCreated }: CreateModalProps) {
               />
 
               {/* Description */}
-              <Text style={modal.label}>Description</Text>
+              <Text style={modal.label}>{t('admin.promoCodes.descriptionLabel')}</Text>
               <TextInput
                 style={modal.input}
                 value={description}
                 onChangeText={setDescription}
-                placeholder="Optional internal note"
+                placeholder={t('admin.promoCodes.descriptionPlaceholder')}
                 placeholderTextColor={colors.textDisabled}
                 maxLength={200}
                 accessibilityLabel="Description (optional)"
               />
 
               {/* Discount type toggle */}
-              <Text style={modal.label}>Discount Type *</Text>
+              <Text style={modal.label}>{t('admin.promoCodes.discountTypeLabel')}</Text>
               <View style={modal.typeRow}>
-                {(['flat', 'percent'] as PromoDiscountType[]).map(t => (
+                {(['flat', 'percent'] as PromoDiscountType[]).map(dt => (
                   <TouchableOpacity
-                    key={t}
-                    style={[modal.typeBtn, discountType === t && modal.typeBtnActive]}
-                    onPress={() => setDiscountType(t)}
+                    key={dt}
+                    style={[modal.typeBtn, discountType === dt && modal.typeBtnActive]}
+                    onPress={() => setDiscountType(dt)}
                     accessibilityRole="radio"
-                    accessibilityLabel={t === 'flat' ? 'Flat dollar amount' : 'Percentage'}
-                    accessibilityState={{ checked: discountType === t }}>
-                    <Text style={[modal.typeBtnText, discountType === t && modal.typeBtnTextActive]}>
-                      {t === 'flat' ? '$ Flat' : '% Percent'}
+                    accessibilityLabel={dt === 'flat' ? 'Flat dollar amount' : 'Percentage'}
+                    accessibilityState={{ checked: discountType === dt }}>
+                    <Text style={[modal.typeBtnText, discountType === dt && modal.typeBtnTextActive]}>
+                      {dt === 'flat' ? t('admin.promoCodes.typeFlat') : t('admin.promoCodes.typePercent')}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               {/* Discount value */}
-              <Text style={modal.label}>Discount Value * ({discountType === 'flat' ? '$' : '%'})</Text>
+              <Text style={modal.label}>{t('admin.promoCodes.discountValueLabel')} ({discountType === 'flat' ? '$' : '%'})</Text>
               <TextInput
                 style={modal.input}
                 value={discountValue}
@@ -193,7 +193,7 @@ function CreatePromoModal({ visible, onClose, onCreated }: CreateModalProps) {
               {/* Max discount (percent only) */}
               {discountType === 'percent' && (
                 <>
-                  <Text style={modal.label}>Max Discount Amount ($) — optional</Text>
+                  <Text style={modal.label}>{t('admin.promoCodes.maxDiscountLabel')}</Text>
                   <TextInput
                     style={modal.input}
                     value={maxDiscount}
@@ -207,7 +207,7 @@ function CreatePromoModal({ visible, onClose, onCreated }: CreateModalProps) {
               )}
 
               {/* Min fare */}
-              <Text style={modal.label}>Minimum Fare ($) — optional</Text>
+              <Text style={modal.label}>{t('admin.promoCodes.minFareFieldLabel')}</Text>
               <TextInput
                 style={modal.input}
                 value={minFare}
@@ -219,7 +219,7 @@ function CreatePromoModal({ visible, onClose, onCreated }: CreateModalProps) {
               />
 
               {/* Max uses */}
-              <Text style={modal.label}>Max Uses — optional (blank = unlimited)</Text>
+              <Text style={modal.label}>{t('admin.promoCodes.maxUsesFieldLabel')}</Text>
               <TextInput
                 style={modal.input}
                 value={maxUses}
@@ -231,7 +231,7 @@ function CreatePromoModal({ visible, onClose, onCreated }: CreateModalProps) {
               />
 
               {/* Expiry */}
-              <Text style={modal.label}>Expiry Date — optional (YYYY-MM-DD)</Text>
+              <Text style={modal.label}>{t('admin.promoCodes.expiryFieldLabel')}</Text>
               <TextInput
                 style={modal.input}
                 value={expiresAt}

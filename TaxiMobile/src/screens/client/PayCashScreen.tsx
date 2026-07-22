@@ -354,11 +354,11 @@ export default function PayCashScreen({ navigation, route }: Props) {
             hasn't been finalized yet. */}
         {!confirmed && cardState !== 'processing' && activeRide && (
           <View style={styles.amountDueWrap}>
-            <Text style={styles.amountDueLabel}>Amount due</Text>
+            <Text style={styles.amountDueLabel}>{t('client.payCash.amountDueLabel')}</Text>
             {activeRide.totalFare != null ? (
               <Text style={styles.amountDueValue}>${Number(activeRide.totalFare).toFixed(2)}</Text>
             ) : (
-              <Text style={styles.amountPending}>Fare not finalized yet…</Text>
+              <Text style={styles.amountPending}>{t('client.payCash.farePending')}</Text>
             )}
             {activeRide.promoCode && activeRide.discountAmount != null && Number(activeRide.discountAmount) > 0 && (
               <Text style={styles.amountDiscount}>

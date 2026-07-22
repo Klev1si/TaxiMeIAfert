@@ -99,14 +99,14 @@ function EditProfileModal({
     const vmd = vehicleModel.trim();
     const vyStr = vehicleYear.trim();
     if (!fn) { Alert.alert(t('common.validation'), t('driver.profile.firstNameRequired')); return; }
-    if (vmk && vmk.length < 2)  { Alert.alert(t('common.validation'), 'Vehicle make is too short.'); return; }
-    if (vmd && vmd.length < 1)  { Alert.alert(t('common.validation'), 'Vehicle model is required.'); return; }
+    if (vmk && vmk.length < 2)  { Alert.alert(t('common.validation'), t('driver.profile.vehicleMakeTooShort')); return; }
+    if (vmd && vmd.length < 1)  { Alert.alert(t('common.validation'), t('driver.profile.vehicleModelRequired')); return; }
     let vy: number | undefined;
     if (vyStr) {
       vy = parseInt(vyStr, 10);
       const thisYear = new Date().getFullYear();
       if (!Number.isFinite(vy) || vy < 1900 || vy > thisYear + 1) {
-        Alert.alert(t('common.validation'), `Vehicle year must be between 1900 and ${thisYear + 1}.`);
+        Alert.alert(t('common.validation'), t('driver.profile.vehicleYearInvalid', { max: thisYear + 1 }));
         return;
       }
     }
@@ -134,13 +134,11 @@ function EditProfileModal({
     if (vehicleChanged && initial.isApproved) {
       // Confirm before re-approval-revoking action.
       Alert.alert(
-        'Re-approval required',
-        'Changing vehicle make, model, or year revokes your approved status. ' +
-        'You won\'t be able to accept rides until an admin re-approves you.\n\n' +
-        'Continue?',
+        t('driver.profile.reapprovalTitle'),
+        t('driver.profile.reapprovalMsg'),
         [
           { text: t('common.cancel'), style: 'cancel' },
-          { text: 'Save anyway', style: 'destructive', onPress: doSave },
+          { text: t('driver.profile.saveAnywayBtn'), style: 'destructive', onPress: doSave },
         ],
       );
     } else {
@@ -201,41 +199,41 @@ function EditProfileModal({
             }}>
               <Text style={{ fontSize: 11, color: vehicleChanged ? '#92400E' : colors.textSecondary }}>
                 {vehicleChanged
-                  ? '⚠ Saving will revoke your approval until an admin re-approves you.'
-                  : 'ⓘ Changing make / model / year requires admin re-approval before you can accept rides.'}
+                  ? `⚠ ${t('driver.profile.vehicleChangeWarn')}`
+                  : `ⓘ ${t('driver.profile.vehicleChangeInfo')}`}
               </Text>
             </View>
 
-            <Text style={modalStyles.label}>Vehicle make</Text>
+            <Text style={modalStyles.label}>{t('driver.profile.vehicleMakeLabel')}</Text>
             <TextInput
               style={modalStyles.input}
               value={vehicleMake}
               onChangeText={setVehicleMake}
-              placeholder="e.g. Toyota"
+              placeholder={t('driver.profile.vehicleMakePlaceholder')}
               placeholderTextColor={colors.textDisabled}
               autoCapitalize="words"
               returnKeyType="next"
               maxLength={60}
             />
 
-            <Text style={modalStyles.label}>Vehicle model</Text>
+            <Text style={modalStyles.label}>{t('driver.profile.vehicleModelLabel')}</Text>
             <TextInput
               style={modalStyles.input}
               value={vehicleModel}
               onChangeText={setVehicleModel}
-              placeholder="e.g. Corolla"
+              placeholder={t('driver.profile.vehicleModelPlaceholder')}
               placeholderTextColor={colors.textDisabled}
               autoCapitalize="words"
               returnKeyType="next"
               maxLength={60}
             />
 
-            <Text style={modalStyles.label}>Vehicle year</Text>
+            <Text style={modalStyles.label}>{t('driver.profile.vehicleYearLabel')}</Text>
             <TextInput
               style={modalStyles.input}
               value={vehicleYear}
               onChangeText={setVehicleYear}
-              placeholder="e.g. 2020"
+              placeholder={t('driver.profile.vehicleYearPlaceholder')}
               placeholderTextColor={colors.textDisabled}
               keyboardType="number-pad"
               returnKeyType="done"

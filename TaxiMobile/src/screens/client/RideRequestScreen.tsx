@@ -867,7 +867,7 @@ export default function RideRequestScreen({ navigation, route }: Props) {
             {/* Quick category chips — shown when input is focused with no query */}
             {searchFocused && !searchQuery.trim() && searchResults.length === 0 && !dropoff && (
               <View style={styles.categoriesWrap}>
-                <Text style={styles.categoriesHint}>Search nearby…</Text>
+                <Text style={styles.categoriesHint}>{t('client.rideRequest.searchNearby')}</Text>
                 <View style={styles.categoriesRow}>
                   {NEARBY_CATEGORIES.map(c => (
                     <TouchableOpacity
