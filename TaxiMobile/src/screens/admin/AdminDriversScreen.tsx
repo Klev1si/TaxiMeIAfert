@@ -480,7 +480,12 @@ function getStyles(c: ColorPalette) {
     empty:      { alignItems: 'center', marginTop: 60 },
     emptyIcon:  { fontSize: 48, marginBottom: 12 },
     emptyText:  { fontSize: 16, color: c.textSecondary },
-    loadMoreBtn: { alignItems: 'center', padding: 14 },
-    loadMoreText: { color: c.primary, fontWeight: '600', fontSize: 14 },
+    loadMoreBtn: {
+      alignSelf: 'center', marginVertical: 10,
+      paddingHorizontal: 28, paddingVertical: 10,
+      borderRadius: 20, borderWidth: 1.5, borderColor: c.primary,
+      backgroundColor: c.surface,
+    },
+    loadMoreText: { color: c.primary, fontWeight: '700', fontSize: 14 },
   });
 }

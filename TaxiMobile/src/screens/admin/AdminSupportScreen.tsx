@@ -82,25 +82,30 @@ const PRIORITY_COLOR: Record<TicketPriority, string> = {
   urgent: '#ef4444',
 };
 
-const CATEGORY_LABEL: Record<string, string> = {
-  ride_issue:      'Ride Issue',
-  payment:         'Payment',
-  account:         'Account',
-  driver_behavior: 'Driver',
-  app_bug:         'App Bug',
-  other:           'Other',
-};
+// Category labels resolve through the shared.support.cat* i18n keys.
+function categoryLabel(cat: string): string {
+  switch (cat) {
+    case 'ride_issue':      return tr('shared.support.catRideIssue');
+    case 'payment':         return tr('shared.support.catPayment');
+    case 'account':         return tr('shared.support.catAccount');
+    case 'driver_behavior': return tr('shared.support.catDriverBehavior');
+    case 'app_bug':         return tr('shared.support.catAppBug');
+    case 'other':           return tr('shared.support.catOther');
+    default:                return cat;
+  }
+}
 
 // ── Status filter pills ───────────────────────────────────────────────────────
 
 type StatusFilter = TicketStatus | 'all';
 
-const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
-  { label: 'All',         value: 'all'        },
-  { label: 'Open',        value: 'open'       },
-  { label: 'In Progress', value: 'in_progress'},
-  { label: 'Resolved',    value: 'resolved'   },
-  { label: 'Closed',      value: 'closed'     },
+// labelKey resolves through i18n at render time
+const STATUS_FILTERS: { labelKey: string; value: StatusFilter }[] = [
+  { labelKey: 'admin.support.filterAll',          value: 'all'        },
+  { labelKey: 'admin.support.status_open',        value: 'open'       },
+  { labelKey: 'admin.support.status_in_progress', value: 'in_progress'},
+  { labelKey: 'admin.support.status_resolved',    value: 'resolved'   },
+  { labelKey: 'admin.support.status_closed',      value: 'closed'     },
 ];
 
 // ── Ticket Card ───────────────────────────────────────────────────────────────
@@ -151,7 +156,7 @@ function TicketCard({
         <Text style={card.roleTag}>
           {ticket.userRole === 'driver' ? '🚗 Driver' : '👤 Passenger'}
         </Text>
-        <Text style={card.category}>· {CATEGORY_LABEL[ticket.category] ?? ticket.category}</Text>
+        <Text style={card.category}>· {categoryLabel(ticket.category)}</Text>
         <View style={{ flex: 1 }} />
         <Text style={card.msgCount}>💬 {ticket.messageCount}</Text>
       </View>
@@ -351,7 +356,7 @@ function TicketDetailModal({
               <View style={detail.infoRow}>
                 <Text style={detail.infoText}>
                   {ticket.userRole === 'driver' ? '🚗 Driver' : '👤 Passenger'}
-                  {' · '}{CATEGORY_LABEL[ticket.category] ?? ticket.category}
+                  {' · '}{categoryLabel(ticket.category)}
                   {' · '}Opened {formatDate(ticket.createdAt)}
                 </Text>
               </View>
@@ -451,13 +456,13 @@ function getDetailStyles(c: ColorPalette) {
     header:     {
       flexDirection: 'row', alignItems: 'center',
       paddingHorizontal: 16, paddingVertical: 12,
-      backgroundColor: c.white, borderBottomWidth: 1, borderBottomColor: c.border,
+      backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.border,
     },
     closeBtn:     { width: 32, height: 32, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
     closeText:    { fontSize: 16, color: c.textSecondary },
     headerTitle:  { flex: 1, fontSize: 16, fontWeight: '700', color: c.text },
 
-    metaBar:      { backgroundColor: c.white, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border },
+    metaBar:      { backgroundColor: c.surface, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border },
     metaGroup:    {},
     metaLabel:    { fontSize: 11, fontWeight: '700', color: c.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
     chipScroll:   { flexDirection: 'row' },
@@ -476,7 +481,7 @@ function getDetailStyles(c: ColorPalette) {
     replyRow:     {
       flexDirection: 'row', alignItems: 'flex-end', gap: 8,
       paddingHorizontal: 12, paddingTop: 8,
-      backgroundColor: c.white, borderTopWidth: 1, borderTopColor: c.border,
+      backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.border,
     },
     replyInput:   {
       flex: 1, backgroundColor: c.background,
@@ -488,7 +493,7 @@ function getDetailStyles(c: ColorPalette) {
     sendBtnDisabled:  { opacity: 0.4 },
     sendBtnText:      { color: c.white, fontWeight: '700', fontSize: 14 },
 
-    closedNotice:     { padding: 16, alignItems: 'center', backgroundColor: c.white, borderTopWidth: 1, borderTopColor: c.border },
+    closedNotice:     { padding: 16, alignItems: 'center', backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.border },
     closedNoticeText: { fontSize: 13, color: c.textSecondary, fontStyle: 'italic' },
   });
 }
@@ -567,10 +572,10 @@ export default function AdminSupportScreen() {
         <View>
           <Text style={styles.title}>{t('admin.support.title')}</Text>
           {statusFilter === 'all' && total > 0 && (
-            <Text style={styles.subtitle}>{total} ticket{total !== 1 ? 's' : ''} total</Text>
+            <Text style={styles.subtitle}>{t('admin.support.ticketsTotal', { n: total })}</Text>
           )}
         </View>
-        <Text style={styles.count}>{total} total</Text>
+        <Text style={styles.count}>{t('admin.support.totalShort', { n: total })}</Text>
       </View>
 
       {/* Status filter pills */}
@@ -583,10 +588,10 @@ export default function AdminSupportScreen() {
             style={[styles.pill, statusFilter === f.value && styles.pillActive]}
             onPress={() => setStatusFilter(f.value)}
             accessibilityRole="radio"
-            accessibilityLabel={`Filter: ${f.label}`}
+            accessibilityLabel={`Filter: ${t(f.labelKey)}`}
             accessibilityState={{ checked: statusFilter === f.value }}>
             <Text style={[styles.pillText, statusFilter === f.value && styles.pillTextActive]}>
-              {f.label}
+              {t(f.labelKey)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -597,19 +602,19 @@ export default function AdminSupportScreen() {
         horizontal showsHorizontalScrollIndicator={false}
         style={styles.roleRow} contentContainerStyle={styles.pillRowContent}>
         {([
-          { label: 'All Users',  value: 'all'    },
-          { label: '👤 Passengers', value: 'client' },
-          { label: '🚗 Drivers',    value: 'driver' },
+          { labelKey: 'admin.support.roleAll',        emoji: '',   value: 'all'    },
+          { labelKey: 'admin.support.rolePassengers', emoji: '👤 ', value: 'client' },
+          { labelKey: 'admin.support.roleDrivers',    emoji: '🚗 ', value: 'driver' },
         ] as const).map(f => (
           <TouchableOpacity
             key={f.value}
             style={[styles.rolePill, roleFilter === f.value && styles.rolePillActive]}
             onPress={() => setRoleFilter(f.value)}
             accessibilityRole="radio"
-            accessibilityLabel={`Role filter: ${f.value === 'all' ? 'All users' : f.value === 'client' ? 'Passengers' : 'Drivers'}`}
+            accessibilityLabel={`Role filter: ${t(f.labelKey)}`}
             accessibilityState={{ checked: roleFilter === f.value }}>
             <Text style={[styles.rolePillText, roleFilter === f.value && styles.rolePillTextActive]}>
-              {f.label}
+              {f.emoji}{t(f.labelKey)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -670,26 +675,26 @@ function getStyles(c: ColorPalette) {
     header: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
       paddingHorizontal: Sizes.screenPadding, paddingTop: 16, paddingBottom: 8,
-      backgroundColor: c.white, borderBottomWidth: 1, borderBottomColor: c.border,
+      backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.border,
     },
     title:    { fontSize: 20, fontWeight: '700', color: c.text },
     subtitle: { fontSize: 11, color: c.textSecondary, marginTop: 1 },
     count:    { fontSize: 13, color: c.textSecondary },
 
-    pillRow:     { maxHeight: 48, backgroundColor: c.white },
+    pillRow:     { maxHeight: 48, backgroundColor: c.surface },
     pillRowContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
     pill: {
       borderRadius: 16, borderWidth: 1, borderColor: c.border,
-      paddingHorizontal: 14, paddingVertical: 5, backgroundColor: c.white,
+      paddingHorizontal: 14, paddingVertical: 5, backgroundColor: c.surface,
     },
     pillActive:     { backgroundColor: c.primary, borderColor: c.primary },
     pillText:       { fontSize: 13, color: c.textSecondary },
-    pillTextActive: { color: c.white, fontWeight: '600' },
+    pillTextActive: { color: c.textOnPrimary, fontWeight: '600' },
 
-    roleRow:  { maxHeight: 40, backgroundColor: c.white, borderBottomWidth: 1, borderBottomColor: c.border },
+    roleRow:  { maxHeight: 40, backgroundColor: c.surface, borderBottomWidth: 1, borderBottomColor: c.border },
     rolePill: {
       borderRadius: 12, borderWidth: 1, borderColor: c.border,
-      paddingHorizontal: 12, paddingVertical: 3, backgroundColor: c.white,
+      paddingHorizontal: 12, paddingVertical: 3, backgroundColor: c.surface,
     },
     rolePillActive:     { backgroundColor: c.primary + '18', borderColor: c.primary },
     rolePillText:       { fontSize: 12, color: c.textSecondary },
@@ -699,7 +704,12 @@ function getStyles(c: ColorPalette) {
     empty:      { alignItems: 'center', marginTop: 60 },
     emptyIcon:  { fontSize: 48, marginBottom: 12 },
     emptyText:  { fontSize: 16, color: c.textSecondary },
-    loadMoreBtn:  { alignItems: 'center', padding: 14 },
-    loadMoreText: { color: c.primary, fontWeight: '600', fontSize: 14 },
+    loadMoreBtn: {
+      alignSelf: 'center', marginVertical: 10,
+      paddingHorizontal: 28, paddingVertical: 10,
+      borderRadius: 20, borderWidth: 1.5, borderColor: c.primary,
+      backgroundColor: c.surface,
+    },
+    loadMoreText: { color: c.primary, fontWeight: '700', fontSize: 14 },
   });
 }
