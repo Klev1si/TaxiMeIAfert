@@ -45,11 +45,14 @@ export default function SubscriptionStatusBanner({ audience, onRenewPress }: Pro
 
   useEffect(() => { load(); }, [load]);
 
-  // Only render when there's something the user needs to act on.
-  if (!loaded || state === 'active' || state === 'inactive') return null;
-
   const isGrace = state === 'grace';
   const styles  = useMemo(() => getStyles(isGrace), [isGrace]);
+
+  // Only render when there's something the user needs to act on.
+  // NOTE: this early return must stay below every hook call — bailing out
+  // before a hook changes the hook count between renders and crashes React
+  // ("Rendered more hooks than during the previous render.").
+  if (!loaded || state === 'active' || state === 'inactive') return null;
 
   const whose = coveredBy === 'company' ? "Your company's" : 'Your';
   const message = isGrace
