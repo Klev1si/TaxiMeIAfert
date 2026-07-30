@@ -1,28 +1,29 @@
-# Static check for the React "Rendered more hooks than during the previous
-# render" crash: a Hook called at a component's top level after an early
-# return. See scripts/check-hooks-order.mjs. This exact bug shipped once in
-# SubscriptionStatusBanner; this guard keeps it from recurring.
-name: Hooks order check
+# Guards against the React "Rendered more hooks than during the previous
+# render" crash (a Hook called conditionally / after an early return). This
+# exact bug shipped once in SubscriptionStatusBanner. Two layers run here:
+#   1. hooks-order   — zero-install regex scanner (scripts/check-hooks-order.mjs)
+#   2. eslint-hooks  — authoritative react-hooks/rules-of-hooks (scripts/lint-hooks.mjs)
+name: Hooks check
 
 on:
   push:
     branches: [main]
-    paths:
+    paths: &paths
       - 'TaxiMobile/src/**'
       - 'TaxiDashboard/src/**'
+      - 'TaxiMobile/.eslintrc.js'
+      - 'TaxiDashboard/eslint.config.js'
       - 'scripts/check-hooks-order.mjs'
+      - 'scripts/lint-hooks.mjs'
       - '.github/workflows/hooks-check.yml'
   pull_request:
-    paths:
-      - 'TaxiMobile/src/**'
-      - 'TaxiDashboard/src/**'
-      - 'scripts/check-hooks-order.mjs'
-      - '.github/workflows/hooks-check.yml'
+    paths: *paths
 
 permissions:
   contents: read
 
 jobs:
+  # Fast, dependency-free guard — runs in seconds, no install needed.
   hooks-order:
     runs-on: ubuntu-latest
     steps:
@@ -39,3 +40,29 @@ jobs:
 
       - name: Check React hooks order
         run: node scripts/check-hooks-order.mjs
+
+  # Thorough guard — real ESLint control-flow analysis, isolated to the one
+  # rule so pre-existing unrelated lint findings don't gate the build.
+  eslint-hooks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install TaxiMobile deps
+        working-directory: TaxiMobile
+        run: npm ci || npm install
+
+      - name: Install TaxiDashboard deps
+        working-directory: TaxiDashboard
+        run: npm ci || npm install
+
+      - name: Enforce react-hooks/rules-of-hooks
+        run: node scripts/lint-hooks.mjs
