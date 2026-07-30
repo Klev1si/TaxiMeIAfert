@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "check:hooks": "node scripts/check-hooks-order.mjs"
+  },
   "dependencies": {
     "@react-native-community/geolocation": "^3.4.0",
     "axios": "^1.15.2",

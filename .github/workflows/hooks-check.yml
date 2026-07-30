@@ -1,0 +1,41 @@
+# Static check for the React "Rendered more hooks than during the previous
+# render" crash: a Hook called at a component's top level after an early
+# return. See scripts/check-hooks-order.mjs. This exact bug shipped once in
+# SubscriptionStatusBanner; this guard keeps it from recurring.
+name: Hooks order check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'TaxiMobile/src/**'
+      - 'TaxiDashboard/src/**'
+      - 'scripts/check-hooks-order.mjs'
+      - '.github/workflows/hooks-check.yml'
+  pull_request:
+    paths:
+      - 'TaxiMobile/src/**'
+      - 'TaxiDashboard/src/**'
+      - 'scripts/check-hooks-order.mjs'
+      - '.github/workflows/hooks-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  hooks-order:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Match pages.yml: avoid the stray-gitlink submodule failure.
+          submodules: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check React hooks order
+        run: node scripts/check-hooks-order.mjs
