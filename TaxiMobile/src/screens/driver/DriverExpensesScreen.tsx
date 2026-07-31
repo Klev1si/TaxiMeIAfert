@@ -280,7 +280,7 @@ function AddExpenseModal({ visible, onClose, onSaved }: AddExpenseModalProps) {
             style={[styles.input, styles.inputMultiline]}
             value={description}
             onChangeText={setDesc}
-            placeholder="e.g. Fill-up at Shell station"
+            placeholder={t('driver.expenses.descriptionPlaceholder')}
             placeholderTextColor={colors.textSecondary}
             multiline
             numberOfLines={3}

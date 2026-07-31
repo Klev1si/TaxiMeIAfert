@@ -286,7 +286,7 @@ export default function RegisterDriverScreen({ navigation, route }: Props) {
                 <Field label={t('auth.registerDriver.colorLabel')} colors={colors}>
                   <TextInput
                     style={styles.input}
-                    placeholder="White"
+                    placeholder={t('common.colorWhite')}
                     placeholderTextColor={colors.textDisabled}
                     value={vehicleColor}
                     onChangeText={setVehicleColor}

@@ -460,7 +460,7 @@ function CommissionModal({ visible, onClose }: { visible: boolean; onClose: () =
                 style={cmStyles.input}
                 value={value}
                 onChangeText={v => { setValue(v); setError(null); }}
-                placeholder="e.g. 80"
+                placeholder={`${t('common.eg')} 80`}
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
                 maxLength={5}

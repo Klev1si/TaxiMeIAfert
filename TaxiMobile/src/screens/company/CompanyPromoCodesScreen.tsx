@@ -131,7 +131,7 @@ function CreatePromoModal({
               <Text style={modal.fieldLabel}>{t('company.promoCodes.codeLabel')}</Text>
               <TextInput
                 style={modal.input} value={code} onChangeText={setCode}
-                placeholder="e.g. SUMMER20" autoCapitalize="characters"
+                placeholder={`${t('common.eg')} SUMMER20`} autoCapitalize="characters"
                 maxLength={50}
               />
 
@@ -168,7 +168,7 @@ function CreatePromoModal({
                   <Text style={modal.fieldLabel}>{t('company.promoCodes.maxCapLabel')}</Text>
                   <TextInput
                     style={modal.input} value={maxDiscount} onChangeText={setMaxDiscount}
-                    placeholder="e.g. 5.00"
+                    placeholder={`${t('common.eg')} 5.00`}
                     keyboardType="numeric"
                   />
                 </>
@@ -177,7 +177,7 @@ function CreatePromoModal({
               <Text style={modal.fieldLabel}>{t('company.promoCodes.minFareLabel')}</Text>
               <TextInput
                 style={modal.input} value={minFare} onChangeText={setMinFare}
-                placeholder="e.g. 3.00"
+                placeholder={`${t('common.eg')} 3.00`}
                 keyboardType="numeric"
               />
 
@@ -191,7 +191,7 @@ function CreatePromoModal({
               <Text style={modal.fieldLabel}>{t('company.promoCodes.expiresLabel')}</Text>
               <TextInput
                 style={modal.input} value={expiresAt} onChangeText={setExpiresAt}
-                placeholder="e.g. 2026-12-31"
+                placeholder={`${t('common.eg')} 2026-12-31`}
                 autoCapitalize="none"
               />
 

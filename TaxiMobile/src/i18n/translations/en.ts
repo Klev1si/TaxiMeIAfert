@@ -36,6 +36,9 @@ export default {
     companies:    'Companies',
   },
   common: {
+    eg:             'e.g.',
+    minChars:       'Min. 6 characters',
+    colorWhite:     'White',
     save:           'Save',
     cancel:         'Cancel',
     ok:             'OK',
@@ -664,6 +667,7 @@ export default {
       amountLabel:     'Amount ($)',
       dateLabel:       'Date (YYYY-MM-DD)',
       descriptionLabel:'Description (optional)',
+      descriptionPlaceholder: 'e.g. Fill-up at Shell station',
       periodToday:     'Today',
       periodWeek:      'This Week',
       periodMonth:     'This Month',

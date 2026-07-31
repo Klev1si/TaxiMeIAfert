@@ -563,7 +563,7 @@ export default function RideDetailScreen({ route }: Props) {
                 style={styles.editFareInput}
                 value={editFareValue}
                 onChangeText={setEditFareValue}
-                placeholder="e.g. 12.50"
+                placeholder={`${t('common.eg')} 12.50`}
                 placeholderTextColor={colors.textDisabled}
                 keyboardType="decimal-pad"
                 autoFocus
@@ -574,7 +574,7 @@ export default function RideDetailScreen({ route }: Props) {
                 style={styles.editFareInput}
                 value={editFareDist}
                 onChangeText={setEditFareDist}
-                placeholder="e.g. 5.20"
+                placeholder={`${t('common.eg')} 5.20`}
                 placeholderTextColor={colors.textDisabled}
                 keyboardType="decimal-pad"
               />

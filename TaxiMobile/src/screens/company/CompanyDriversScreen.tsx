@@ -416,7 +416,7 @@ function AddDriverModal({ visible, onClose, onAdded }: {
 
             <SectionHeader label={t('company.drivers.sectionAccount')} />
             <Field label={t('company.drivers.phoneLabel')}    value={form.phone}    onChange={set('phone')}    keyboardType="phone-pad" placeholder="+37491123456" />
-            <Field label={t('company.drivers.passwordLabel')} value={form.password} onChange={set('password')} secureTextEntry placeholder="Min. 6 characters" />
+            <Field label={t('company.drivers.passwordLabel')} value={form.password} onChange={set('password')} secureTextEntry placeholder={t('common.minChars')} />
 
             <SectionHeader label={t('company.drivers.sectionPersonal')} />
             <Field label={t('company.drivers.firstNameLabel')}  value={form.firstName} onChange={set('firstName')} placeholder="John" />
@@ -428,7 +428,7 @@ function AddDriverModal({ visible, onClose, onAdded }: {
             <Field label={t('company.drivers.modelLabel')}  value={form.vehicleModel} onChange={set('vehicleModel')} placeholder="Camry" />
             <Field label={t('company.drivers.yearLabel')}   value={form.vehicleYear}  onChange={set('vehicleYear')}  keyboardType="number-pad" placeholder="2021" />
             <Field label={t('company.drivers.plateLabel')}  value={form.vehiclePlate} onChange={set('vehiclePlate')} placeholder="00 AB 111" autoCapitalize="characters" />
-            <Field label={t('company.drivers.colorLabel')}  value={form.vehicleColor} onChange={set('vehicleColor')} placeholder="White" />
+            <Field label={t('company.drivers.colorLabel')}  value={form.vehicleColor} onChange={set('vehicleColor')} placeholder={t('common.colorWhite')} />
 
             <View style={{ height: 40 }} />
           </ScrollView>
