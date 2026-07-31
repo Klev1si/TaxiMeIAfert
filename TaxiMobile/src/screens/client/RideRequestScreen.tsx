@@ -33,6 +33,7 @@ import {
   NEARBY_CATEGORIES,
   type PlaceResult,
 } from '../../services/geocoding';
+import SearchingForDriver from '../../components/SearchingForDriver';
 import { useColors, useTheme } from '../../stores/themeStore';
 import { DARK_MAP_STYLE } from '../../constants/mapStyles';
 import { useTranslation } from '../../i18n';
@@ -623,7 +624,9 @@ export default function RideRequestScreen({ navigation, route }: Props) {
       {isSearching && (
         <View style={styles.searchingOverlay}>
           <View style={styles.searchingCard}>
-            <ActivityIndicator size="large" color={colors.primary} style={styles.spinner} />
+            <View style={styles.spinner}>
+              <SearchingForDriver />
+            </View>
             <Text style={styles.searchingTitle}>{t('client.rideRequest.findingDriver')}</Text>
             <Text style={styles.searchingSubtitle}>
               {t('client.rideRequest.contactingDrivers')}
@@ -1264,16 +1267,18 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
     lineHeight: 20,
     marginBottom: 28,
   },
+  // Solid red fill (not a thin outline) so the button is clearly visible on
+  // both the light and dark cards — a transparent outlined button disappeared
+  // against the white background.
   cancelBtn: {
     width: '100%',
     height: 48,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: c.error,
+    backgroundColor: c.error,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancelBtnText: { fontSize: 15, fontWeight: '700', color: c.error },
+  cancelBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 
   // Bottom card
   bottomArea: { position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '80%' },
