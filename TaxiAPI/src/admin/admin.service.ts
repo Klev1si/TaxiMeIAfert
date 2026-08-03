@@ -99,8 +99,8 @@ export class AdminService {
     const user = await this.userRepo.findOne({ where: { id: driver.userId } });
     if (user?.fcmToken) {
       void this.notificationsService.sendToToken(user.fcmToken, {
-        title: '✅ Account Approved!',
-        body:  'Your driver account has been approved. You can now go online and accept rides.',
+        title: '✅ Llogaria u miratua!',
+        body:  'Llogaria juaj e shoferit u miratua. Tani mund të dilni online dhe të pranoni udhëtime.',
         data:  { event: 'account_approved' },
       });
     }
@@ -127,10 +127,10 @@ export class AdminService {
     const user = await this.userRepo.findOne({ where: { id: driver.userId } });
     if (user?.fcmToken) {
       void this.notificationsService.sendToToken(user.fcmToken, {
-        title: '❌ Application Not Approved',
+        title: '❌ Aplikimi nuk u miratua',
         body:  reason
-          ? `Your driver application was not approved. Reason: ${reason}`
-          : 'Your driver application was not approved. Please contact support for details.',
+          ? `Aplikimi juaj si shofer nuk u miratua. Arsyeja: ${reason}`
+          : 'Aplikimi juaj si shofer nuk u miratua. Ju lutemi kontaktoni mbështetjen për detaje.',
         data:  { event: 'account_rejected', reason: reason ?? '' },
       });
     }

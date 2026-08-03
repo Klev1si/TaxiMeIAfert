@@ -282,7 +282,7 @@ export class CompanyMessagesController {
     });
     if (!u?.fcmToken) return;
     await this.notifications.sendToToken(u.fcmToken, {
-      title: `Message from ${companyName}`,
+      title: `Mesazh nga ${companyName}`,
       body:  body.length > 140 ? `${body.slice(0, 137)}...` : body,
       data: {
         type:    'company_message',

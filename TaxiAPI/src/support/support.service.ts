@@ -303,8 +303,8 @@ export class SupportService {
       select: ['fcmToken'],
     });
     void this.notificationsService.sendToToken(user?.fcmToken, {
-      title: '💬 Support reply',
-      body:  `Your ticket "${ticket.subject}" has a new reply.`,
+      title: '💬 Përgjigje nga mbështetja',
+      body:  `Bileta juaj "${ticket.subject}" ka një përgjigje të re.`,
       data:  { event: 'support_reply', ticketId },
     });
 

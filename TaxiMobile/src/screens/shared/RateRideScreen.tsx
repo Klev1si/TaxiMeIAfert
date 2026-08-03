@@ -125,6 +125,24 @@ export default function RateRideScreen({ navigation, route }: Props) {
     method: 'cash' | 'card' | 'pending' | null;
   } | null>(null);
 
+  // Fare shown on the driver's cash-confirmation view so they know exactly how
+  // much to collect. Seeded from the ride store (populated when the driver
+  // completed the ride) and refreshed from the server fetch below so the value
+  // is always the finalized total.
+  const [fare, setFare] = useState<{
+    totalFare:      number | null;
+    promoCode:      string | null;
+    discountAmount: number | null;
+  } | null>(
+    activeRideFromStore && activeRideFromStore.id === rideId
+      ? {
+          totalFare:      activeRideFromStore.totalFare ?? null,
+          promoCode:      activeRideFromStore.promoCode ?? null,
+          discountAmount: activeRideFromStore.discountAmount ?? null,
+        }
+      : null,
+  );
+
   const isRatingDriver = rateTarget === 'driver';
 
   // Fetch ride payment status when the driver lands here. We don't want the
@@ -140,6 +158,11 @@ export default function RateRideScreen({ navigation, route }: Props) {
         setPayment({
           status: (data.paymentStatus as 'pending' | 'paid' | 'failed') ?? 'pending',
           method: anyData.paymentMethod ?? null,
+        });
+        setFare({
+          totalFare:      data.totalFare ?? null,
+          promoCode:      data.promoCode ?? null,
+          discountAmount: data.discountAmount ?? null,
         });
         if (data.paymentStatus === 'paid') setCashConfirmed(true);
       })
@@ -240,6 +263,29 @@ export default function RateRideScreen({ navigation, route }: Props) {
               {isRatingDriver ? t('shared.rateRide.subtitleDriver') : t('shared.rateRide.subtitlePassenger')}
             </Text>
           </View>
+
+          {/* Driver only — amount the driver should collect from the passenger.
+              Stays visible after confirmation, switching its label to "Amount
+              received" so the confirmed total is still on screen. */}
+          {!isRatingDriver && (
+            <View style={styles.amountCard}>
+              <Text style={styles.amountLabel}>
+                {cashConfirmed
+                  ? t('shared.rateRide.amountReceivedLabel')
+                  : t('shared.rateRide.amountToCollectLabel')}
+              </Text>
+              {fare?.totalFare != null ? (
+                <Text style={styles.amountValue}>${Number(fare.totalFare).toFixed(2)}</Text>
+              ) : (
+                <Text style={styles.amountPending}>{t('shared.rateRide.farePendingLabel')}</Text>
+              )}
+              {fare?.promoCode && fare.discountAmount != null && Number(fare.discountAmount) > 0 && (
+                <Text style={styles.amountDiscount}>
+                  🏷️ {fare.promoCode} −${Number(fare.discountAmount).toFixed(2)}
+                </Text>
+              )}
+            </View>
+          )}
 
           {/* Driver only — and only when the ride is still unpaid. Once
               Stripe has confirmed a card payment (payment.method === 'card'
@@ -447,6 +493,48 @@ function getStyles(c: ColorPalette) {
 
     skipBtn: { height: 44, alignItems: 'center', justifyContent: 'center' },
     skipBtnText: { fontSize: 14, color: c.textSecondary, fontWeight: '600' },
+
+    // Amount to collect / received (driver side only)
+    amountCard: {
+      width: '100%',
+      backgroundColor: c.primary,
+      borderRadius: 16,
+      padding: 18,
+      marginBottom: 16,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    amountLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: 'rgba(255,255,255,0.85)',
+      textTransform: 'uppercase',
+      letterSpacing: 1.2,
+      marginBottom: 6,
+    },
+    amountValue: {
+      fontSize: 40,
+      fontWeight: '800',
+      color: '#fff',
+      letterSpacing: -1,
+      fontVariant: ['tabular-nums'],
+    },
+    amountPending: {
+      fontSize: 16,
+      fontStyle: 'italic',
+      color: 'rgba(255,255,255,0.85)',
+      marginTop: 4,
+    },
+    amountDiscount: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: 'rgba(255,255,255,0.9)',
+      marginTop: 8,
+    },
 
     // Cash confirmation button (driver side only)
     cashBtn: {

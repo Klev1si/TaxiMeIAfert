@@ -77,6 +77,12 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
   // ── Completion modal state ───────────────────────────────────────────────────
   const [completeModalVisible, setCompleteModalVisible] = useState(false);
   const [fareInput, setFareInput]         = useState('');
+  // Live running fare from the taximeter, kept in a ref so the meter's
+  // per-second updates don't re-render this whole screen. Snapshotted into
+  // `estimatedFare` when the completion modal opens so the driver sees the
+  // amount to charge before confirming.
+  const liveFareRef = useRef(0);
+  const [estimatedFare, setEstimatedFare] = useState(0);
 
   // ── Chat state ───────────────────────────────────────────────────────────────
   const [chatOpen,    setChatOpen]    = useState(false);
@@ -231,6 +237,9 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
    *  backend computes it from the GPS waypoints recorded during the ride. */
   const handleComplete = () => {
     setFareInput('');
+    // Snapshot the meter's current running fare so the modal can show the
+    // amount the driver should charge (tariff rides only).
+    setEstimatedFare(liveFareRef.current);
     setCompleteModalVisible(true);
   };
 
@@ -463,6 +472,7 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
           tariff={ride.tariffSnapshot ?? null}
           startedAt={status === 'in_progress' ? ride.startedAt : null}
           position={driverPos}
+          onFareChange={(f) => { liveFareRef.current = f; }}
         />
       )}
 
@@ -667,6 +677,31 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
             <Text style={completeStyles.subtitle}>
               {t('driver.activeRide.completeModalSubtitle')}
             </Text>
+
+            {/* ── Ride cost the driver should charge ──────────────────────────
+                Tariff rides show the live meter estimate; solo drivers see a
+                preview of the amount they type below. Final tariff total is
+                computed server-side from the GPS route, so it's labelled an
+                estimate. */}
+            {(() => {
+              const previewFare = ride?.tariffId
+                ? estimatedFare
+                : (fareInput.trim() ? parseFloat(fareInput) : NaN);
+              const hasFare = Number.isFinite(previewFare) && previewFare > 0;
+              return (
+                <View style={completeStyles.amountCard}>
+                  <Text style={completeStyles.amountLabel}>{t('driver.activeRide.fareAmountLabel')}</Text>
+                  {hasFare ? (
+                    <Text style={completeStyles.amountValue}>${previewFare.toFixed(2)}</Text>
+                  ) : (
+                    <Text style={completeStyles.amountPending}>{t('driver.activeRide.fareAmountPending')}</Text>
+                  )}
+                  {ride?.tariffId && (
+                    <Text style={completeStyles.amountHint}>{t('driver.activeRide.estimatedFareHint')}</Text>
+                  )}
+                </View>
+              );
+            })()}
 
             {/* Distance is auto-computed from GPS — driver doesn't enter it */}
             <View style={completeStyles.tariffNote}>
@@ -992,6 +1027,40 @@ function getCompleteStyles(c: ColorPalette) { return StyleSheet.create({
     color: c.textSecondary,
     lineHeight: 20,
     marginBottom: 20,
+  },
+  amountCard: {
+    backgroundColor: c.primary,
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  amountLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.85)',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginBottom: 6,
+  },
+  amountValue: {
+    fontSize: 38,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -1,
+    fontVariant: ['tabular-nums'],
+  },
+  amountPending: {
+    fontSize: 15,
+    fontStyle: 'italic',
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+  },
+  amountHint: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 8,
+    textAlign: 'center',
   },
   fieldLabel: {
     fontSize: 12,

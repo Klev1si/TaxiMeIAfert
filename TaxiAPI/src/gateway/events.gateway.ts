@@ -338,7 +338,7 @@ export class EventsGateway
 
       // FCM fallback
       await this.sendChatFcmIfOffline(clientUserId, {
-        senderLabel: 'Your driver', text,
+        senderLabel: 'Shoferi juaj', text,
         rideId: body.rideId, eventKey: 'ride_message_client',
       });
 
@@ -354,7 +354,7 @@ export class EventsGateway
 
       // FCM fallback
       await this.sendChatFcmIfOffline(driverUserId, {
-        senderLabel: 'Your client', text,
+        senderLabel: 'Klienti juaj', text,
         rideId: body.rideId, eventKey: 'ride_message_driver',
       });
 

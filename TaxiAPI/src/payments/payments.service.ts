@@ -345,8 +345,8 @@ export class PaymentsService {
     if (clientUser) {
       this.gatewayService.emitToUser(clientUser.id, 'payment_confirmed', payload);
       await this.notificationsService.sendToToken(clientUser.fcmToken, {
-        title: 'Payment successful 🎉',
-        body:  'Your card payment has been confirmed. Thank you!',
+        title: 'Pagesa u krye me sukses 🎉',
+        body:  'Pagesa juaj me kartë u konfirmua. Faleminderit!',
         data:  { rideId: ride.id, event: 'payment_confirmed' },
       });
     }
@@ -376,7 +376,7 @@ export class PaymentsService {
 
     const reason =
       intent.last_payment_error?.message ??
-      'Your card payment was declined.';
+      'Pagesa juaj me kartë u refuzua.';
 
     const clientUser = await this.getClientUser(ride.clientId);
     if (clientUser) {
@@ -385,7 +385,7 @@ export class PaymentsService {
         reason,
       });
       await this.notificationsService.sendToToken(clientUser.fcmToken, {
-        title: 'Payment failed',
+        title: 'Pagesa dështoi',
         body:  reason,
         data:  { rideId: ride.id, event: 'payment_failed' },
       });
