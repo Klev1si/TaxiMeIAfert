@@ -40,6 +40,9 @@ interface Props {
   position?: LatLng | null;
   /** Currency symbol — defaults to $. */
   currency?: string;
+  /** Reports the running fare upward (e.g. so a parent can preview it in a
+   *  completion modal). Fires whenever the computed fare changes. */
+  onFareChange?: (fare: number) => void;
 }
 
 const EARTH_KM = 6371;
@@ -58,6 +61,7 @@ export default function Taximeter({
   startedAt,
   position,
   currency = '$',
+  onFareChange,
 }: Props) {
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
@@ -100,12 +104,11 @@ export default function Taximeter({
     return () => clearInterval(id);
   }, []);
 
-  // Hide entirely if no tariff is configured — nothing to display.
-  if (!tariff) return null;
-
   // Until the driver taps "Start ride" (startedAt is null) we still show the
   // meter UI, but at 0.00 km / 00:00 / fare = 0.00. This lets the passenger
   // and driver see the meter is armed and ready before the trip begins.
+  // Computed BEFORE the no-tariff early return below so the fare-reporting
+  // effect stays an unconditional hook.
   const isRunning = !!startedAt;
   const startMs = isRunning
     ? (typeof startedAt === 'string' ? new Date(startedAt as string).getTime() : (startedAt as Date).getTime())
@@ -113,7 +116,7 @@ export default function Taximeter({
   const elapsedMin = isRunning ? Math.max(0, (nowMs - startMs) / 60_000) : 0;
   const liveDistanceKm = isRunning ? distanceKm : 0;
 
-  const fare = isRunning
+  const fare = (tariff && isRunning)
     ? Math.max(
         tariff.baseFare +
           liveDistanceKm * tariff.perKmRate +
@@ -121,6 +124,15 @@ export default function Taximeter({
         tariff.minimumFare,
       ) * (tariff.surgeMultiplier ?? 1)
     : 0;
+
+  // Report the running fare upward so parents can preview it (e.g. the driver's
+  // completion modal). Runs each tick while the meter is live.
+  useEffect(() => {
+    onFareChange?.(fare);
+  }, [fare, onFareChange]);
+
+  // Hide entirely if no tariff is configured — nothing to display.
+  if (!tariff) return null;
 
   // Format minutes as mm:ss for a real-meter feel.
   const totalSec = isRunning ? Math.floor((nowMs - startMs) / 1000) : 0;
