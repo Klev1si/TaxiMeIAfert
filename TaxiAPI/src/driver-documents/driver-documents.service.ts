@@ -125,8 +125,8 @@ export class DriverDocumentsService {
       select: ['fcmToken'],
     });
     await this.notificationsService.sendToToken(driverUser?.fcmToken, {
-      title: '✅ Document Approved',
-      body: `Your ${this.friendlyType(doc.type)} has been approved.`,
+      title: '✅ Dokumenti u miratua',
+      body: `${this.friendlyType(doc.type)} juaj u miratua.`,
       data: { event: 'document_approved', docId: doc.id, type: doc.type },
     });
 
@@ -161,10 +161,10 @@ export class DriverDocumentsService {
       select: ['fcmToken'],
     });
     const bodyText = reason
-      ? `Your ${this.friendlyType(doc.type)} was rejected: ${reason}`
-      : `Your ${this.friendlyType(doc.type)} was rejected. Please re-upload.`;
+      ? `${this.friendlyType(doc.type)} juaj u refuzua: ${reason}`
+      : `${this.friendlyType(doc.type)} juaj u refuzua. Ju lutemi ngarkojeni sërish.`;
     await this.notificationsService.sendToToken(driverUser?.fcmToken, {
-      title: '❌ Document Rejected',
+      title: '❌ Dokumenti u refuzua',
       body: bodyText,
       data: { event: 'document_rejected', docId: doc.id, type: doc.type },
     });
@@ -225,10 +225,10 @@ export class DriverDocumentsService {
 
   private friendlyType(type: DocumentType): string {
     const map: Record<DocumentType, string> = {
-      [DocumentType.LICENSE]:              "driver's license",
-      [DocumentType.VEHICLE_REGISTRATION]: 'vehicle registration',
-      [DocumentType.INSURANCE]:            'insurance certificate',
-      [DocumentType.OTHER]:                'document',
+      [DocumentType.LICENSE]:              'leja e drejtimit',
+      [DocumentType.VEHICLE_REGISTRATION]: 'regjistrimi i automjetit',
+      [DocumentType.INSURANCE]:            'certifikata e sigurimit',
+      [DocumentType.OTHER]:                'dokumenti',
     };
     return map[type] ?? type;
   }

@@ -271,8 +271,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
               reason: ride.cancelReason,
             });
             await this.notificationsService.sendToToken(clientUser.fcmToken, {
-              title: 'Scheduled ride cancelled',
-              body: 'Unfortunately no drivers were available at your scheduled time. Please book a new ride.',
+              title: 'Udhëtimi i planifikuar u anulua',
+              body: 'Fatkeqësisht nuk kishte shoferë të disponueshëm në kohën tuaj të planifikuar. Ju lutemi rezervoni një udhëtim të ri.',
               data: { rideId: ride.id, event: 'ride_cancelled' },
             });
           }
@@ -307,8 +307,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
             const clientUser = await this.getClientUser(ride.clientId);
             if (clientUser?.fcmToken) {
               await this.notificationsService.sendToToken(clientUser.fcmToken, {
-                title: '⏳ Still searching for a driver',
-                body:  'No drivers are available yet for your scheduled ride. We\'ll keep trying for the next 10 minutes.',
+                title: '⏳ Ende duke kërkuar një shofer',
+                body:  'Ende nuk ka shoferë të disponueshëm për udhëtimin tuaj të planifikuar. Do të vazhdojmë të provojmë për 10 minutat e ardhshme.',
                 data:  { rideId: ride.id, event: 'no_drivers_yet' },
               });
             }
@@ -328,10 +328,10 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
           if (clientUser) {
             const minutesUntil = Math.max(0, Math.round(-msLate / 60_000));
             const bodyText = minutesUntil > 0
-              ? `We found a driver for your ride in ${minutesUntil} min.`
-              : 'Your scheduled ride time has arrived. We\'re connecting you with a driver now.';
+              ? `Gjetëm një shofer për udhëtimin tuaj pas ${minutesUntil} min.`
+              : 'Koha e udhëtimit tuaj të planifikuar mbërriti. Po ju lidhim me një shofer tani.';
             await this.notificationsService.sendToToken(clientUser.fcmToken, {
-              title: '🚕 Driver found for your scheduled ride',
+              title: '🚕 U gjet një shofer për udhëtimin tuaj të planifikuar',
               body:  bodyText,
               data:  { rideId: ride.id, event: 'scheduled_dispatching' },
             });
@@ -401,8 +401,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         const alreadySent = await this.redis.exists(reminderKey);
         if (!alreadySent) {
           await this.notificationsService.sendToToken(clientUser.fcmToken, {
-            title: '🕐 Ride reminder — 1 hour away',
-            body: `Your scheduled ride is in about ${minutesAway} minutes. Make sure you're ready!`,
+            title: '🕐 Kujtesë udhëtimi — 1 orë larg',
+            body: `Udhëtimi juaj i planifikuar është për rreth ${minutesAway} minuta. Sigurohuni që jeni gati!`,
             data: { event: 'scheduled_reminder', rideId: ride.id },
           });
           // Expire flag after 90 min so it doesn't linger forever
@@ -417,8 +417,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         const alreadySent = await this.redis.exists(reminderKey);
         if (!alreadySent) {
           await this.notificationsService.sendToToken(clientUser.fcmToken, {
-            title: '🚕 Your ride is almost here!',
-            body: `Your scheduled ride is in about ${minutesAway} minutes. Your driver is being assigned now.`,
+            title: '🚕 Udhëtimi juaj është gati!',
+            body: `Udhëtimi juaj i planifikuar është për rreth ${minutesAway} minuta. Shoferi juaj po caktohet tani.`,
             data: { event: 'scheduled_reminder', rideId: ride.id },
           });
           await this.redis.set(reminderKey, '1', 'EX', 30 * 60);
@@ -804,8 +804,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
       });
       await this.notificationsService.sendToToken(schedUser?.fcmToken, {
-        title: '🗓 Ride scheduled!',
-        body: `Your ride is confirmed for ${timeLabel}. We'll find a driver automatically when the time arrives.`,
+        title: '🗓 Udhëtimi u planifikua!',
+        body: `Udhëtimi juaj është konfirmuar për ${timeLabel}. Do të gjejmë një shofer automatikisht kur të vijë koha.`,
         data: { rideId: savedRide.id, event: 'ride_scheduled' },
       });
 
@@ -899,8 +899,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     if (clientUser) {
       this.gatewayService.emitToUser(clientUser.id, 'ride_accepted', ridePayload);
       await this.notificationsService.sendToToken(clientUser.fcmToken, {
-        title: 'Driver on the way!',
-        body: `${driver.firstName} accepted your ride and is heading to you.`,
+        title: 'Shoferi po vjen!',
+        body: `${driver.firstName} pranoi udhëtimin tuaj dhe po vjen te ju.`,
         data: { rideId: updatedRide.id, event: 'ride_accepted' },
       });
 
@@ -1019,8 +1019,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
           reason: 'No available drivers',
         });
         await this.notificationsService.sendToToken(clientUser.fcmToken, {
-          title: 'No drivers available',
-          body: 'All nearby drivers are busy. Please try again in a moment.',
+          title: 'Nuk ka shoferë të disponueshëm',
+          body: 'Të gjithë shoferët pranë janë të zënë. Ju lutemi provoni sërish pas pak.',
           data: { rideId, event: 'ride_cancelled' },
         });
       }
@@ -1151,8 +1151,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
           reason: 'Passenger no-show',
         });
         await this.notificationsService.sendToToken(clientUser.fcmToken, {
-          title: 'Ride cancelled — no-show',
-          body: `Your driver reported you as a no-show. A $${NOSHOW_PASSENGER_FEE.toFixed(2)} fee has been applied.`,
+          title: 'Udhëtimi u anulua — mosparaqitje',
+          body: `Shoferi juaj ju raportoi si të paparaqitur. U aplikua një tarifë prej $${NOSHOW_PASSENGER_FEE.toFixed(2)}.`,
           data: { rideId, event: 'ride_cancelled' },
         });
       }
@@ -1231,8 +1231,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
             select: ['fcmToken'],
           });
           await this.notificationsService.sendToToken(driverUser?.fcmToken, {
-            title: 'Ride cancelled — driver no-show',
-            body: 'The client reported you as a no-show and the ride has been cancelled.',
+            title: 'Udhëtimi u anulua — mosparaqitje e shoferit',
+            body: 'Klienti ju raportoi si të paparaqitur dhe udhëtimi u anulua.',
             data: { rideId, event: 'ride_cancelled' },
           });
         }
@@ -1342,10 +1342,10 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
             select: ['fcmToken'],
           });
           await this.notificationsService.sendToToken(driverUser?.fcmToken, {
-            title: 'Ride cancelled by client',
+            title: 'Udhëtimi u anulua nga klienti',
             body: ride.cancelReason
-              ? `Reason: ${ride.cancelReason}`
-              : 'The client cancelled the ride.',
+              ? `Arsyeja: ${ride.cancelReason}`
+              : 'Klienti e anuloi udhëtimin.',
             data: { rideId, event: 'ride_cancelled' },
           });
         }
@@ -1360,10 +1360,10 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
           reason: ride.cancelReason,
         });
         await this.notificationsService.sendToToken(clientUser.fcmToken, {
-          title: 'Ride cancelled by driver',
+          title: 'Udhëtimi u anulua nga shoferi',
           body: ride.cancelReason
-            ? `Reason: ${ride.cancelReason}`
-            : 'Your driver cancelled the ride.',
+            ? `Arsyeja: ${ride.cancelReason}`
+            : 'Shoferi juaj e anuloi udhëtimin.',
           data: { rideId, event: 'ride_cancelled' },
         });
       }
@@ -1398,8 +1398,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         driverName: `${driver.firstName} ${driver.lastName}`,
       });
       await this.notificationsService.sendToToken(clientUser.fcmToken, {
-        title: 'Driver is on the way',
-        body: `${driver.firstName} is heading to your pickup location.`,
+        title: 'Shoferi është nisur',
+        body: `${driver.firstName} po vjen te vendi juaj i marrjes.`,
         data: { rideId, event: 'driver_en_route' },
       });
     }
@@ -1434,8 +1434,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         vehiclePlate: driver.vehiclePlate,
       });
       await this.notificationsService.sendToToken(clientUser.fcmToken, {
-        title: 'Driver has arrived!',
-        body: `${driver.firstName} is waiting for you at the pickup location.`,
+        title: 'Shoferi ka mbërritur!',
+        body: `${driver.firstName} po ju pret te vendi i marrjes.`,
         data: { rideId, event: 'driver_arrived' },
       });
     }
@@ -1471,8 +1471,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     if (clientUser) {
       this.gatewayService.emitToUser(clientUser.id, 'ride_started', { rideId });
       await this.notificationsService.sendToToken(clientUser.fcmToken, {
-        title: 'Your ride has started',
-        body: 'Enjoy your trip!',
+        title: 'Udhëtimi juaj filloi',
+        body: 'Udhëtim të mbarë!',
         data: { rideId, event: 'ride_started' },
       });
     }
@@ -1689,8 +1689,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         driverId:     saved.driverId ?? null,
       });
       await this.notificationsService.sendToToken(clientUser.fcmToken, {
-        title: 'Ride completed',
-        body: 'You have arrived! Please rate your driver.',
+        title: 'Udhëtimi përfundoi',
+        body: 'Mbërritët! Ju lutemi vlerësoni shoferin tuaj.',
         data: { rideId, event: 'ride_completed' },
       });
 
@@ -1816,8 +1816,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         paymentStatus: PaymentStatus.PAID,
       });
       await this.notificationsService.sendToToken(clientUser.fcmToken, {
-        title: 'Payment confirmed',
-        body: 'Cash payment received. Thank you for riding with us!',
+        title: 'Pagesa u konfirmua',
+        body: 'Pagesa me para në dorë u pranua. Faleminderit që udhëtuat me ne!',
         data: { rideId, event: 'payment_confirmed' },
       });
     }
@@ -2284,8 +2284,8 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       select: ['fcmToken'],
     });
     await this.notificationsService.sendToToken(driverUser?.fcmToken, {
-      title: 'New ride request',
-      body: `Pickup: ${ride.pickupAddress ?? `${Number(ride.pickupLat).toFixed(4)}, ${Number(ride.pickupLng).toFixed(4)}`}`,
+      title: 'Kërkesë e re për udhëtim',
+      body: `Marrja: ${ride.pickupAddress ?? `${Number(ride.pickupLat).toFixed(4)}, ${Number(ride.pickupLng).toFixed(4)}`}`,
       data: { rideId: ride.id, event: 'ride_request' },
     });
 

@@ -47,7 +47,7 @@ export class AdminNotificationsService {
       const contact = info.phone ?? info.email ?? 'no contact info';
       const roleLabel = this.roleLabel(info.role);
 
-      const title = `New ${roleLabel} registered`;
+      const title = `Regjistrim i ri: ${roleLabel}`;
       const bodyParts = [fullName, info.phone, info.email].filter(
         (s): s is string => !!s,
       );
@@ -136,13 +136,13 @@ export class AdminNotificationsService {
   private roleLabel(role: UserRole): string {
     switch (role) {
       case UserRole.CLIENT:
-        return 'passenger';
+        return 'pasagjer';
       case UserRole.DRIVER:
-        return 'driver';
+        return 'shofer';
       case UserRole.COMPANY:
-        return 'company';
+        return 'kompani';
       default:
-        return 'user';
+        return 'përdorues';
     }
   }
 }

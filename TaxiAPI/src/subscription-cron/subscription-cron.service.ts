@@ -28,20 +28,20 @@ interface OffsetRule {
 /** When each notification should fire, relative to currentPeriodEnd. */
 const RULES: OffsetRule[] = [
   { daysOffset:  7, type: SubscriptionNotificationType.REMINDER_7D,
-    title: 'Subscription expires in 7 days',
-    body:  'Your subscription will end in 7 days. Renew now to avoid interruption.' },
+    title: 'Abonimi skadon për 7 ditë',
+    body:  'Abonimi juaj do të përfundojë për 7 ditë. Rinovoni tani për të shmangur ndërprerjen.' },
   { daysOffset:  3, type: SubscriptionNotificationType.REMINDER_3D,
-    title: 'Subscription expires in 3 days',
-    body:  'Your subscription will end in 3 days. Renew now to keep working.' },
+    title: 'Abonimi skadon për 3 ditë',
+    body:  'Abonimi juaj do të përfundojë për 3 ditë. Rinovoni tani për të vazhduar punën.' },
   { daysOffset:  1, type: SubscriptionNotificationType.REMINDER_1D,
-    title: 'Subscription expires tomorrow',
-    body:  'Last reminder — renew today to avoid being blocked.' },
+    title: 'Abonimi skadon nesër',
+    body:  'Kujtesa e fundit — rinovoni sot që të mos bllokoheni.' },
   { daysOffset:  0, type: SubscriptionNotificationType.EXPIRED,
-    title: 'Subscription expired — grace period started',
-    body:  `Your subscription has expired. You have ${GRACE_PERIOD_DAYS} days of grace to renew before access is blocked.` },
+    title: 'Abonimi skadoi — filloi periudha e faljes',
+    body:  `Abonimi juaj ka skaduar. Keni ${GRACE_PERIOD_DAYS} ditë falje për ta rinovuar para se aksesi të bllokohet.` },
   { daysOffset: -GRACE_PERIOD_DAYS, type: SubscriptionNotificationType.GRACE_END_BLOCKED,
-    title: 'Account blocked — renew to continue',
-    body:  'Your grace period has ended. Renew your subscription to start accepting rides again.' },
+    title: 'Llogaria u bllokua — rinovoni për të vazhduar',
+    body:  'Periudha juaj e faljes ka mbaruar. Rinovoni abonimin për të filluar sërish pranimin e udhëtimeve.' },
 ];
 
 /**
