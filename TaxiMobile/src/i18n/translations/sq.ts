@@ -313,6 +313,9 @@ export default {
 
     activeRide: {
       statusFinding:        'Po kërkohet shofer…',
+      estimatedFare:        'Çmimi i përafërt',
+      estimatedFareNote:    'Çmimi përfundimtar llogaritet në fund të udhëtimit',
+      searchingSubtitle:    'Po kontaktojmë shoferët pranë jush…',
       statusAccepted:       'Shoferi pranoi',
       statusOnWay:          'Shoferi është në rrugë',
       statusInProgress:     'Udhëtimi në vazhdim',
@@ -615,6 +618,8 @@ export default {
       declineBtn:    'Refuzo',
       acceptBtn:     'Prano',
       acceptFailMsg: 'Udhëtimi nuk u pranua. Mund të jetë marrë nga një shofer tjetër.',
+      estimatedFare:     'Çmimi i përafërt',
+      estimatedFareNote: 'Çmimi përfundimtar llogaritet në fund të udhëtimit',
     },
 
     earnings: {

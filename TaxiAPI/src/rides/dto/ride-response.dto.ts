@@ -39,6 +39,10 @@ export class RideResponseDto {
   distanceFare: number | null;
   timeFare: number | null;
   totalFare: number | null;
+  /** Approximate fare based on the currently-offered driver's tariff and the
+   *  pickup → dropoff distance. Shown before the trip; updated when the ride
+   *  is re-dispatched to a different driver. Null until a driver is offered. */
+  estimatedFare: number | null;
   // ── Ratings ───────────────────────────────────────────────────────────────────
   clientRating: number | null;
   clientReview: string | null;

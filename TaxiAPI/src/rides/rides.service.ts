@@ -428,22 +428,19 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Step 53: GET /rides/estimate  (CLIENT — fare estimate before booking)
-  // ─────────────────────────────────────────────────────────────────────────────
-  async estimateFare(
+  /**
+   * Sum the real road distance (Google Distance Matrix) and duration over every
+   * leg pickup → stop1 → … → dropoff. Falls back to straight-line Haversine +
+   * 30 km/h average per leg when the Maps key is absent or a call fails, so an
+   * estimate is always produced.
+   */
+  private async computeRouteMetrics(
     pickupLat: number,
     pickupLng: number,
+    stops: Array<{ lat: number; lng: number }>,
     dropoffLat: number,
     dropoffLng: number,
-    vehicleType?: VehicleType | null,
-    stops: Array<{ lat: number; lng: number }> = [],
-  ) {
-    // Prefer Google Maps Distance Matrix (real road distance + realistic duration).
-    // Falls back to Haversine + 30 km/h average if the key is absent or the call fails.
-    // With intermediate stops we sum the distance/duration of every leg
-    // (pickup → stop1 → stop2 → … → dropoff) so an off-route stop bumps the
-    // fare instead of silently disappearing.
+  ): Promise<{ distanceKm: number; durationMinutes: number }> {
     const legs: Array<{ fromLat: number; fromLng: number; toLat: number; toLng: number }> = [];
     let prevLat = pickupLat;
     let prevLng = pickupLng;
@@ -469,6 +466,56 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         durationMinutes += (km / 30) * 60;
       }
     }
+    return { distanceKm, durationMinutes };
+  }
+
+  /**
+   * Apply a tariff to a distance/duration and return the full fare breakdown.
+   * Single source of truth for the fare formula, shared by the pre-booking
+   * estimate, the per-driver dispatch estimate, and final billing:
+   *
+   *   raw   = baseFare + distanceKm·perKmRate + durationMin·perMinuteRate
+   *   fare  = max(raw, minimumFare) · surgeMultiplier
+   *
+   * Distance/duration are clamped to ≥ 0, so a ride with no movement still
+   * bills the base fare (never zero / blank) — the fare can never drop below
+   * the tariff's base or minimum fare.
+   */
+  private computeTariffFare(
+    tariff: Tariff,
+    distanceKm: number,
+    durationMinutes: number,
+  ): { baseFare: number; distanceFare: number; timeFare: number; totalFare: number; surgeMultiplier: number } {
+    const surge    = Math.max(1, Number(tariff.surgeMultiplier ?? 1));
+    const base     = Number(tariff.baseFare);
+    const distFare = Math.round(Math.max(0, distanceKm)      * Number(tariff.perKmRate)     * 100) / 100;
+    const timeFare = Math.round(Math.max(0, durationMinutes) * Number(tariff.perMinuteRate) * 100) / 100;
+    const raw      = base + distFare + timeFare;
+    const afterMin = Math.max(raw, Number(tariff.minimumFare));
+    const total    = Math.round(afterMin * surge * 100) / 100;
+    return {
+      baseFare:        base,
+      distanceFare:    distFare,
+      timeFare:        timeFare,
+      totalFare:       total,
+      surgeMultiplier: surge,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Step 53: GET /rides/estimate  (CLIENT — fare estimate before booking)
+  // ─────────────────────────────────────────────────────────────────────────────
+  async estimateFare(
+    pickupLat: number,
+    pickupLng: number,
+    dropoffLat: number,
+    dropoffLng: number,
+    vehicleType?: VehicleType | null,
+    stops: Array<{ lat: number; lng: number }> = [],
+  ) {
+    const { distanceKm, durationMinutes } = await this.computeRouteMetrics(
+      pickupLat, pickupLng, stops, dropoffLat, dropoffLng,
+    );
 
     // Select the best matching global tariff for the current time of day.
     // selectActiveTariff(null) picks from platform-wide tariffs (companyId IS NULL)
@@ -481,19 +528,14 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     let isNightTariff:  boolean       = false;
 
     if (tariff) {
-      const surge = Math.max(1, Number(tariff.surgeMultiplier ?? 1));
-      const raw =
-        Number(tariff.baseFare) +
-        distanceKm * Number(tariff.perKmRate) +
-        durationMinutes * Number(tariff.perMinuteRate);
-      const afterMinimum = Math.max(raw, Number(tariff.minimumFare));
-      estimatedFare = Math.round(afterMinimum * surge * 100) / 100;
+      const fare = this.computeTariffFare(tariff, distanceKm, durationMinutes);
+      estimatedFare = fare.totalFare;
       breakdown = {
         baseFare:        Number(tariff.baseFare),
         perKmRate:       Number(tariff.perKmRate),
         perMinuteRate:   Number(tariff.perMinuteRate),
         minimumFare:     Number(tariff.minimumFare),
-        surgeMultiplier: surge,
+        surgeMultiplier: fare.surgeMultiplier,
       };
       tariffName    = tariff.name;
       isNightTariff = tariff.isNightTariff;
@@ -1533,35 +1575,61 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       ride.durationMinutes = Math.round((Number(ride.distanceKm) / 30) * 60 * 10) / 10;
     }
 
-    // 3. Fare: tariff-based calculation when possible; always fall back to
-    //    driver-supplied fare so we never leave totalFare null if the driver
-    //    provided a value (e.g. tariff was deleted after the ride started).
+    // 3. Fare: tariff-based calculation whenever a tariff is resolvable.
+    //    Distance/duration default to 0 when unknown, so a ride where the taxi
+    //    never moved (0 km / 0 min) still bills the tariff's base/minimum fare
+    //    instead of leaving the amount blank on the payment screen.
     let fareCalculated = false;
-    if (ride.tariffId && ride.distanceKm != null) {
-      const tariff = await this.tariffRepo.findOne({ where: { id: ride.tariffId } });
-      if (tariff) {
-        const distKm   = Number(ride.distanceKm);
-        const durMin   = Number(ride.durationMinutes ?? 0);
-        const surge    = Math.max(1, Number(tariff.surgeMultiplier ?? 1));
-        const base     = Number(tariff.baseFare);
-        const distFare = Math.round(distKm * Number(tariff.perKmRate)     * 100) / 100;
-        const timeFare = Math.round(durMin * Number(tariff.perMinuteRate) * 100) / 100;
-        const raw      = base + distFare + timeFare;
-        const afterMin = Math.max(raw, Number(tariff.minimumFare));
-        const total    = afterMin * surge;
 
-        ride.baseFare     = base;
-        ride.distanceFare = distFare;
-        ride.timeFare     = timeFare;
-        ride.totalFare    = Math.round(total * 100) / 100;
-        fareCalculated    = true;
+    // Resolve the tariff: the one locked at acceptance, or — if none was ever
+    // assigned (e.g. it was added/changed after the ride was accepted) — the
+    // driver's currently-active tariff, so the fare is never skipped for the
+    // lack of a stored tariff id.
+    let tariff: Tariff | null = null;
+    if (ride.tariffId) {
+      tariff = await this.tariffRepo.findOne({ where: { id: ride.tariffId } });
+    }
+    if (!tariff) {
+      tariff = await this.selectActiveTariff(
+        driver.companyId,
+        ride.startedAt ?? ride.acceptedAt ?? new Date(),
+        driver.vehicleType ?? null,
+        driver.id,
+      );
+      if (tariff) ride.tariffId = tariff.id;
+    }
+
+    if (tariff) {
+      const hasDistance = ride.distanceKm != null;
+      const distKm = hasDistance ? Number(ride.distanceKm) : 0;
+      const durMin = ride.durationMinutes != null ? Number(ride.durationMinutes) : 0;
+      const fare   = this.computeTariffFare(tariff, distKm, durMin);
+      const driverFare = fareInput?.totalFare != null
+        ? Math.round(fareInput.totalFare * 100) / 100
+        : null;
+
+      if (!hasDistance && driverFare != null && driverFare > fare.totalFare) {
+        // The backend has no distance (no GPS waypoints and no dropoff set) but
+        // the driver's live meter accumulated real distance/time on-device and
+        // reported a higher fare — trust it over a base-only calc.
+        ride.baseFare     = fare.baseFare;
+        ride.distanceFare = null;
+        ride.timeFare     = null;
+        ride.totalFare    = driverFare;
+      } else {
+        // Tariff calc is authoritative. At zero movement this is the tariff's
+        // base/minimum fare, so the amount is never left blank on payment.
+        ride.baseFare     = fare.baseFare;
+        ride.distanceFare = fare.distanceFare;
+        ride.timeFare     = fare.timeFare;
+        ride.totalFare    = fare.totalFare;
       }
+      fareCalculated = true;
     }
 
     if (!fareCalculated && fareInput?.totalFare != null) {
       // Fallback: use the driver-supplied fare directly.
-      // This covers: solo drivers without a tariff, AND the case where a
-      // tariff was assigned but the lookup above returned null (deleted tariff).
+      // This covers solo drivers with no tariff configured at all.
       ride.totalFare = Math.round(fareInput.totalFare * 100) / 100;
     }
 
@@ -2243,6 +2311,62 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
    * Notify a specific driver of a new ride request via WebSocket and FCM,
    * then store them as the pending driver for this ride.
    */
+  /**
+   * Approximate fare for a ride if a specific driver were to take it, based on
+   * that driver's active tariff and the pickup → (stops) → dropoff distance.
+   * Returns all-null when there is no dropoff or the driver has no tariff.
+   * Best-effort — any failure resolves to nulls so dispatch is never blocked.
+   */
+  private async computeDispatchEstimate(
+    ride: Ride,
+    driverId: string,
+    stops: RideStop[],
+  ): Promise<{
+    estimatedFare:   number | null;
+    distanceKm:      number | null;
+    durationMinutes: number | null;
+    tariffSnapshot:  TariffSnapshotDto | null;
+  }> {
+    const empty = { estimatedFare: null, distanceKm: null, durationMinutes: null, tariffSnapshot: null };
+    if (ride.dropoffLat == null || ride.dropoffLng == null) return empty;
+    try {
+      const driver = await this.driverRepo.findOne({
+        where:  { id: driverId },
+        select: ['id', 'companyId', 'vehicleType'],
+      });
+      const tariff = await this.selectActiveTariff(
+        driver?.companyId ?? null,
+        new Date(),
+        driver?.vehicleType ?? null,
+        driver?.id ?? null,
+      );
+      if (!tariff) return empty;
+
+      const metrics = await this.computeRouteMetrics(
+        Number(ride.pickupLat), Number(ride.pickupLng),
+        stops.map(s => ({ lat: Number(s.lat), lng: Number(s.lng) })),
+        Number(ride.dropoffLat), Number(ride.dropoffLng),
+      );
+      const fare = this.computeTariffFare(tariff, metrics.distanceKm, metrics.durationMinutes);
+      return {
+        estimatedFare:   fare.totalFare,
+        distanceKm:      Math.round(metrics.distanceKm      * 100) / 100,
+        durationMinutes: Math.round(metrics.durationMinutes *  10) /  10,
+        tariffSnapshot: {
+          baseFare:        Number(tariff.baseFare),
+          perKmRate:       Number(tariff.perKmRate),
+          perMinuteRate:   Number(tariff.perMinuteRate),
+          minimumFare:     Number(tariff.minimumFare),
+          surgeMultiplier: Number(tariff.surgeMultiplier ?? 1),
+          name:            tariff.name,
+        },
+      };
+    } catch (err) {
+      this.logger.warn(`Dispatch estimate for ride ${ride.id} failed: ${(err as Error).message}`);
+      return empty;
+    }
+  }
+
   private async dispatchToDriver(
     ride: Ride,
     candidate: { driverId: string; userId: string; lat: number; lng: number },
@@ -2256,6 +2380,18 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       where: { rideId: ride.id },
       order: { sortOrder: 'ASC' },
     });
+
+    // ── Per-driver approximate fare ──────────────────────────────────────────
+    // Compute an estimate from THIS driver's active tariff and the
+    // pickup → (stops) → dropoff distance, so both the passenger and the driver
+    // being asked see a price tied to that driver. Recomputed on every
+    // re-dispatch, so if the ride passes to a driver on a different tariff the
+    // estimate changes accordingly. Best-effort: never block dispatch on it.
+    const estimate = await this.computeDispatchEstimate(ride, candidate.driverId, dispatchStops);
+    if (estimate.estimatedFare != null && Number(ride.estimatedFare) !== estimate.estimatedFare) {
+      ride.estimatedFare = estimate.estimatedFare;
+      await this.rideRepo.update(ride.id, { estimatedFare: estimate.estimatedFare });
+    }
 
     const ridePayload = {
       rideId: ride.id,
@@ -2273,10 +2409,28 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         address:   s.address,
         reachedAt: s.reachedAt,
       })),
+      // Approximate fare for this driver's tariff — shown on the request screen.
+      estimatedFare:            estimate.estimatedFare,
+      estimatedDistanceKm:      estimate.distanceKm,
+      estimatedDurationMinutes: estimate.durationMinutes,
+      tariffSnapshot:           estimate.tariffSnapshot,
     };
 
     // WebSocket — driver must be in room user:{driverUserId}
     this.gatewayService.emitToUser(candidate.userId, 'ride_request', ridePayload);
+
+    // Push the refreshed estimate to the passenger so their waiting screen
+    // reflects the tariff of whoever is currently being asked.
+    const estimateClientUser = await this.getClientUser(ride.clientId);
+    if (estimateClientUser) {
+      this.gatewayService.emitToUser(estimateClientUser.id, 'ride_estimate', {
+        rideId:                   ride.id,
+        estimatedFare:            estimate.estimatedFare,
+        estimatedDistanceKm:      estimate.distanceKm,
+        estimatedDurationMinutes: estimate.durationMinutes,
+        tariffSnapshot:           estimate.tariffSnapshot,
+      });
+    }
 
     // FCM push
     const driverUser = await this.userRepo.findOne({
@@ -2741,6 +2895,7 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       distanceFare: ride.distanceFare != null ? Number(ride.distanceFare) : null,
       timeFare:     ride.timeFare     != null ? Number(ride.timeFare)     : null,
       totalFare:    ride.totalFare    != null ? Number(ride.totalFare)    : null,
+      estimatedFare: ride.estimatedFare != null ? Number(ride.estimatedFare) : null,
       // Ratings
       clientRating: ride.clientRating != null ? Number(ride.clientRating) : null,
       clientReview: ride.clientReview,

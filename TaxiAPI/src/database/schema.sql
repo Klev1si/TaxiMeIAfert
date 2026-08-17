@@ -184,6 +184,7 @@ CREATE TABLE rides (
   distance_fare           DECIMAL(10,2),
   time_fare               DECIMAL(10,2),
   total_fare              DECIMAL(10,2),
+  estimated_fare          DECIMAL(10,2),
   -- payment
   payment_status          payment_status NOT NULL DEFAULT 'pending',
   stripe_payment_intent_id VARCHAR(100),

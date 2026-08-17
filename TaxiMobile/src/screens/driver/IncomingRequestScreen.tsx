@@ -172,6 +172,24 @@ export default function IncomingRequestScreen({ navigation, route }: Props) {
             </View>
           )}
 
+          {/* Approximate fare — based on this driver's tariff + trip distance */}
+          {req?.estimatedFare != null && (
+            <View style={styles.fareCard}>
+              <View style={styles.fareRow}>
+                <Text style={styles.fareLabel}>💰 {t('driver.incomingRequest.estimatedFare')}</Text>
+                <Text style={styles.fareValue}>{req.estimatedFare.toFixed(2)} €</Text>
+              </View>
+              {req.estimatedDistanceKm != null && (
+                <Text style={styles.fareMeta}>
+                  📏 {req.estimatedDistanceKm.toFixed(1)} km
+                  {req.estimatedDurationMinutes != null ? `  ·  ⏱ ${Math.round(req.estimatedDurationMinutes)} min` : ''}
+                  {req.tariffSnapshot ? `  ·  ${req.tariffSnapshot.name}` : ''}
+                </Text>
+              )}
+              <Text style={styles.fareNote}>{t('driver.incomingRequest.estimatedFareNote')}</Text>
+            </View>
+          )}
+
           {/* Action buttons */}
           <View style={styles.btnRow}>
             <TouchableOpacity
@@ -257,6 +275,22 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
   title: { fontSize: 20, fontWeight: '800', color: c.text, marginBottom: 14 },
 
   locations: { marginBottom: 16 },
+
+  fareCard: {
+    backgroundColor: c.surfaceAlt,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+  },
+  fareRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  fareLabel: { fontSize: 14, fontWeight: '700', color: c.textSecondary },
+  fareValue: { fontSize: 22, fontWeight: '800', color: c.primary, fontVariant: ['tabular-nums'] },
+  fareMeta: { fontSize: 12, color: c.textSecondary, marginTop: 6, fontVariant: ['tabular-nums'] },
+  fareNote: { fontSize: 11, color: c.textDisabled, marginTop: 4 },
 
   btnRow: { flexDirection: 'row', gap: 12 },
   btn: {

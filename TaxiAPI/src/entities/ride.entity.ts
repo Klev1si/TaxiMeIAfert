@@ -87,6 +87,16 @@ export class Ride {
   @Column({ type: 'decimal', name: 'total_fare', precision: 10, scale: 2, nullable: true })
   totalFare: number | null;
 
+  /**
+   * Approximate fare computed at dispatch time from the tariff of the driver
+   * currently being asked, plus the pickup → dropoff distance. Shown to both
+   * the passenger and that driver before the trip. Recomputed on every
+   * re-dispatch (decline), so it always reflects whoever is being offered the
+   * ride. NULL until a dropoff is set and a driver with a tariff is offered.
+   */
+  @Column({ type: 'decimal', name: 'estimated_fare', precision: 10, scale: 2, nullable: true })
+  estimatedFare: number | null;
+
   // Payment
   @Column({ type: 'enum', enum: PaymentStatus, name: 'payment_status', default: PaymentStatus.PENDING })
   paymentStatus: PaymentStatus;
