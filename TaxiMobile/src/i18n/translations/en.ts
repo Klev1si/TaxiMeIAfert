@@ -320,6 +320,7 @@ export default {
       statusFinding:       'Finding driver…',
       estimatedFare:       'Approximate fare',
       estimatedFareNote:   'Final fare is calculated at the end of the trip',
+      searchingSubtitle:   'Contacting drivers near you…',
       statusAccepted:      'Driver accepted',
       statusOnWay:         'Driver on the way',
       statusInProgress:    'Ride in progress',

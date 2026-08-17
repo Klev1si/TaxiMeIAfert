@@ -24,6 +24,7 @@ import type { ColorPalette } from '../../constants/colors';
 import CancelRideModal from '../../components/CancelRideModal';
 import SosButton from '../../components/SosButton';
 import Taximeter from '../../components/Taximeter';
+import SearchingForDriver from '../../components/SearchingForDriver';
 import type { Ride, RideStatus, WsDriverLocationUpdate, WsRideEstimate, WsRideMessage, WsStopReached } from '../../types/api';
 import type { ClientStackScreenProps } from '../../navigation/types';
 import Config from '../../config';
@@ -597,6 +598,16 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Searching radar — animated while waiting for a driver to accept */}
+            {status === 'requested' && (
+              <View style={styles.searchingBlock}>
+                <SearchingForDriver size={112} />
+                <Text style={styles.searchingText}>
+                  {t('client.activeRide.searchingSubtitle')}
+                </Text>
+              </View>
+            )}
+
             {/* ETA banner — shown while driver is en-route */}
             {status === 'driving_to_pickup' &&
              driverLocation?.etaMinutes != null && (
@@ -827,6 +838,21 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
     borderColor: c.success,
   },
   noticeText: { fontSize: 14, color: c.text, fontWeight: '500' },
+
+  // Searching-for-driver radar block (shown while status === 'requested')
+  searchingBlock: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginBottom: 4,
+  },
+  searchingText: {
+    fontSize: 14,
+    color: c.textSecondary,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 12,
+  },
 
   // Approximate fare card
   estimateCard: {

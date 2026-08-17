@@ -311,6 +311,7 @@ export default {
       statusFinding:        'Buscando conductor…',
       estimatedFare:        'Tarifa aproximada',
       estimatedFareNote:    'La tarifa final se calcula al finalizar el viaje',
+      searchingSubtitle:    'Contactando a los conductores cercanos…',
       statusAccepted:       'Conductor aceptó',
       statusOnWay:          'Conductor en camino',
       statusInProgress:     'Viaje en progreso',
