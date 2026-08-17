@@ -309,6 +309,8 @@ export default {
 
     activeRide: {
       statusFinding:        'Buscando conductor…',
+      estimatedFare:        'Tarifa aproximada',
+      estimatedFareNote:    'La tarifa final se calcula al finalizar el viaje',
       statusAccepted:       'Conductor aceptó',
       statusOnWay:          'Conductor en camino',
       statusInProgress:     'Viaje en progreso',
@@ -611,6 +613,8 @@ export default {
       acceptBtn:  'Aceptar',
       title:      'Nueva solicitud de viaje',
       acceptFailMsg: 'No se pudo aceptar el viaje. Puede que otro conductor lo haya tomado.',
+      estimatedFare:     'Tarifa aproximada',
+      estimatedFareNote: 'La tarifa final se calcula al finalizar el viaje',
     },
 
     earnings: {

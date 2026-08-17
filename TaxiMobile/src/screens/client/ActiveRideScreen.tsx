@@ -24,7 +24,7 @@ import type { ColorPalette } from '../../constants/colors';
 import CancelRideModal from '../../components/CancelRideModal';
 import SosButton from '../../components/SosButton';
 import Taximeter from '../../components/Taximeter';
-import type { Ride, RideStatus, WsDriverLocationUpdate, WsRideMessage, WsStopReached } from '../../types/api';
+import type { Ride, RideStatus, WsDriverLocationUpdate, WsRideEstimate, WsRideMessage, WsStopReached } from '../../types/api';
 import type { ClientStackScreenProps } from '../../navigation/types';
 import Config from '../../config';
 import { toAlertString } from '../../utils/errorMessage';
@@ -232,6 +232,17 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
       });
     });
 
+    // Approximate fare (re)computed whenever the ride is dispatched to a driver.
+    // Reflects the tariff of whoever is currently being asked — updates live if
+    // the request passes from one driver to another with a different tariff.
+    const unsubEstimate = socketService.on<WsRideEstimate>('ride_estimate', (e) => {
+      if (e.rideId !== rideId) { return; }
+      update({
+        estimatedFare: e.estimatedFare,
+        ...(e.tariffSnapshot ? { tariffSnapshot: e.tariffSnapshot } : {}),
+      });
+    });
+
     // Incoming chat messages from driver
     const unsubChat = socketService.on<WsRideMessage>('ride_message', (e) => {
       if (e.rideId !== rideId || e.fromRole !== 'driver') { return; }
@@ -257,6 +268,7 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
       unsubLocation();
       unsubStop();
       unsubChat();
+      unsubEstimate();
     };
   }, [rideId, navigation, clearAll]);
 
@@ -652,6 +664,22 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
               />
             )}
 
+            {/* Approximate fare — based on the offered driver's tariff. Shown
+                while waiting / en-route; the live meter takes over in-progress. */}
+            {ride.estimatedFare != null &&
+             status !== 'completed' && status !== 'cancelled' && status !== 'in_progress' && (
+              <View style={styles.estimateCard}>
+                <View style={styles.estimateRow}>
+                  <Text style={styles.estimateLabel}>💰 {t('client.activeRide.estimatedFare')}</Text>
+                  <Text style={styles.estimateValue}>{ride.estimatedFare.toFixed(2)} €</Text>
+                </View>
+                <Text style={styles.estimateNote}>
+                  {ride.tariffSnapshot ? `${ride.tariffSnapshot.name} · ` : ''}
+                  {t('client.activeRide.estimatedFareNote')}
+                </Text>
+              </View>
+            )}
+
             {/* Arrived notice */}
             {status === 'driving_to_pickup' && ride.pickupArrivedAt && (
               <View style={styles.noticeBox}>
@@ -799,6 +827,22 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
     borderColor: c.success,
   },
   noticeText: { fontSize: 14, color: c.text, fontWeight: '500' },
+
+  // Approximate fare card
+  estimateCard: {
+    backgroundColor: c.surfaceAlt,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+  },
+  estimateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  estimateLabel: { fontSize: 14, fontWeight: '700', color: c.textSecondary },
+  estimateValue: { fontSize: 22, fontWeight: '800', color: c.primary, fontVariant: ['tabular-nums'] },
+  estimateNote: { fontSize: 11, color: c.textSecondary, marginTop: 6 },
 
   // Driver info card
   driverCard: {

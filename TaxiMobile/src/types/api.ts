@@ -80,6 +80,9 @@ export interface Ride {
   distanceFare: number | null;
   timeFare: number | null;
   totalFare: number | null;
+  /** Approximate fare based on the offered driver's tariff and the
+   *  pickup → dropoff distance. Shown before the trip; updated on re-dispatch. */
+  estimatedFare?: number | null;
   // Ratings
   clientRating: number | null;
   clientReview: string | null;
@@ -128,6 +131,21 @@ export interface WsRideRequest {
   dropoffLng: number | null;
   dropoffAddress: string | null;
   stops?: RideStop[];
+  // Approximate fare for THIS driver's tariff, computed at dispatch time.
+  estimatedFare?: number | null;
+  estimatedDistanceKm?: number | null;
+  estimatedDurationMinutes?: number | null;
+  tariffSnapshot?: TariffSnapshot | null;
+}
+
+/** Pushed to the passenger whenever the ride is (re)dispatched, so the waiting
+ *  screen shows the approximate fare of whoever is currently being asked. */
+export interface WsRideEstimate {
+  rideId: string;
+  estimatedFare: number | null;
+  estimatedDistanceKm: number | null;
+  estimatedDurationMinutes: number | null;
+  tariffSnapshot: TariffSnapshot | null;
 }
 
 export interface WsStopReached {

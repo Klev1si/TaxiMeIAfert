@@ -318,6 +318,8 @@ export default {
 
     activeRide: {
       statusFinding:       'Finding driver…',
+      estimatedFare:       'Approximate fare',
+      estimatedFareNote:   'Final fare is calculated at the end of the trip',
       statusAccepted:      'Driver accepted',
       statusOnWay:         'Driver on the way',
       statusInProgress:    'Ride in progress',
@@ -620,6 +622,8 @@ export default {
       declineBtn:      'Decline',
       acceptBtn:       'Accept',
       acceptFailMsg:   'Could not accept the ride. It may have been taken by another driver.',
+      estimatedFare:     'Approximate fare',
+      estimatedFareNote: 'Final fare is calculated at the end of the trip',
     },
 
     earnings: {
