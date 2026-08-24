@@ -18,14 +18,20 @@ export class MailerService {
   private readonly mockMode: boolean;
   private transporter: Transporter | null = null;
   private readonly from: string;
+  /** Display name used in email subjects, headers and footers. */
+  private readonly appName: string;
+  /** Address shown to users for support enquiries (footer "contact us"). */
+  private readonly supportEmail: string;
   /** Brevo HTTP API key. When set, takes precedence over SMTP — bypasses
    *  port-blocking on cloud hosts (Railway etc.) by using HTTPS. */
   private readonly brevoApiKey: string | null;
 
   constructor(private readonly config: ConfigService) {
-    this.mockMode    = config.get<string>('SMTP_MOCK', 'true') === 'true';
-    this.from        = config.get<string>('SMTP_FROM', 'TaxiApp <noreply@taxiapp.com>');
-    this.brevoApiKey = config.get<string>('BREVO_API_KEY') || null;
+    this.mockMode     = config.get<string>('SMTP_MOCK', 'true') === 'true';
+    this.appName      = config.get<string>('APP_NAME', 'TaxiMeIAfert');
+    this.supportEmail = config.get<string>('SUPPORT_EMAIL', 'support@taximeiafert.com');
+    this.from         = config.get<string>('SMTP_FROM', `${this.appName} <no-reply@taximeiafert.com>`);
+    this.brevoApiKey  = config.get<string>('BREVO_API_KEY') || null;
 
     if (this.brevoApiKey && !this.mockMode) {
       this.logger.log(
@@ -68,7 +74,7 @@ export class MailerService {
    * the user, otherwise they'd wait for a code that never arrives.
    */
   async sendPasswordResetCode(toEmail: string, code: string): Promise<void> {
-    const subject = `Your TaxiApp password reset code`;
+    const subject = `Your ${this.appName} password reset code`;
     const html = this.buildResetCodeHtml(code);
     await this.send(toEmail, subject, html);
     this.logger.debug(`Password reset code sent to ${toEmail}`);
@@ -108,7 +114,7 @@ export class MailerService {
   private async sendViaBrevoApi(to: string, subject: string, html: string): Promise<void> {
     // Parse `Name <email>` into separate fields if present, else use as-is.
     const fromMatch = this.from.match(/^\s*(.+?)\s*<\s*([^>\s]+)\s*>\s*$/);
-    const senderName  = fromMatch ? fromMatch[1].trim() : 'TaxiApp';
+    const senderName  = fromMatch ? fromMatch[1].trim() : this.appName;
     const senderEmail = fromMatch ? fromMatch[2].trim() : this.from.trim();
 
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -140,7 +146,7 @@ export class MailerService {
     <tr><td align="center">
       <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
         <tr><td style="background:#1565C0;padding:24px;text-align:center;color:#fff;">
-          <div style="font-size:22px;font-weight:bold;">🚕 TaxiApp</div>
+          <div style="font-size:22px;font-weight:bold;">🚕 ${this.esc(this.appName)}</div>
           <div style="color:#90CAF9;font-size:13px;margin-top:4px;">Password Reset</div>
         </td></tr>
         <tr><td style="padding:32px;text-align:center;">
@@ -166,7 +172,7 @@ export class MailerService {
   async sendRideReceipt(data: ReceiptData): Promise<void> {
     if (!data.clientEmail) return;
 
-    const subject = `Your TaxiApp receipt – ${this.formatDate(data.ride.completedAt ?? new Date())}`;
+    const subject = `Your ${this.appName} receipt – ${this.formatDate(data.ride.completedAt ?? new Date())}`;
     const html    = this.buildReceiptHtml(data);
 
     try {
@@ -211,7 +217,7 @@ export class MailerService {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TaxiApp Receipt</title>
+  <title>${this.esc(this.appName)} Receipt</title>
 </head>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,Helvetica,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:32px 0;">
@@ -223,7 +229,7 @@ export class MailerService {
           <!-- Header -->
           <tr>
             <td style="background:#1565C0;padding:28px 32px;text-align:center;">
-              <div style="font-size:24px;font-weight:bold;color:#ffffff;letter-spacing:1px;">🚕 TaxiApp</div>
+              <div style="font-size:24px;font-weight:bold;color:#ffffff;letter-spacing:1px;">🚕 ${this.esc(this.appName)}</div>
               <div style="color:#90CAF9;font-size:14px;margin-top:6px;">Ride Receipt</div>
             </td>
           </tr>
@@ -312,10 +318,10 @@ export class MailerService {
           <tr>
             <td style="padding:32px;text-align:center;border-top:1px solid #EEEEEE;margin-top:24px;">
               <div style="font-size:12px;color:#9E9E9E;">
-                Questions? Contact us at <a href="mailto:support@taxiapp.com" style="color:#1565C0;">support@taxiapp.com</a>
+                Questions? Contact us at <a href="mailto:${this.esc(this.supportEmail)}" style="color:#1565C0;">${this.esc(this.supportEmail)}</a>
               </div>
               <div style="font-size:11px;color:#BDBDBD;margin-top:8px;">
-                © ${new Date().getFullYear()} TaxiApp. All rights reserved.
+                © ${new Date().getFullYear()} ${this.esc(this.appName)}. All rights reserved.
               </div>
             </td>
           </tr>

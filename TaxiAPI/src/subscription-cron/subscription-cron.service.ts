@@ -218,7 +218,7 @@ export class SubscriptionCronService {
     if (user.email) {
       const html = `<p>Hello,</p>
 <p>${this.escape(rule.body)}</p>
-<p>— TaxiApp</p>`;
+<p>— TaxiMeIAfert</p>`;
       await this.mailer.sendPlain(user.email, rule.title, html);
     }
 

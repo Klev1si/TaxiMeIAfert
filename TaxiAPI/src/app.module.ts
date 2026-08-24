@@ -95,6 +95,17 @@ import {
         DB_LOGGING:            Joi.boolean().default(false),
         // CORS
         CORS_ORIGIN:           Joi.string().required(),
+        // Email (Brevo) — all optional; when SMTP_MOCK=false you need either
+        // BREVO_API_KEY (preferred, HTTPS) or the SMTP_* trio.
+        SMTP_MOCK:             Joi.string().valid('true', 'false').default('true'),
+        BREVO_API_KEY:         Joi.string().optional().allow(''),
+        APP_NAME:              Joi.string().default('TaxiMeIAfert'),
+        SMTP_FROM:             Joi.string().optional().allow(''),
+        SUPPORT_EMAIL:         Joi.string().email().default('support@taximeiafert.com'),
+        SMTP_HOST:             Joi.string().optional().allow(''),
+        SMTP_PORT:             Joi.number().default(587),
+        SMTP_USER:             Joi.string().optional().allow(''),
+        SMTP_PASS:             Joi.string().optional().allow(''),
       }),
       validationOptions: {
         allowUnknown: true,  // extra vars (FIREBASE_, TWILIO_, etc.) are fine
