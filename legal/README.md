@@ -9,9 +9,24 @@ Privacy Policy + Terms of Service as a static site, ready to drop into GitHub Pa
 | `index.html` | Landing page with cards linking to the two policies |
 | `privacy.html` | Privacy Policy (Kosovo / GDPR-friendly) |
 | `terms.html` | Terms of Service (passenger / driver / company sections) |
+| `delete-account.html` | Account deletion instructions and data-retention notes |
+| `track.html` | Per-ride live tracking view (kept out of search with `noindex`) |
+| `robots.txt` | Allows crawling, disallows `track.html`, points to the sitemap |
+| `sitemap.xml` | Lists the four indexable pages for search engines |
+| `favicon.svg` | Site icon (scalable taxi mark) |
+| `og-image.png` | 1200×630 social-share preview image |
+| `CNAME` | GitHub Pages custom domain (`taximeiafert.com`) |
 
-All three files are self-contained — no JavaScript, no build step, no external CSS.
-Just open them in a browser and they work.
+The HTML files are self-contained — no JavaScript (except `track.html`), no build
+step, no external CSS. Just open them in a browser and they work.
+
+## SEO
+
+Every indexable page carries a `<title>`, meta description, canonical URL, Open
+Graph + Twitter Card tags, favicon, and `theme-color`. `index.html` also embeds an
+`Organization` JSON-LD block. All absolute URLs use the production domain
+`https://taximeiafert.com/` — if you deploy to a different host, update the
+canonical/OG URLs, `sitemap.xml`, `robots.txt`, and `CNAME` to match.
 
 ## Quick GitHub Pages setup (~5 min)
 

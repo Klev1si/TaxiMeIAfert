@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="14" fill="#0f172a"/>
+  <!-- roof sign -->
+  <rect x="27" y="12" width="12" height="7" rx="2" fill="#f1f5f9"/>
+  <!-- cabin -->
+  <path d="M20 24 L44 24 L40 17 L24 17 Z" fill="#eab308"/>
+  <!-- windows -->
+  <path d="M25 23 H31 V18 H27 Z" fill="#0f172a"/>
+  <path d="M33 23 H39 L37 18 H33 Z" fill="#0f172a"/>
+  <!-- body -->
+  <rect x="15" y="24" width="34" height="17" rx="5" fill="#eab308"/>
+  <!-- checker stripe -->
+  <g fill="#0f172a">
+    <rect x="16" y="30" width="5" height="4"/>
+    <rect x="26" y="30" width="5" height="4"/>
+    <rect x="36" y="30" width="5" height="4"/>
+  </g>
+  <!-- wheels -->
+  <circle cx="23" cy="43" r="6" fill="#0f172a"/>
+  <circle cx="41" cy="43" r="6" fill="#0f172a"/>
+  <circle cx="23" cy="43" r="2.5" fill="#334155"/>
+  <circle cx="41" cy="43" r="2.5" fill="#334155"/>
+</svg>
