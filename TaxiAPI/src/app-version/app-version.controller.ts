@@ -38,7 +38,7 @@ export class AppVersionController {
         minimumVersion: this.config.get<string>('APP_MIN_VERSION_IOS', '1.0.0'),
         storeUrl:       this.config.get<string>(
           'APP_STORE_URL_IOS',
-          'https://apps.apple.com/app/taxiapp/id000000000',
+          'https://apps.apple.com/app/taximeiafert/id6786225522',
         ),
       },
       android: {
@@ -46,7 +46,7 @@ export class AppVersionController {
         minimumVersion: this.config.get<string>('APP_MIN_VERSION_ANDROID', '1.0.0'),
         storeUrl:       this.config.get<string>(
           'APP_STORE_URL_ANDROID',
-          'https://play.google.com/store/apps/details?id=com.taxiapp',
+          'https://play.google.com/store/apps/details?id=com.taximelafert',
         ),
       },
     };
