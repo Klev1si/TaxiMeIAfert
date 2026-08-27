@@ -6,12 +6,14 @@ Privacy Policy + Terms of Service as a static site, ready to drop into GitHub Pa
 
 | File | Purpose |
 |---|---|
-| `index.html` | Landing page with cards linking to the two policies |
+| `index.html` | Landing page — English (cards linking to the policies) |
+| `index.sq.html` | Landing page — Albanian (`sq`) |
 | `privacy.html` | Privacy Policy — English (Kosovo / GDPR-friendly) |
 | `privacy.sq.html` | Privacy Policy — Albanian (`sq`) |
 | `terms.html` | Terms of Service — English (passenger / driver / company sections) |
 | `terms.sq.html` | Terms of Service — Albanian (`sq`) |
-| `delete-account.html` | Account deletion instructions and data-retention notes |
+| `delete-account.html` | Account deletion — English |
+| `delete-account.sq.html` | Account deletion — Albanian (`sq`) |
 | `track.html` | Per-ride live tracking view (kept out of search with `noindex`) |
 | `robots.txt` | Allows crawling, disallows `track.html`, points to the sitemap |
 | `sitemap.xml` | Lists the indexable pages (both languages) for search engines |
@@ -32,10 +34,12 @@ canonical/OG URLs, `sitemap.xml`, `robots.txt`, and `CNAME` to match.
 
 ### Bilingual pages (English + Albanian)
 
-The Privacy Policy and Terms of Service ship in English (`*.html`) and Albanian
-(`*.sq.html`). Each page has an EN · SQ toggle in the top-right and declares
-reciprocal `hreflang` alternates (`en`, `sq`, and `x-default` → English), which
-are mirrored in `sitemap.xml` via `xhtml:link` entries. To add another
+Every page ships in English (`*.html`) and Albanian (`*.sq.html`) — the landing
+page, Privacy Policy, Terms of Service, and Delete-account page. Each page has an
+EN · SQ toggle (top-right on content pages) and declares reciprocal `hreflang`
+alternates (`en`, `sq`, and `x-default` → English), which are mirrored in
+`sitemap.xml` via `xhtml:link` entries. The Albanian landing page lives at
+`index.sq.html`; the English one is the site root (`/`). To add another
 translation, copy the `.sq.html` pattern (set `<html lang="…">`, translate the
 content, add the toggle link and the reciprocal `hreflang` links) and add its
 `<url>` block to the sitemap.
