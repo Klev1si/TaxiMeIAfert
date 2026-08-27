@@ -35,22 +35,18 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # Stage the legal/ content so the deployed URLs keep the /legal/ prefix.
-      # Without this, upload-pages-artifact strips the folder name and
-      # /TaxiMeIAfert/legal/privacy.html would 404 — Play Console flagged this
-      # exact issue against the privacy policy URL on v1.71.
+      # Serve the legal/ pages at the site root so URLs are taximeiafert.com/
+      # privacy.html — matching the canonical/OG/sitemap tags in the pages and
+      # placing CNAME at the artifact root (the only place GitHub Pages reads
+      # it). A backward-compatible /legal/ mirror is kept so the previously
+      # published /legal/… URLs (referenced by Play Console) still resolve; the
+      # pages' canonical tags point at the root copies, so search engines
+      # consolidate there and the mirror isn't treated as duplicate content.
       - name: Stage Pages content
         run: |
           mkdir -p _site/legal
-          cp -r legal/. _site/legal/
-          # Friendly root redirect so the bare repo URL goes somewhere useful.
-          cat > _site/index.html <<'HTML'
-          <!doctype html>
-          <meta charset="utf-8">
-          <meta http-equiv="refresh" content="0; url=./legal/">
-          <title>TaxiMeIAfert</title>
-          <p>Redirecting to <a href="./legal/">legal pages</a>…</p>
-          HTML
+          cp -r legal/. _site/legal/   # /legal/ compatibility mirror
+          cp -r legal/. _site/         # root — includes CNAME at _site/CNAME
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
