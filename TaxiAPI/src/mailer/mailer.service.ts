@@ -24,7 +24,7 @@ export class MailerService {
 
   constructor(private readonly config: ConfigService) {
     this.mockMode    = config.get<string>('SMTP_MOCK', 'true') === 'true';
-    this.from        = config.get<string>('SMTP_FROM', 'TaxiApp <noreply@taxiapp.com>');
+    this.from        = config.get<string>('SMTP_FROM', 'TaxiMeIAfert <no-reply@taximeiafert.com>');
     this.brevoApiKey = config.get<string>('BREVO_API_KEY') || null;
 
     if (this.brevoApiKey && !this.mockMode) {
@@ -312,7 +312,7 @@ export class MailerService {
           <tr>
             <td style="padding:32px;text-align:center;border-top:1px solid #EEEEEE;margin-top:24px;">
               <div style="font-size:12px;color:#9E9E9E;">
-                Questions? Contact us at <a href="mailto:support@taxiapp.com" style="color:#1565C0;">support@taxiapp.com</a>
+                Questions? Contact us at <a href="mailto:support@taximeiafert.com" style="color:#1565C0;">support@taximeiafert.com</a>
               </div>
               <div style="font-size:11px;color:#BDBDBD;margin-top:8px;">
                 © ${new Date().getFullYear()} TaxiApp. All rights reserved.

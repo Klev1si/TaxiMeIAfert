@@ -19,7 +19,7 @@
  */
 
 const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org';
-const UA = 'TaxiApp/1.0 (contact@taxiapp.com)';
+const UA = 'TaxiMeIAfert/1.0 (info@taximeiafert.com)';
 
 export interface PlaceResult {
   /** Display name from Nominatim — usually street, neighborhood, city. */
