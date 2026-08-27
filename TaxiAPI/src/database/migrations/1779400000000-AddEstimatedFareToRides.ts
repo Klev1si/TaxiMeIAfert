@@ -1,16 +1,20 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Per-driver approximate fare, computed at dispatch time from the offered
- * driver's tariff and the pickup → dropoff distance. Stored so it survives
- * reconnects and is returned by GET /rides/active. Recomputed on every
- * re-dispatch (decline) with the next driver's tariff.
+ * Adds the `estimated_fare` column to `rides`. The column was introduced on
+ * the Ride entity in the dynamic per-driver pricing work (PR #4) but no
+ * migration was written, so production Postgres lacked the column and every
+ * scheduled-ride dispatcher/reminder query crashed with
+ * `column ride.estimated_fare does not exist` (42703).
+ *
+ * Matches the entity: @Column({ type: 'decimal', precision: 10, scale: 2,
+ * nullable: true }).
  */
 export class AddEstimatedFareToRides1779400000000 implements MigrationInterface {
   async up(runner: QueryRunner): Promise<void> {
     await runner.query(`
       ALTER TABLE rides
-        ADD COLUMN IF NOT EXISTS estimated_fare NUMERIC(10, 2) NULL
+        ADD COLUMN IF NOT EXISTS estimated_fare NUMERIC(10,2) NULL
     `);
   }
 
