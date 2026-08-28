@@ -288,6 +288,26 @@ export default {
   },
 
   client: {
+    addPhone: {
+      title:             'Ajoutez votre téléphone',
+      intro:             'Ajoutez un numéro de téléphone pour que votre chauffeur puisse vous joindre. Nous vous enverrons un code de vérification.',
+      introShort:        'Ajoutez un numéro de téléphone pour que les chauffeurs puissent vous joindre. C\'est requis avant de réserver une course.',
+      phoneLabel:        'Numéro de téléphone',
+      phonePlaceholder:  '+33 6 XX XX XX XX',
+      sendBtn:           'Envoyer le code',
+      codeIntro:         'Saisissez le code à {length} chiffres envoyé au',
+      verifyBtn:         'Ajouter le téléphone',
+      invalidPhoneTitle: 'Numéro invalide',
+      invalidPhoneMsg:   'Saisissez votre téléphone au format international, p. ex. +33612345678.',
+      sendError:         'Impossible d\'envoyer le code. Veuillez réessayer.',
+      attachError:       'Impossible de vérifier le code. Veuillez réessayer.',
+      successTitle:      'Téléphone ajouté',
+      successMsg:        'Votre numéro de téléphone est vérifié. Vous pouvez maintenant réserver des courses.',
+      gateTitle:         'Téléphone requis',
+      gateMsg:           'Ajoutez et vérifiez un numéro de téléphone avant de réserver une course.',
+      gateCta:           'Ajouter le téléphone',
+      later:             'Plus tard',
+    },
     home: {
       hello:                   'Bonjour, {phone}',
       driversNearby:           '{count} conducteur à proximité',

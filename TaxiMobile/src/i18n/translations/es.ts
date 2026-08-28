@@ -288,6 +288,26 @@ export default {
   },
 
   client: {
+    addPhone: {
+      title:             'Añade tu teléfono',
+      intro:             'Añade un número de teléfono para que tu conductor pueda contactarte. Te enviaremos un código de verificación.',
+      introShort:        'Añade un número de teléfono para que los conductores puedan contactarte. Es obligatorio antes de reservar un viaje.',
+      phoneLabel:        'Número de teléfono',
+      phonePlaceholder:  '+34 6XX XXX XXX',
+      sendBtn:           'Enviar código',
+      codeIntro:         'Introduce el código de {length} dígitos que enviamos a',
+      verifyBtn:         'Añadir teléfono',
+      invalidPhoneTitle: 'Número no válido',
+      invalidPhoneMsg:   'Introduce tu teléfono en formato internacional, p. ej. +34612345678.',
+      sendError:         'No se pudo enviar el código. Inténtalo de nuevo.',
+      attachError:       'No se pudo verificar el código. Inténtalo de nuevo.',
+      successTitle:      'Teléfono añadido',
+      successMsg:        'Tu número de teléfono está verificado. Ya puedes reservar viajes.',
+      gateTitle:         'Teléfono obligatorio',
+      gateMsg:           'Añade y verifica un número de teléfono antes de reservar un viaje.',
+      gateCta:           'Añadir teléfono',
+      later:             'Más tarde',
+    },
     home: {
       hello:                   'Hola, {phone}',
       driversNearby:           '{count} conductor cercano',

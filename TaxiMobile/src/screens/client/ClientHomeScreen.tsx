@@ -43,6 +43,7 @@ export default function ClientHomeScreen({ navigation }: Props) {
 
   const mapRef       = useRef<MapView>(null);
   const mapRegionRef = useRef<Region | null>(null); // last visible map center, used as pickup fallback
+  const phonePromptedRef = useRef(false);           // guard: nudge to add a phone at most once per mount
   const [locationReady,    setLocationReady]    = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [userRegion,       setUserRegion]       = useState<Region | null>(null);
@@ -55,13 +56,28 @@ export default function ClientHomeScreen({ navigation }: Props) {
     let cancelled = false;
     authApi.getMe()
       .then(({ data }) => {
-        if (!cancelled && (data as { totalRides?: number }).totalRides === 0) {
+        if (cancelled) { return; }
+        if ((data as { totalRides?: number }).totalRides === 0) {
           setIsFirstRide(true);
+        }
+        // Google/Apple clients register without a phone. Nudge them to add one
+        // (required before booking). `phone` here is live DB truth, so this
+        // won't fire once a number is attached. Prompt once per mount.
+        if (!data.phone && !phonePromptedRef.current) {
+          phonePromptedRef.current = true;
+          Alert.alert(
+            t('client.addPhone.gateTitle'),
+            t('client.addPhone.introShort'),
+            [
+              { text: t('client.addPhone.later'), style: 'cancel' },
+              { text: t('client.addPhone.gateCta'), onPress: () => navigation.navigate('AddPhone') },
+            ],
+          );
         }
       })
       .catch(() => { /* silent — banner just stays hidden */ });
     return () => { cancelled = true; };
-  }, []);
+  }, [navigation, t]);
 
   // Reload saved locations every time this screen comes into focus
   useFocusEffect(

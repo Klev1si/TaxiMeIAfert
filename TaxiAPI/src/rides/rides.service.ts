@@ -723,9 +723,14 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       select: ['id', 'phone', 'isPhoneVerified'],
     });
     if (!bookingUser?.phone || !bookingUser.isPhoneVerified) {
-      throw new ForbiddenException(
-        'Add and verify a phone number before booking a ride',
-      );
+      // Stable `code` so the mobile app can detect this specific gate and route
+      // the user to the add-phone flow, rather than string-matching the message.
+      throw new ForbiddenException({
+        statusCode: 403,
+        error: 'Forbidden',
+        message: 'Add and verify a phone number before booking a ride',
+        code: 'PHONE_REQUIRED',
+      });
     }
 
     // 1b. Fraud: prevent duplicate active rides

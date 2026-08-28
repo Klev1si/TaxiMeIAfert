@@ -297,6 +297,26 @@ export default {
   },
 
   client: {
+    addPhone: {
+      title:             'Add Your Phone',
+      intro:             'Add a phone number so your driver can reach you. We\'ll text you a verification code.',
+      introShort:        'Add a phone number so drivers can reach you. It\'s required before booking a ride.',
+      phoneLabel:        'Phone Number',
+      phonePlaceholder:  '+355 6X XXX XXXX',
+      sendBtn:           'Send Code',
+      codeIntro:         'Enter the {length}-digit code we sent to',
+      verifyBtn:         'Add Phone',
+      invalidPhoneTitle: 'Invalid number',
+      invalidPhoneMsg:   'Enter your phone in international format, e.g. +355691234567.',
+      sendError:         'Could not send the code. Please try again.',
+      attachError:       'Could not verify the code. Please try again.',
+      successTitle:      'Phone added',
+      successMsg:        'Your phone number is verified. You can now book rides.',
+      gateTitle:         'Phone required',
+      gateMsg:           'Add and verify a phone number before booking a ride.',
+      gateCta:           'Add Phone',
+      later:             'Later',
+    },
     home: {
       hello:                   'Hello, {phone}',
       driversNearby:           '{count} driver nearby',

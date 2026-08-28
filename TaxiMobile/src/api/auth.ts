@@ -64,6 +64,17 @@ export const authApi = {
   verifyOtp: (phone: string, code: string) =>
     apiClient.post<void>('/auth/verify-otp', { phone, code }),
 
+  /**
+   * Attach a verified phone to the CURRENT (authenticated) account — used by
+   * Google/Apple clients who register without one. Request a code first via
+   * sendOtp(), then submit it here. Returns the attached phone.
+   */
+  attachPhone: (phone: string, code: string) =>
+    apiClient.post<{ phone: string; isPhoneVerified: boolean }>(
+      '/auth/attach-phone',
+      { phone, code },
+    ),
+
   /** Login with phone + password — returns tokens only (user decoded from JWT) */
   login: (payload: LoginPayload) =>
     apiClient.post<AuthTokens & { expiresIn: number }>('/auth/login', payload),
