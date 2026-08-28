@@ -323,6 +323,12 @@ export class AdminController {
     return this.adminService.getClients(page, limit, search);
   }
 
+  // GET /admin/clients/:id — full detail for one passenger
+  @Get('clients/:id')
+  getClientDetail(@Param('id') id: string) {
+    return this.adminService.getClientDetail(id);
+  }
+
   // GET /admin/companies?filter=all|pending|approved&page=1&limit=20
   @Get('companies')
   getCompanies(

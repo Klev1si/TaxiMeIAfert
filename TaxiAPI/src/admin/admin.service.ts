@@ -247,6 +247,59 @@ export class AdminService {
     };
   }
 
+  /**
+   * Full detail for a single passenger (client), for the admin drawer:
+   * profile + account (phone/email/verified/active), how they registered
+   * (Google / Apple / phone), and their most recent rides.
+   */
+  async getClientDetail(clientId: string) {
+    const client = await this.clientRepo.findOne({ where: { id: clientId } });
+    if (!client) throw new NotFoundException('Passenger not found');
+
+    const user = await this.userRepo.findOne({
+      where: { id: client.userId },
+      select: [
+        'id', 'phone', 'email', 'isPhoneVerified', 'isActive',
+        'googleSub', 'appleSub', 'createdAt',
+      ],
+    });
+
+    const recentRides = await this.rideRepo.find({
+      where: { clientId },
+      order: { createdAt: 'DESC' },
+      take: 10,
+    });
+
+    const authProvider: 'google' | 'apple' | 'phone' =
+      user?.googleSub ? 'google' : user?.appleSub ? 'apple' : 'phone';
+
+    return {
+      id:              client.id,
+      userId:          client.userId,
+      firstName:       client.firstName,
+      lastName:        client.lastName,
+      photoUrl:        client.photoUrl,
+      rating:          Number(client.rating),
+      totalRides:      client.totalRides,
+      createdAt:       client.createdAt,
+      phone:           user?.phone ?? null,
+      email:           user?.email ?? null,
+      isPhoneVerified: user?.isPhoneVerified ?? false,
+      isActive:        user?.isActive ?? true,
+      authProvider,
+      accountCreatedAt: user?.createdAt ?? null,
+      recentRides: recentRides.map(r => ({
+        id:            r.id,
+        status:        r.status,
+        pickupAddress: r.pickupAddress,
+        dropoffAddress: r.dropoffAddress,
+        totalFare:     r.totalFare != null ? Number(r.totalFare) : null,
+        paymentStatus: r.paymentStatus,
+        createdAt:     r.createdAt,
+      })),
+    };
+  }
+
   // ── Companies ─────────────────────────────────────────────────────────────
   async getCompanies(filter: 'all' | 'pending' | 'approved', page: number, limit: number) {
     const where: FindOptionsWhere<Company> = {};
@@ -313,7 +366,33 @@ export class AdminService {
       skip: (page - 1) * limit,
       take: limit,
     });
-    return { rides: rides.map(r => this.mapRide(r)), total };
+    // Attach the passenger (client) who made each request, so the admin rides
+    // table can show who booked without a per-row lookup.
+    const clientMap = await this.buildRideClientMap(rides.map(r => r.clientId));
+    return { rides: rides.map(r => this.mapRide(r, clientMap.get(r.clientId))), total };
+  }
+
+  /** Map ride clientId → { name, phone } for a page of rides, in two queries. */
+  private async buildRideClientMap(
+    clientIds: string[],
+  ): Promise<Map<string, { id: string; name: string; phone: string | null }>> {
+    const ids = [...new Set(clientIds.filter(Boolean))];
+    if (ids.length === 0) return new Map();
+    const clients = await this.clientRepo.find({
+      where: { id: In(ids) },
+      select: ['id', 'userId', 'firstName', 'lastName'],
+    });
+    const userMap = await this.buildClientUserMap(clients.map(c => c.userId));
+    return new Map(
+      clients.map(c => [
+        c.id,
+        {
+          id:    c.id,
+          name:  `${c.firstName} ${c.lastName}`.trim() || '—',
+          phone: userMap.get(c.userId)?.phone ?? null,
+        },
+      ]),
+    );
   }
 
   // ── Analytics ──────────────────────────────────────────────────────────────
@@ -490,11 +569,16 @@ export class AdminService {
     };
   }
 
-  private mapRide(r: Ride) {
+  private mapRide(
+    r: Ride,
+    client?: { id: string; name: string; phone: string | null },
+  ) {
     return {
       id:             r.id,
       status:         r.status,
       clientId:       r.clientId,
+      clientName:     client?.name  ?? null,
+      clientPhone:    client?.phone ?? null,
       driverId:       r.driverId,
       pickupAddress:  r.pickupAddress,
       dropoffAddress: r.dropoffAddress,
