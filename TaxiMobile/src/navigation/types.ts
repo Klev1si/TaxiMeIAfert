@@ -54,6 +54,8 @@ export type ClientStackParamList = {
   RideHistory: undefined;
   RideDetail: { ride: Ride };
   SavedLocations: undefined;
+  /** Add + verify a phone number (Google/Apple clients register without one). */
+  AddPhone: undefined;
 };
 
 // ── Client history tab stack ──────────────────────────────────────────────────

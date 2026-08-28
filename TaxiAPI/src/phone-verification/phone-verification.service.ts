@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   HttpException,
   HttpStatus,
   Inject,
@@ -79,6 +80,72 @@ export class PhoneVerificationService {
 
   // ── Verify OTP ────────────────────────────────────────────────────────────
   async verifyOtp(phone: string, code: string): Promise<void> {
+    await this.consumeOtp(phone, code);
+
+    // Mark phone as verified in Redis so registration can proceed
+    await this.redis.setex(
+      this.verifiedKey(phone),
+      this.VERIFIED_TTL_SECONDS,
+      '1',
+    );
+
+    // If the user already exists, flip the flag immediately
+    await this.userRepo.update({ phone }, { isPhoneVerified: true });
+
+    this.logger.log(`Phone verified: ${phone}`);
+  }
+
+  // ── Attach a verified phone to an existing account ────────────────────────
+  /**
+   * Attach a freshly-verified phone number to an already-authenticated user.
+   * This is the flow OAuth (Google/Apple) clients use to add a phone AFTER
+   * signup, since those providers never supply one. Verifies the OTP, guards
+   * against a number already owned by a different account, then writes it onto
+   * the user record. No existing rows are removed — only the caller's own user
+   * record is updated in place.
+   *
+   * Returns the attached phone so the caller can refresh its UI.
+   */
+  async attachPhoneToUser(
+    userId: string,
+    phone: string,
+    code: string,
+  ): Promise<{ phone: string; isPhoneVerified: boolean }> {
+    // 1. Validate + consume the OTP (throws the same errors as verifyOtp).
+    await this.consumeOtp(phone, code);
+
+    // 2. The phone column is UNIQUE. If another account already holds this
+    //    number, refuse cleanly instead of hitting a DB constraint error.
+    const owner = await this.userRepo.findOne({
+      where: { phone },
+      select: ['id'],
+    });
+    if (owner && owner.id !== userId) {
+      throw new ConflictException(
+        'This phone number is already linked to another account',
+      );
+    }
+
+    // 3. Load the caller's own user record and attach the number.
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new BadRequestException('User not found');
+
+    user.phone = phone;
+    user.isPhoneVerified = true;
+    await this.userRepo.save(user);
+
+    this.logger.log(`Phone ${phone} attached to user ${userId}`);
+    return { phone, isPhoneVerified: true };
+  }
+
+  /**
+   * Validate an OTP `code` for `phone`, consuming it on success. Throws the
+   * same user-facing errors as the public verify flow (expired / too many
+   * attempts / invalid), records fraud failures on a wrong code, and on
+   * success deletes the stored code and clears the fraud counter. Shared by
+   * verifyOtp() and attachPhoneToUser() so the checks stay single-sourced.
+   */
+  private async consumeOtp(phone: string, code: string): Promise<void> {
     const raw = await this.redis.get(this.otpKey(phone));
     if (!raw) {
       throw new BadRequestException(
@@ -114,21 +181,9 @@ export class PhoneVerificationService {
       );
     }
 
-    // ✅ Code correct — clear failure counter
+    // ✅ Code correct — clear failure counter and consume the code
     await this.fraudService.clearOtpFailures(phone);
     await this.redis.del(this.otpKey(phone));
-
-    // Mark phone as verified in Redis so registration can proceed
-    await this.redis.setex(
-      this.verifiedKey(phone),
-      this.VERIFIED_TTL_SECONDS,
-      '1',
-    );
-
-    // If the user already exists, flip the flag immediately
-    await this.userRepo.update({ phone }, { isPhoneVerified: true });
-
-    this.logger.log(`Phone verified: ${phone}`);
   }
 
   // ── Helper used by RegistrationService in Step 14 ─────────────────────────

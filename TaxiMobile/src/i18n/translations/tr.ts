@@ -154,6 +154,26 @@ export default {
   },
 
   client: {
+    addPhone: {
+      title:             'Telefonunu ekle',
+      intro:             'Sürücünün sana ulaşabilmesi için bir telefon numarası ekle. Sana bir doğrulama kodu göndereceğiz.',
+      introShort:        'Sürücülerin sana ulaşabilmesi için bir telefon numarası ekle. Yolculuk ayırtmadan önce gereklidir.',
+      phoneLabel:        'Telefon numarası',
+      phonePlaceholder:  '+90 5XX XXX XX XX',
+      sendBtn:           'Kod gönder',
+      codeIntro:         'Şu numaraya gönderdiğimiz {length} haneli kodu gir:',
+      verifyBtn:         'Telefon ekle',
+      invalidPhoneTitle: 'Geçersiz numara',
+      invalidPhoneMsg:   'Telefonunu uluslararası biçimde gir, örn. +905321234567.',
+      sendError:         'Kod gönderilemedi. Lütfen tekrar dene.',
+      attachError:       'Kod doğrulanamadı. Lütfen tekrar dene.',
+      successTitle:      'Telefon eklendi',
+      successMsg:        'Telefon numaran doğrulandı. Artık yolculuk ayırtabilirsin.',
+      gateTitle:         'Telefon gerekli',
+      gateMsg:           'Yolculuk ayırtmadan önce bir telefon numarası ekleyip doğrula.',
+      gateCta:           'Telefon ekle',
+      later:             'Daha sonra',
+    },
     home: {
       hello:                'Merhaba, {phone}',
       driversNearby:        'Yakında {count} sürücü',

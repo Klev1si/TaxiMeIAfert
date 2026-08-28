@@ -292,6 +292,26 @@ export default {
   },
 
   client: {
+    addPhone: {
+      title:             'Shto numrin tënd',
+      intro:             'Shto një numër telefoni që shoferi të mund të të kontaktojë. Do të të dërgojmë një kod verifikimi.',
+      introShort:        'Shto një numër telefoni që shoferët të mund të të kontaktojnë. Kërkohet para se të rezervosh një udhëtim.',
+      phoneLabel:        'Numri i telefonit',
+      phonePlaceholder:  '+355 6X XXX XXXX',
+      sendBtn:           'Dërgo kodin',
+      codeIntro:         'Shkruaj kodin {length}-shifror që dërguam te',
+      verifyBtn:         'Shto numrin',
+      invalidPhoneTitle: 'Numër i pavlefshëm',
+      invalidPhoneMsg:   'Shkruaj numrin në format ndërkombëtar, p.sh. +355691234567.',
+      sendError:         'Kodi nuk u dërgua dot. Provo përsëri.',
+      attachError:       'Kodi nuk u verifikua dot. Provo përsëri.',
+      successTitle:      'Numri u shtua',
+      successMsg:        'Numri yt i telefonit u verifikua. Tani mund të rezervosh udhëtime.',
+      gateTitle:         'Kërkohet numri',
+      gateMsg:           'Shto dhe verifiko një numër telefoni para se të rezervosh një udhëtim.',
+      gateCta:           'Shto numrin',
+      later:             'Më vonë',
+    },
     home: {
       hello:                   'Tungjatjeta, {phone}',
       driversNearby:           '{count} shofer pranë',

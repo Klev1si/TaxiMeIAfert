@@ -714,6 +714,25 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     const client = await this.clientRepo.findOne({ where: { userId: clientUserId } });
     if (!client) throw new NotFoundException('Client profile not found');
 
+    // 1a. Phone gate — a client must have a verified phone before booking.
+    //     Google/Apple sign-ups start with phone = null (those providers never
+    //     supply one); this pushes them to add + verify a number via
+    //     POST /auth/attach-phone first, so every ride has a reachable contact.
+    const bookingUser = await this.userRepo.findOne({
+      where: { id: clientUserId },
+      select: ['id', 'phone', 'isPhoneVerified'],
+    });
+    if (!bookingUser?.phone || !bookingUser.isPhoneVerified) {
+      // Stable `code` so the mobile app can detect this specific gate and route
+      // the user to the add-phone flow, rather than string-matching the message.
+      throw new ForbiddenException({
+        statusCode: 403,
+        error: 'Forbidden',
+        message: 'Add and verify a phone number before booking a ride',
+        code: 'PHONE_REQUIRED',
+      });
+    }
+
     // 1b. Fraud: prevent duplicate active rides
     const activeRideId = await this.fraudService.checkConcurrentRide(client.id, clientUserId);
     if (activeRideId) {

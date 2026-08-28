@@ -20,6 +20,7 @@ import RateRideScreen from '../screens/shared/RateRideScreen';
 import RideHistoryScreen from '../screens/shared/RideHistoryScreen';
 import RideDetailScreen from '../screens/shared/RideDetailScreen';
 import SavedLocationsScreen from '../screens/client/SavedLocationsScreen';
+import AddPhoneScreen from '../screens/client/AddPhoneScreen';
 import FavoriteDriversScreen from '../screens/client/FavoriteDriversScreen';
 import ClientProfileScreen from '../screens/client/ClientProfileScreen';
 import ManageCardsScreen from '../screens/client/ManageCardsScreen';
@@ -43,6 +44,7 @@ function ClientHomeStack() {
       <Stack.Screen name="RideHistory"      component={RideHistoryScreen} />
       <Stack.Screen name="RideDetail"       component={RideDetailScreen} />
       <Stack.Screen name="SavedLocations"   component={SavedLocationsScreen} />
+      <Stack.Screen name="AddPhone"         component={AddPhoneScreen} />
     </Stack.Navigator>
   );
 }

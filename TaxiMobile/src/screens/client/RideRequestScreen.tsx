@@ -529,6 +529,19 @@ export default function RideRequestScreen({ navigation, route }: Props) {
         setIsSearching(true);
       }
     } catch (err: any) {
+      // Phone gate: Google/Apple clients register without a phone. Route them
+      // to add + verify one, then they can re-tap Book.
+      if (err?.response?.data?.code === 'PHONE_REQUIRED') {
+        Alert.alert(
+          t('client.addPhone.gateTitle'),
+          t('client.addPhone.gateMsg'),
+          [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('client.addPhone.gateCta'), onPress: () => navigation.navigate('AddPhone') },
+          ],
+        );
+        return;
+      }
       const apiMsg = err?.response?.data?.message;
       const fallback = err?.message ?? 'Failed to request ride. Try again.';
       Alert.alert(t('common.error'), toAlertString(apiMsg, fallback));

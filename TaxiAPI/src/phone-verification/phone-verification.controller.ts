@@ -10,6 +10,9 @@ import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { PhoneVerificationService } from './phone-verification.service.js';
 import { SendOtpDto } from './dto/send-otp.dto.js';
 import { VerifyOtpDto } from './dto/verify-otp.dto.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import { User } from '../entities/index.js';
 
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
@@ -34,5 +37,24 @@ export class PhoneVerificationController {
   @Throttle({ strict: { limit: 10, ttl: 60_000 } })
   verifyOtp(@Body() dto: VerifyOtpDto): Promise<void> {
     return this.phoneVerificationService.verifyOtp(dto.phone, dto.code);
+  }
+
+  // POST /auth/attach-phone
+  // Authenticated: attach a freshly-verified phone to the CURRENT account.
+  // This is how Google/Apple clients — who register without a phone — add one
+  // after signup. Request a code first via POST /auth/send-otp, then submit it
+  // here. Body: { phone, code }. Same strict brute-force limit as verify-otp.
+  @Post('attach-phone')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ strict: { limit: 10, ttl: 60_000 } })
+  attachPhone(
+    @CurrentUser() user: User,
+    @Body() dto: VerifyOtpDto,
+  ): Promise<{ phone: string; isPhoneVerified: boolean }> {
+    return this.phoneVerificationService.attachPhoneToUser(
+      user.id,
+      dto.phone,
+      dto.code,
+    );
   }
 }

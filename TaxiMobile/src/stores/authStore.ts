@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import axios from 'axios';
+import Config from '../config';
 import { authApi } from '../api/auth';
 import { socketService } from '../services/socket';
 import { crash } from '../services/crashlytics';
@@ -22,6 +24,13 @@ interface AuthState {
   /** Login / sign up with a Google ID token from the SDK */
   loginWithGoogle: (idToken: string) => Promise<void>;
   loginWithApple:  (identityToken: string, firstName?: string, lastName?: string) => Promise<void>;
+
+  /**
+   * Re-issue tokens from the current refresh token and re-derive the user from
+   * the new access token. Used after mutating account fields that live in the
+   * JWT (e.g. attaching a phone) so local state matches the server immediately.
+   */
+  refreshSession: () => Promise<void>;
 
   /** Logout — clear tokens on server + local storage */
   logout: () => Promise<void>;
@@ -136,6 +145,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  refreshSession: async () => {
+    const refreshToken = get().refreshToken;
+    if (!refreshToken) return;
+    // JwtRefreshStrategy reads the token from the Authorization header (not the
+    // body), so use a bare axios call — apiClient's interceptor would overwrite
+    // the header with the access token. Mirrors the refresh in api/client.ts.
+    const { data } = await axios.post(
+      `${Config.API_BASE_URL}/auth/refresh`,
+      {},
+      { headers: { Authorization: `Bearer ${refreshToken}` } },
+    );
+    const accessToken: string = data.accessToken;
+    const newRefresh: string = data.refreshToken;
+    const payload = parseJwtPayload(accessToken);
+    if (!payload) throw new Error('Invalid token received from server');
+    await get().setTokens(accessToken, newRefresh);
+    set({
+      user: {
+        id: payload.sub,
+        phone: payload.phone,
+        role: payload.role as AuthUser['role'],
+      },
+    });
   },
 
   logout: async () => {
