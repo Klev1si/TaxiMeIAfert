@@ -19,7 +19,7 @@ Privacy Policy + Terms of Service as a static site, ready to drop into GitHub Pa
 | `sitemap.xml` | Lists the indexable pages (both languages) for search engines |
 | `favicon.svg` | Site icon (scalable taxi mark) |
 | `og-image.png` | 1200×630 social-share preview image |
-| `CNAME` | GitHub Pages custom domain (`taximeiafert.com`) |
+| `CNAME` | GitHub Pages custom domain (`legal.taximeiafert.com`) |
 
 The HTML files are self-contained — no JavaScript (except `track.html`), no build
 step, no external CSS. Just open them in a browser and they work.
@@ -27,10 +27,16 @@ step, no external CSS. Just open them in a browser and they work.
 ## SEO
 
 Every indexable page carries a `<title>`, meta description, canonical URL, Open
-Graph + Twitter Card tags, favicon, and `theme-color`. `index.html` also embeds an
-`Organization` JSON-LD block. All absolute URLs use the production domain
-`https://taximeiafert.com/` — if you deploy to a different host, update the
-canonical/OG URLs, `sitemap.xml`, `robots.txt`, and `CNAME` to match.
+Graph + Twitter Card tags, favicon, and `theme-color`. `index.html` also embeds
+`Organization` and `MobileApplication` JSON-LD blocks.
+
+This legal site is served from the **`legal.taximeiafert.com`** subdomain
+(GitHub Pages), separate from the main marketing site at `taximeiafert.com`
+(hosted elsewhere). All page-level absolute URLs — canonical, Open Graph,
+`sitemap.xml`, `robots.txt`, and `CNAME` — use `https://legal.taximeiafert.com/`.
+The only deliberate exceptions are the JSON-LD entity `url` fields, which point
+at the brand's main homepage `https://taximeiafert.com/`. If you deploy to a
+different host, update those references to match.
 
 ### Bilingual pages (English + Albanian)
 
