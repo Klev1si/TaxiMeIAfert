@@ -71,6 +71,18 @@ function getStatusLabel(t: (key: string) => string): Record<RideStatus, string> 
   };
 }
 
+// Monotonic ordering of ride statuses — used to reconcile the authoritative
+// server state on mount without ever regressing a status the live socket has
+// already advanced past.
+const STATUS_RANK: Record<RideStatus, number> = {
+  requested:         0,
+  accepted:          1,
+  driving_to_pickup: 2,
+  in_progress:       3,
+  completed:         4,
+  cancelled:         4,
+};
+
 function getStatusColor(c: ColorPalette): Record<RideStatus, string> {
   return {
     requested:         c.warning,
@@ -84,7 +96,7 @@ function getStatusColor(c: ColorPalette): Record<RideStatus, string> {
 
 export default function ActiveRideScreen({ navigation, route }: Props) {
   const { rideId, driverName, vehicleMake, vehicleModel, vehiclePlate, vehicleColor } = route.params;
-  const { activeRide, clearAll } = useRideStore();
+  const { activeRide, clearAll, setActiveRide } = useRideStore();
   const colors = useColors();
   const { isDark } = useTheme();
   const styles = useMemo(() => getStyles(colors), [colors]);
@@ -94,8 +106,22 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
 
   const mapRef = useRef<MapView>(null);
 
-  // Use the store's ride if available; otherwise fetch from server
-  const [ride, setRide] = useState<Ride | null>(activeRide);
+  // Use the store's ride if available; otherwise fetch from server.
+  // We only ever navigate here AFTER a driver has accepted, but the store's
+  // activeRide is still the snapshot cached at request time (status
+  // 'requested'), which would wrongly render the "searching for driver" UI.
+  // When we arrive with driver details (the normal accept path), coerce the
+  // initial status to 'accepted' so the badge is correct on first paint; the
+  // mount reconciliation below then syncs the full authoritative state.
+  const [ride, setRide] = useState<Ride | null>(
+    activeRide && activeRide.status === 'requested' && driverName
+      ? { ...activeRide, status: 'accepted' }
+      : activeRide,
+  );
+  // Always-fresh mirror of `ride` for use inside socket callbacks (whose
+  // closures would otherwise capture a stale value).
+  const rideRef = useRef<Ride | null>(ride);
+  rideRef.current = ride;
   const [cancelling, setCancelling] = useState(false);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
@@ -121,14 +147,29 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
   const [unreadCount, setUnreadCount] = useState(0);
   const chatScrollRef = useRef<ScrollView>(null);
 
-  // ── Load ride on mount if not in store ──────────────────────────────────────
+  // ── Reconcile with authoritative server state on mount ──────────────────────
+  // The store's activeRide can be stale (it's cached at request time, so its
+  // status is 'requested' even after a driver accepts). Fetch the live ride and
+  // merge it so the status badge is correct even if the acceptance WS event was
+  // missed or the app was reopened mid-ride. Never regress a status the live
+  // socket has already advanced past.
   useEffect(() => {
-    if (!ride) {
-      ridesApi.cancelRide; // keep import — actual fetch below
-      // no individual GET /rides/:id endpoint in this API version,
-      // so rely on the store (always populated when navigating here)
-    }
-  }, [ride]);
+    let cancelled = false;
+    ridesApi.getActiveRide()
+      .then(({ data }) => {
+        if (cancelled || !data || data.id !== rideId) { return; }
+        setRide(prev => {
+          if (!prev) { return data as Ride; }
+          const merged = { ...prev, ...data } as Ride;
+          if (STATUS_RANK[data.status as RideStatus] < STATUS_RANK[prev.status as RideStatus]) {
+            merged.status = prev.status;
+          }
+          return merged;
+        });
+      })
+      .catch(() => { /* non-fatal — live socket events still drive updates */ });
+    return () => { cancelled = true; };
+  }, [rideId]);
 
   // ── Pickup → Dropoff route (fetched once when ride loads) ───────────────────
   useEffect(() => {
@@ -181,7 +222,7 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
         if (e.rideId !== rideId) { return; }
         // Apply ALL fare fields from the WS payload so PayCash can render
         // the amount immediately on landing — no extra API call needed.
-        update({
+        const farePatch: Partial<Ride> = {
           status:       'completed',
           completedAt:  e.completedAt,
           ...(e.totalFare    !== undefined ? { totalFare:    e.totalFare    } : {}),
@@ -190,7 +231,15 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
           ...(e.distanceFare !== undefined ? { distanceFare: e.distanceFare } : {}),
           ...(e.timeFare     !== undefined ? { timeFare:     e.timeFare     } : {}),
           ...(e.driverId     !== undefined ? { driverId:     e.driverId     } : {}),
-        });
+        };
+        update(farePatch);
+        // Also push the finalized ride into the shared store. PayCash reads the
+        // fare from the store's activeRide (not this screen's local state), and
+        // the server's getActiveRide excludes completed rides — so without this
+        // the client would be stuck on "fare not finalized yet" even though the
+        // driver already sees the total.
+        const latest = rideRef.current ?? useRideStore.getState().activeRide;
+        if (latest) { setActiveRide({ ...latest, ...farePatch } as Ride); }
         navigation.replace('PayCash', { rideId });
       },
     );
@@ -271,7 +320,7 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
       unsubChat();
       unsubEstimate();
     };
-  }, [rideId, navigation, clearAll]);
+  }, [rideId, navigation, clearAll, setActiveRide]);
 
   // ── No-show eligibility timer ─────────────────────────────────────────────────
   // Re-check every 30 s whether the client has waited long enough to report no-show.
