@@ -13,6 +13,8 @@ interface Ride {
   id: string;
   status: string;
   clientId: string;
+  clientName: string | null;
+  clientPhone: string | null;
   driverId: string | null;
   pickupAddress: string | null;
   dropoffAddress: string | null;
@@ -257,11 +259,12 @@ export default function RidesPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
+          <table className="w-full text-sm min-w-[920px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Status</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Passenger</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Pickup</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Dropoff</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Fare</th>
@@ -287,6 +290,20 @@ export default function RidesPage() {
                       label={r.status.replace(/_/g, ' ')}
                       variant={rideStatusVariant(r.status)}
                     />
+                  </td>
+                  <td className="px-4 py-3 max-w-[160px]">
+                    {r.clientName ? (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-gray-800 font-medium truncate" title={r.clientName}>
+                          {r.clientName}
+                        </span>
+                        {r.clientPhone && (
+                          <span className="text-xs text-gray-400 truncate">{r.clientPhone}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 max-w-[180px]">
                     <p className="text-gray-800 truncate" title={r.pickupAddress ?? ''}>
