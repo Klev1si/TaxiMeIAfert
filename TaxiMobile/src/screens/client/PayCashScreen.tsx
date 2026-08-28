@@ -13,6 +13,7 @@ import {
   Alert,
   Share,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -316,7 +317,11 @@ export default function PayCashScreen({ navigation, route }: Props) {
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+      <ScrollView
+        style={styles.safe}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
 
         {/* Icon */}
         <View style={[styles.iconWrap, confirmed && styles.iconWrapSuccess]}>
@@ -600,7 +605,7 @@ export default function PayCashScreen({ navigation, route }: Props) {
           </>
         )}
 
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -656,9 +661,12 @@ function getStyles(c: ColorPalette) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: c.background },
     container: {
-      flex: 1,
+      // flexGrow (not flex) so the content centers when it's short but grows
+      // and scrolls when it's taller than the viewport (small screens).
+      flexGrow: 1,
       paddingHorizontal: Sizes.screenPadding,
       paddingTop: 48,
+      paddingBottom: 32,
       alignItems: 'center',
     },
 

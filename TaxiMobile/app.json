@@ -8,7 +8,7 @@
   },
   "expo": {
     "ios": {
-      "buildNumber": "29"
+      "buildNumber": "30"
     },
     "extra": {
       "eas": {
@@ -16,7 +16,7 @@
       }
     },
     "android": {
-      "versionCode": 103
+      "versionCode": 104
     }
   }
 }
