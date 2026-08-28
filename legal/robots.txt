@@ -5,4 +5,4 @@ Allow: /
 # The live-trip page is a per-ride dynamic view; keep it out of the index.
 Disallow: /track.html
 
-Sitemap: https://taximeiafert.com/sitemap.xml
+Sitemap: https://legal.taximeiafert.com/sitemap.xml
