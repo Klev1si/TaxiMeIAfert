@@ -10,6 +10,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline } from 'react-native-maps';
@@ -45,6 +46,10 @@ interface RideCompletedEvent {
   baseFare?:     number | null;
   distanceFare?: number | null;
   timeFare?:     number | null;
+  /** Discount applied at completion (promo code OR the automatic first-ride 50% off). */
+  discountAmount?: number | null;
+  /** Promo code used, if any. null for the automatic first-ride discount. */
+  promoCode?:      string | null;
   /** Included so the rate screen can show the ❤️ save toggle without a follow-up fetch. */
   driverId?:     string | null;
 }
@@ -171,6 +176,70 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
     return () => { cancelled = true; };
   }, [rideId]);
 
+  // ── Re-sync authoritative ride state on reconnect / app-foreground ──────────
+  // socket.io does NOT replay events missed while the socket was down (very
+  // common on Android under Doze). Without this, if the client misses
+  // `ride_accepted`/`ride_completed` it stays stuck on "searching for driver"
+  // until an app restart. On every reconnect and every foreground we re-fetch
+  // the live ride and reconcile — advancing the status, or leaving the screen
+  // if the ride already finished while we were disconnected.
+  useEffect(() => {
+    // Guard so AppState + onReconnect (which can both fire together) can't
+    // trigger the terminal navigation twice.
+    let navigated = false;
+
+    const resync = () => {
+      ridesApi.getActiveRide()
+        .then(({ data }) => {
+          if (data && data.id === rideId) {
+            setRide(prev => {
+              if (!prev) { return data as Ride; }
+              const merged = { ...prev, ...data } as Ride;
+              if (STATUS_RANK[data.status as RideStatus] < STATUS_RANK[prev.status as RideStatus]) {
+                merged.status = prev.status;
+              }
+              return merged;
+            });
+            return;
+          }
+          // getActiveRide no longer returns this ride → it ended while we were
+          // away (getActiveRide excludes completed/cancelled). Fetch the ride
+          // by id to find out how it ended and move the client accordingly.
+          if (navigated) { return; }
+          ridesApi.getRideById(rideId)
+            .then(({ data: r }) => {
+              if (navigated || !r) { return; }
+              if (r.status === 'completed') {
+                navigated = true;
+                setActiveRide(r);
+                navigation.replace('PayCash', { rideId });
+              } else if (r.status === 'cancelled') {
+                navigated = true;
+                clearAll();
+                Alert.alert(
+                  t('client.activeRide.rideCancelledTitle'),
+                  t('client.activeRide.rideCancelledByDriver'),
+                  [{ text: t('common.ok'), onPress: () => navigation.replace('ClientHomeMain') }],
+                );
+              }
+            })
+            .catch(() => { /* non-fatal */ });
+        })
+        .catch(() => { /* non-fatal */ });
+    };
+
+    const unsubReconnect = socketService.onReconnect(resync);
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') { resync(); }
+    });
+
+    return () => {
+      unsubReconnect();
+      appStateSub.remove();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rideId]);
+
   // ── Pickup → Dropoff route (fetched once when ride loads) ───────────────────
   useEffect(() => {
     if (!ride || ride.dropoffLat == null || ride.dropoffLng == null) return;
@@ -227,10 +296,12 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
           completedAt:  e.completedAt,
           ...(e.totalFare    !== undefined ? { totalFare:    e.totalFare    } : {}),
           ...(e.distanceKm   !== undefined ? { distanceKm:   e.distanceKm   } : {}),
-          ...(e.baseFare     !== undefined ? { baseFare:     e.baseFare     } : {}),
-          ...(e.distanceFare !== undefined ? { distanceFare: e.distanceFare } : {}),
-          ...(e.timeFare     !== undefined ? { timeFare:     e.timeFare     } : {}),
-          ...(e.driverId     !== undefined ? { driverId:     e.driverId     } : {}),
+          ...(e.baseFare       !== undefined ? { baseFare:       e.baseFare       } : {}),
+          ...(e.distanceFare   !== undefined ? { distanceFare:   e.distanceFare   } : {}),
+          ...(e.timeFare       !== undefined ? { timeFare:       e.timeFare       } : {}),
+          ...(e.discountAmount !== undefined ? { discountAmount: e.discountAmount } : {}),
+          ...(e.promoCode      !== undefined ? { promoCode:      e.promoCode      } : {}),
+          ...(e.driverId       !== undefined ? { driverId:       e.driverId       } : {}),
         };
         update(farePatch);
         // Also push the finalized ride into the shared store. PayCash reads the

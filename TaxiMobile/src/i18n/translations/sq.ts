@@ -458,6 +458,8 @@ export default {
       paymentFailMsg:   'Pagesa dështoi. Ju lutemi provoni sërish.',
       genericErrorMsg:  'Diçka shkoi keq. Ju lutemi provoni sërish.',
       farePending:      'Tarifa nuk është finalizuar ende…',
+      firstRideDiscount: '50% zbritje për udhëtimin e parë',
+      coveredByPlatform: 'Mbuluar nga TaxiMeIAfert 🎁',
     },
 
     savedLocations: {

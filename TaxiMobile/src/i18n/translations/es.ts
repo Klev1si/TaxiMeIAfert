@@ -454,6 +454,8 @@ export default {
       paymentFailMsg:   'El pago falló. Por favor intente de nuevo.',
       genericErrorMsg:  'Algo salió mal. Por favor intente de nuevo.',
       farePending:      'La tarifa aún no está finalizada…',
+      firstRideDiscount: '50 % de descuento en el primer viaje',
+      coveredByPlatform: 'Cubierto por TaxiMeIAfert 🎁',
     },
 
     savedLocations: {
