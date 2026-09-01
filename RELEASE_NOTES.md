@@ -1,6 +1,6 @@
 # Release Notes
 
-## 1.93 (Android versionCode 106 · iOS build set in Codemagic)
+## 1.93 (Android versionCode 106 · iOS build 31)
 
 Reliability release: fixes drivers silently dropping offline after a network
 blip, clients getting stuck on "searching for driver" when live events were

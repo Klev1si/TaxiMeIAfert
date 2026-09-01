@@ -29,6 +29,9 @@ workflows:
         XCODE_SCHEME:         TaxiMobile
         XCODE_WORKSPACE:      ios/TaxiMobile.xcworkspace
         P12_PASSWORD:         codemagic_ci_ephemeral
+        # Apple App Store Connect application id (numeric) — used to look up the
+        # latest uploaded build number so each build auto-increments above it.
+        APP_STORE_APP_ID:     6786225522
 
       # Metro (via @react-native/metro-config) uses Array.prototype.toReversed(),
       # an ES2023 method requiring Node 20+ — v18 throws "toReversed is not a
@@ -79,6 +82,23 @@ workflows:
         script: |
           cd TaxiMobile/ios
           pod install
+
+      - name: Set iOS build number (App Store Connect latest + 1)
+        # CFBundleVersion (CURRENT_PROJECT_VERSION) must be strictly greater than
+        # any build already uploaded, or App Store Connect rejects the upload.
+        # Fetch the latest build number for the app and set the next one. If the
+        # lookup fails for any reason, fall back to the value committed in the
+        # Xcode project (kept correct in project.pbxproj) so the build still runs.
+        script: |
+          cd TaxiMobile/ios
+          LATEST=$(app-store-connect get-latest-build-number "$APP_STORE_APP_ID" 2>/dev/null || true)
+          if echo "$LATEST" | grep -qE '^[0-9]+$'; then
+            NEW=$(( LATEST + 1 ))
+            echo "Latest uploaded build: $LATEST → setting build number to $NEW"
+            agvtool new-version -all "$NEW"
+          else
+            echo "Could not fetch latest build number; using project value ($(agvtool what-version -terse))"
+          fi
 
       - name: Build iOS IPA
         script: |
