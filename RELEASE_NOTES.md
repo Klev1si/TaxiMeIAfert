@@ -1,5 +1,103 @@
 # Release Notes
 
+## 1.93 (Android versionCode 106 · iOS build set in Codemagic)
+
+Reliability release: fixes drivers silently dropping offline after a network
+blip, clients getting stuck on "searching for driver" when live events were
+missed, and makes the first-ride 50% discount visible and correctly gated.
+
+### Store "What's New"
+
+#### English (en)
+
+**Google Play**
+
+> We fixed drivers unexpectedly appearing offline after a weak-signal moment, and passengers occasionally getting stuck on "searching for a driver." Your first-ride 50% discount now shows clearly on your receipt. Smoother, more reliable rides.
+
+**App Store**
+
+> New in 1.93
+> • Drivers stay online reliably after network drops — no more restarting the app.
+> • Fixed passengers getting stuck on "searching for a driver" when the trip had actually progressed.
+> • Your first-ride 50% discount now shows clearly on the receipt.
+
+#### Albanian (sq)
+
+**Google Play**
+
+> Rregulluam problemin ku shoferët dukeshin jashtë linje pas një sinjali të dobët, dhe pasagjerët herë-herë ngeleshin te "duke kërkuar shofer". Zbritja 50% për udhëtimin e parë tani shfaqet qartë në faturë. Udhëtime më të qeta e më të besueshme.
+
+**App Store**
+
+> E re në 1.93
+> • Shoferët qëndrojnë online në mënyrë të besueshme pas ndërprerjeve të rrjetit — pa rinisur aplikacionin.
+> • U rregullua ngecja e pasagjerëve te "duke kërkuar shofer" kur udhëtimi kishte vazhduar realisht.
+> • Zbritja 50% për udhëtimin e parë tani shfaqet qartë në faturë.
+
+#### Spanish (es)
+
+**Google Play**
+
+> Corregimos que los conductores aparecieran desconectados tras una mala señal y que los pasajeros a veces se quedaran en "buscando conductor". Tu 50% de descuento del primer viaje ahora se muestra claramente en el recibo. Viajes más fluidos y fiables.
+
+**App Store**
+
+> Novedades en la 1.93
+> • Los conductores permanecen conectados de forma fiable tras cortes de red, sin reiniciar la app.
+> • Corregido el bloqueo de pasajeros en "buscando conductor" cuando el viaje ya había avanzado.
+> • Tu 50% de descuento del primer viaje ahora aparece claramente en el recibo.
+
+#### French (fr)
+
+**Google Play**
+
+> Nous avons corrigé les chauffeurs apparaissant hors ligne après une coupure réseau et les passagers parfois bloqués sur « recherche d'un chauffeur ». Votre réduction de 50 % sur la première course s'affiche désormais clairement sur le reçu. Des trajets plus fluides et fiables.
+
+**App Store**
+
+> Nouveautés de la 1.93
+> • Les chauffeurs restent connectés de façon fiable après une coupure réseau, sans redémarrer l'app.
+> • Correction du blocage des passagers sur « recherche d'un chauffeur » alors que la course avait avancé.
+> • Votre réduction de 50 % sur la première course s'affiche désormais clairement sur le reçu.
+
+#### Turkish (tr)
+
+**Google Play**
+
+> Zayıf sinyal sonrası sürücülerin çevrimdışı görünmesini ve yolcuların bazen "sürücü aranıyor" ekranında takılmasını düzelttik. İlk yolculuk %50 indiriminiz artık makbuzda net görünüyor. Daha akıcı ve güvenilir yolculuklar.
+
+**App Store**
+
+> 1.93'te yenilikler
+> • Sürücüler ağ kesintilerinden sonra uygulamayı yeniden başlatmadan güvenilir şekilde çevrimiçi kalır.
+> • Yolcuların, yolculuk aslında ilerlemişken "sürücü aranıyor" ekranında takılması düzeltildi.
+> • İlk yolculuk %50 indiriminiz artık makbuzda net görünüyor.
+
+### Internal changelog
+
+**Socket state recovery on reconnect (drivers + clients)**
+
+- The server drops a driver from its geo index on every socket disconnect
+  (Android Doze kills sockets constantly) and only re-adds them on
+  `driver_online`, which the client never re-sent — so drivers silently went
+  offline until an app restart. `socket.ts` now remembers the desired online
+  state and re-emits `driver_online` on every (re)connect.
+- socket.io does not replay events missed while disconnected, so a client that
+  missed `ride_accepted`/`ride_completed` was stuck on "searching for driver."
+  Added `socketService.onReconnect()` and an ActiveRideScreen re-sync (on
+  reconnect and on app-foreground) that re-fetches the live ride, advances the
+  status, or moves the client on if the ride finished while they were offline.
+
+**First-ride discount visibility**
+
+- The automatic first-ride 50% off (platform-absorbed; driver already receives
+  the full pre-discount fare) was applied silently. The `ride_completed` payload
+  and PayCash receipt now show a labeled "First-ride 50% off −€X" line plus a
+  "Covered by TaxiMeIAfert" note. The home banner is now re-checked on focus so
+  it disappears immediately after the first completed ride instead of lingering.
+
+No schema changes. Builds on 1.92.
+
 ## 1.92 (Android versionCode 105 · iOS build 31)
 
 Single-feature release: passengers who sign in with Google or Apple are now

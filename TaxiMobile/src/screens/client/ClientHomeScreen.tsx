@@ -52,32 +52,37 @@ export default function ClientHomeScreen({ navigation }: Props) {
   // First-ride banner — show until the user has completed their first ride.
   const [isFirstRide,      setIsFirstRide]      = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    authApi.getMe()
-      .then(({ data }) => {
-        if (cancelled) { return; }
-        if ((data as { totalRides?: number }).totalRides === 0) {
-          setIsFirstRide(true);
-        }
-        // Google/Apple clients register without a phone. Nudge them to add one
-        // (required before booking). `phone` here is live DB truth, so this
-        // won't fire once a number is attached. Prompt once per mount.
-        if (!data.phone && !phonePromptedRef.current) {
-          phonePromptedRef.current = true;
-          Alert.alert(
-            t('client.addPhone.gateTitle'),
-            t('client.addPhone.introShort'),
-            [
-              { text: t('client.addPhone.later'), style: 'cancel' },
-              { text: t('client.addPhone.gateCta'), onPress: () => navigation.navigate('AddPhone') },
-            ],
-          );
-        }
-      })
-      .catch(() => { /* silent — banner just stays hidden */ });
-    return () => { cancelled = true; };
-  }, [navigation, t]);
+  // Re-check on every focus (not just first mount) so the first-ride banner
+  // disappears the moment the client returns from completing their first ride —
+  // totalRides has incremented to 1 by then. Setting the flag both ways is what
+  // fixes the bug where the banner lingered after the first trip. The phone
+  // nudge below still fires at most once per mount via phonePromptedRef.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      authApi.getMe()
+        .then(({ data }) => {
+          if (cancelled) { return; }
+          setIsFirstRide((data as { totalRides?: number }).totalRides === 0);
+          // Google/Apple clients register without a phone. Nudge them to add one
+          // (required before booking). `phone` here is live DB truth, so this
+          // won't fire once a number is attached. Prompt once per mount.
+          if (!data.phone && !phonePromptedRef.current) {
+            phonePromptedRef.current = true;
+            Alert.alert(
+              t('client.addPhone.gateTitle'),
+              t('client.addPhone.introShort'),
+              [
+                { text: t('client.addPhone.later'), style: 'cancel' },
+                { text: t('client.addPhone.gateCta'), onPress: () => navigation.navigate('AddPhone') },
+              ],
+            );
+          }
+        })
+        .catch(() => { /* silent — leave the banner as-is on error */ });
+      return () => { cancelled = true; };
+    }, [navigation, t]),
+  );
 
   // Reload saved locations every time this screen comes into focus
   useFocusEffect(

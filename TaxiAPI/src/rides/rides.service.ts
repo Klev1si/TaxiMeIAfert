@@ -1770,6 +1770,10 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         baseFare:     saved.baseFare     != null ? Number(saved.baseFare)     : null,
         distanceFare: saved.distanceFare != null ? Number(saved.distanceFare) : null,
         timeFare:     saved.timeFare     != null ? Number(saved.timeFare)     : null,
+        // Discount so the client's receipt can show the line item. promoCode is
+        // null for the automatic first-ride 50% off — the client labels that case.
+        discountAmount: saved.discountAmount != null ? Number(saved.discountAmount) : null,
+        promoCode:      saved.promoCode ?? null,
         // Include driverId so the RateRide screen can show the ❤️ "save driver"
         // toggle even after the ride store has been cleared (getActiveRide
         // returns null for completed rides, so this is the canonical source).

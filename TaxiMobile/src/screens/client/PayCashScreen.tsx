@@ -271,8 +271,10 @@ export default function PayCashScreen({ navigation, route }: Props) {
       if (activeRide.dropoffAddress) lines.push(`📍 To:   ${activeRide.dropoffAddress}`);
       if (activeRide.distanceKm != null)
         lines.push(`Distance: ${Number(activeRide.distanceKm).toFixed(2)} km`);
-      if (activeRide.promoCode && activeRide.discountAmount != null)
-        lines.push(`🏷️ Promo (${activeRide.promoCode}): −$${Number(activeRide.discountAmount).toFixed(2)}`);
+      if (activeRide.discountAmount != null && Number(activeRide.discountAmount) > 0)
+        lines.push(activeRide.promoCode
+          ? `🏷️ Promo (${activeRide.promoCode}): −$${Number(activeRide.discountAmount).toFixed(2)}`
+          : `🎁 ${t('client.payCash.firstRideDiscount')}: −$${Number(activeRide.discountAmount).toFixed(2)}`);
       if (activeRide.totalFare != null) {
         lines.push(LINE);
         lines.push(`Total paid: $${Number(activeRide.totalFare).toFixed(2)}`);
@@ -291,7 +293,7 @@ export default function PayCashScreen({ navigation, route }: Props) {
     } finally {
       setSharing(false);
     }
-  }, [activeRide, rideId]);
+  }, [activeRide, rideId, t]);
 
   // ── Cash: manual proceed ─────────────────────────────────────────────────────
   const handleCashProceed = () => {
@@ -365,10 +367,17 @@ export default function PayCashScreen({ navigation, route }: Props) {
             ) : (
               <Text style={styles.amountPending}>{t('client.payCash.farePending')}</Text>
             )}
-            {activeRide.promoCode && activeRide.discountAmount != null && Number(activeRide.discountAmount) > 0 && (
-              <Text style={styles.amountDiscount}>
-                Includes 🏷️ {activeRide.promoCode} discount −${Number(activeRide.discountAmount).toFixed(2)}
-              </Text>
+            {activeRide.discountAmount != null && Number(activeRide.discountAmount) > 0 && (
+              <>
+                <Text style={styles.amountDiscount}>
+                  {activeRide.promoCode
+                    ? `Includes 🏷️ ${activeRide.promoCode} discount −$${Number(activeRide.discountAmount).toFixed(2)}`
+                    : `🎁 ${t('client.payCash.firstRideDiscount')} −$${Number(activeRide.discountAmount).toFixed(2)}`}
+                </Text>
+                {!activeRide.promoCode && (
+                  <Text style={styles.amountDiscount}>{t('client.payCash.coveredByPlatform')}</Text>
+                )}
+              </>
             )}
           </View>
         )}
@@ -382,9 +391,9 @@ export default function PayCashScreen({ navigation, route }: Props) {
             {activeRide.distanceKm != null && (
               <SummaryRow label={t('client.payCash.distanceLabel')} value={`${Number(activeRide.distanceKm).toFixed(2)} km`} colors={colors} />
             )}
-            {activeRide.promoCode && activeRide.discountAmount != null && (
+            {activeRide.discountAmount != null && Number(activeRide.discountAmount) > 0 && (
               <SummaryRow
-                label={`🏷️ ${activeRide.promoCode}`}
+                label={activeRide.promoCode ? `🏷️ ${activeRide.promoCode}` : `🎁 ${t('client.payCash.firstRideDiscount')}`}
                 value={`−$${Number(activeRide.discountAmount).toFixed(2)}`}
                 green
                 colors={colors}

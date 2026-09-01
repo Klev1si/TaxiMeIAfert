@@ -463,6 +463,8 @@ export default {
       paymentFailMsg:   'Payment failed. Please try again.',
       genericErrorMsg:  'Something went wrong. Please try again.',
       farePending:      'Fare not finalized yet…',
+      firstRideDiscount: 'First-ride 50% off',
+      coveredByPlatform: 'Covered by TaxiMeIAfert 🎁',
     },
 
     savedLocations: {
