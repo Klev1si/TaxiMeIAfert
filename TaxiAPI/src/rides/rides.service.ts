@@ -2624,7 +2624,7 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
    * the ride is completed or cancelled.
    */
   async getPublicRideByToken(token: string): Promise<{
-    status: RideStatus;
+    status: RideStatus | 'arrived';
     driverFirstName: string | null;
     driverPlate: string | null;
     driverPhotoUrl: string | null;
@@ -2639,6 +2639,15 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     // Expire the link the moment the ride is over.
     const terminalStatuses: RideStatus[] = [RideStatus.COMPLETED, RideStatus.CANCELLED];
     if (terminalStatuses.includes(ride.status)) return null;
+
+    // "Arrived" is not a distinct RideStatus — it's the pickupArrivedAt stamp
+    // recorded while the ride stays in DRIVING_TO_PICKUP. Surface it to the
+    // public tracking page so it can show "Driver has arrived" instead of the
+    // stale "Driver on the way".
+    const publicStatus: RideStatus | 'arrived' =
+      ride.status === RideStatus.DRIVING_TO_PICKUP && ride.pickupArrivedAt
+        ? 'arrived'
+        : ride.status;
 
     let driverFirstName: string | null = null;
     let driverPlate:     string | null = null;
@@ -2666,7 +2675,7 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     }
 
     return {
-      status:          ride.status,
+      status:          publicStatus,
       driverFirstName,
       driverPlate,
       driverPhotoUrl,
