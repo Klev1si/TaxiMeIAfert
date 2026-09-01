@@ -3,9 +3,11 @@ import type { NearestDriver, Ride, RideStop } from '../types/api';
 
 // Public live-tracking URL — passenger taps "Share trip" → backend issues a
 // token → we wrap it in this URL for the share sheet. The track page is
-// hosted on the existing GitHub Pages site that already serves the legal
-// pages, so no extra hosting is needed.
-export const TRIP_SHARE_BASE_URL = 'https://klev1si.github.io/TaxiMeIAfert/legal/track.html';
+// served from the legal.taximeiafert.com subdomain (the GitHub Pages custom
+// domain). Point directly at the custom domain: the old github.io URL now
+// 301-redirects here over http, and the page's fetch would then carry a
+// legal.taximeiafert.com origin that must be allowlisted in the API's CORS.
+export const TRIP_SHARE_BASE_URL = 'https://legal.taximeiafert.com/track.html';
 
 export type VehicleType = 'economy' | 'comfort' | 'xl';
 
