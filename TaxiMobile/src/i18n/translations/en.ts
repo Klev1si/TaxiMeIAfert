@@ -1761,8 +1761,8 @@ export default {
     slide3Title: 'Travel with confidence',
     slide3Body:  'All drivers are verified and your safety is our top priority.',
     // Legacy keys kept for older builds — safe to leave even if unused.
-    slide4Title: 'Your first ride is half off',
-    slide4Body:  'New riders get 50% off their first trip — automatically applied at checkout.',
+    slide4Title: 'Your first in-city ride is free',
+    slide4Body:  'New riders get their first in-city trip free — applied automatically.',
     getStarted:  'Get Started',
   },
 

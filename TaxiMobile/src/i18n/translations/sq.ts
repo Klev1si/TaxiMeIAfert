@@ -1752,8 +1752,8 @@ export default {
     slide2Body:  'Zgjidhni pikën e marrjes dhe destinacionin — ne gjejmë menjëherë një shofer afër jush.',
     slide3Title: 'Udhëtoni me besim',
     slide3Body:  'Të gjithë shoferët janë të verifikuar dhe siguria juaj është prioriteti ynë kryesor.',
-    slide4Title: 'Udhëtimi i parë me 50% zbritje',
-    slide4Body:  'Pasagjerët e rinj e marrin udhëtimin e parë me gjysmë çmimi — aplikohet automatikisht.',
+    slide4Title: 'Udhëtimi i parë brenda qytetit falas',
+    slide4Body:  'Pasagjerët e rinj e marrin udhëtimin e parë brenda qytetit falas — aplikohet automatikisht.',
     getStarted:  'Fillo tani',
   },
 

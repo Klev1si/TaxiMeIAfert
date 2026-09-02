@@ -1743,8 +1743,8 @@ export default {
     slide2Body:  'Choisissez votre prise en charge et votre destination — nous trouvons immédiatement le conducteur le plus proche.',
     slide3Title: 'Voyagez en toute confiance',
     slide3Body:  'Tous les conducteurs sont vérifiés et votre sécurité est notre priorité.',
-    slide4Title: 'Votre première course à -50%',
-    slide4Body:  'Les nouveaux utilisateurs bénéficient de 50% de réduction sur leur première course — appliqué automatiquement.',
+    slide4Title: 'Votre première course en ville est gratuite',
+    slide4Body:  'Les nouveaux utilisateurs bénéficient de leur première course en ville gratuitement — appliqué automatiquement.',
     getStarted:  'Commencer',
   },
 
