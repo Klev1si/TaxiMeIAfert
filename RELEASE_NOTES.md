@@ -1,5 +1,92 @@
 # Release Notes
 
+## 1.94 (Android versionCode 107 · iOS build auto-set in Codemagic)
+
+Fixes the live-trip share map that disappeared after a few seconds, lets you
+add intermediate stops by tapping the map without losing your destination, and
+adds a minimize button to the destination sheet so you can pick a spot on the
+map and reopen to confirm.
+
+### Store "What's New"
+
+#### English (en)
+
+**Google Play**
+
+> Fixes: the live-trip share map no longer disappears after a few seconds; adding a stop by tapping the map no longer replaces your destination; and you can now minimize the destination panel to pick a spot on the map, then reopen to confirm.
+
+**App Store**
+
+> New in 1.94
+> • Live-trip share map stays put instead of vanishing after a few seconds.
+> • Add an intermediate stop by tapping the map — it no longer overwrites your destination.
+> • Minimize the destination panel to choose a spot on the map, then reopen to confirm.
+
+#### Albanian (sq)
+
+**Google Play**
+
+> Rregullime: harta e ndarjes së udhëtimit nuk zhduket më pas disa sekondash; shtimi i një ndalese duke trokitur hartën nuk e zëvendëson më destinacionin; dhe tani mund të minimizoni panelin e destinacionit për të zgjedhur një vend në hartë, pastaj ta rihapni për konfirmim.
+
+**App Store**
+
+> E re në 1.94
+> • Harta e ndarjes së udhëtimit qëndron në vend, nuk zhduket pas disa sekondash.
+> • Shto një ndalesë duke trokitur hartën — nuk e mbishkruan më destinacionin.
+> • Minimizo panelin e destinacionit për të zgjedhur një vend në hartë, pastaj rihape për konfirmim.
+
+#### Spanish (es)
+
+**Google Play**
+
+> Correcciones: el mapa para compartir el viaje ya no desaparece a los pocos segundos; añadir una parada tocando el mapa ya no reemplaza tu destino; y ahora puedes minimizar el panel de destino para elegir un punto en el mapa y reabrirlo para confirmar.
+
+**App Store**
+
+> Novedades en la 1.94
+> • El mapa para compartir el viaje ya no desaparece a los pocos segundos.
+> • Añade una parada tocando el mapa: ya no sobrescribe tu destino.
+> • Minimiza el panel de destino para elegir un punto en el mapa y reábrelo para confirmar.
+
+#### French (fr)
+
+**Google Play**
+
+> Corrections : la carte de partage du trajet ne disparaît plus après quelques secondes ; ajouter un arrêt en touchant la carte ne remplace plus votre destination ; et vous pouvez désormais réduire le panneau de destination pour choisir un point sur la carte, puis le rouvrir pour confirmer.
+
+**App Store**
+
+> Nouveautés de la 1.94
+> • La carte de partage du trajet reste affichée au lieu de disparaître après quelques secondes.
+> • Ajoutez un arrêt en touchant la carte — cela ne remplace plus votre destination.
+> • Réduisez le panneau de destination pour choisir un point sur la carte, puis rouvrez-le pour confirmer.
+
+#### Turkish (tr)
+
+**Google Play**
+
+> Düzeltmeler: yolculuk paylaşım haritası artık birkaç saniye sonra kaybolmuyor; haritaya dokunarak durak eklemek artık varış noktanızın yerine geçmiyor; ve artık varış noktası panelini küçültüp haritada bir nokta seçip, sonra onaylamak için yeniden açabilirsiniz.
+
+**App Store**
+
+> 1.94'te yenilikler
+> • Yolculuk paylaşım haritası birkaç saniye sonra kaybolmak yerine yerinde kalır.
+> • Haritaya dokunarak durak ekleyin — artık varış noktanızın üzerine yazmaz.
+> • Varış noktası panelini küçültüp haritada bir nokta seçin, ardından onaylamak için yeniden açın.
+
+### Internal changelog
+
+- **Live-trip page (`legal/track.html`):** `renderUI` rebuilt `#main.innerHTML`
+  (incl. the `#map` div) on every 5s poll, detaching Leaflet's container. Build
+  the shell once, patch text values in place, reset map refs on any rebuild.
+- **RideRequest map tap:** `handleMapPress` now routes a tap to the stop being
+  added/edited when `editingStopIdx` is active, instead of always overwriting
+  `dropoff` (which made stops replace the destination).
+- **RideRequest sheet:** collapse/expand handle so the sheet can be minimized to
+  pick a destination on the map, then reopened to confirm. New i18n keys.
+
+Builds on 1.93.
+
 ## 1.93 (Android versionCode 106 · iOS build 31)
 
 Reliability release: fixes drivers silently dropping offline after a network
