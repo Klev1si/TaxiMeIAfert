@@ -162,6 +162,11 @@ export default function RideRequestScreen({ navigation, route }: Props) {
 
   const [requesting, setRequesting] = useState(false);
 
+  // Collapse the bottom sheet so the passenger can see + tap the map to choose
+  // a destination, then reopen it to confirm. The sheet otherwise covers most
+  // of the map on smaller screens.
+  const [sheetCollapsed, setSheetCollapsed] = useState(false);
+
   // ── Scheduling ───────────────────────────────────────────────────────────────
   /** null = immediate ride. A future Date = scheduled ride. */
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
@@ -477,9 +482,39 @@ export default function RideRequestScreen({ navigation, route }: Props) {
   const handleMapPress = (e: MapPressEvent) => {
     if (isSearching || requesting) { return; }
     const { latitude, longitude } = e.nativeEvent.coordinate;
-    // Set the dropoff right away (UX feels instant), then resolve a street
-    // name in the background and patch the address in. Falls back to coords
-    // if Nominatim is slow / offline.
+
+    // If the passenger is adding or editing a STOP, a map tap must set that
+    // stop — not overwrite the final destination. (Previously every map tap
+    // wrote to dropoff, so tapping the map to place a stop replaced the
+    // destination and made it look like only one destination was allowed.)
+    if (editingStopIdx !== null) {
+      const idx = editingStopIdx;
+      setStops(prev => {
+        if (idx === -1) { return [...prev, { lat: latitude, lng: longitude }]; }
+        const updated = [...prev];
+        updated[idx] = { lat: latitude, lng: longitude };
+        return updated;
+      });
+      setEditingStopIdx(null);
+      setStopSearchQuery('');
+      setStopSearchResults([]);
+      Keyboard.dismiss();
+      // Resolve a street name in the background and patch it into the stop.
+      void (async () => {
+        const addr = await reverseGeocode(latitude, longitude);
+        if (addr) {
+          setStops(prev => prev.map(s =>
+            s.lat === latitude && s.lng === longitude && !s.address
+              ? { ...s, address: addr }
+              : s));
+        }
+      })();
+      return;
+    }
+
+    // Otherwise set the dropoff right away (UX feels instant), then resolve a
+    // street name in the background and patch the address in. Falls back to
+    // coords if Nominatim is slow / offline.
     setDropoff({ lat: latitude, lng: longitude });
     void (async () => {
       const addr = await reverseGeocode(latitude, longitude);
@@ -667,6 +702,37 @@ export default function RideRequestScreen({ navigation, route }: Props) {
             contentContainerStyle={{ paddingBottom: 8 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
+
+            {/* Collapse / expand handle — lets the passenger shrink this sheet
+                to pick a destination directly on the map, then reopen it to
+                confirm. */}
+            <TouchableOpacity
+              style={styles.sheetToggle}
+              onPress={() => setSheetCollapsed(v => !v)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={sheetCollapsed ? 'Expand ride options' : 'Collapse to pick destination on map'}>
+              <View style={styles.sheetGrabber} />
+              <Text style={styles.sheetToggleText}>
+                {sheetCollapsed
+                  ? `▲  ${t('client.rideRequest.expandSheet')}`
+                  : `▼  ${t('client.rideRequest.collapseSheet')}`}
+              </Text>
+            </TouchableOpacity>
+
+            {sheetCollapsed ? (
+              <TouchableOpacity
+                style={styles.collapsedSummary}
+                activeOpacity={0.8}
+                onPress={() => setSheetCollapsed(false)}>
+                <Text style={styles.collapsedText} numberOfLines={1}>
+                  {dropoff
+                    ? `📍 ${dropoff.address ?? `${dropoff.lat.toFixed(5)}, ${dropoff.lng.toFixed(5)}`}`
+                    : t('client.rideRequest.tapMapToChoose')}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+            <>
 
             {/* Pickup row */}
             <View style={styles.locationRow}>
@@ -1173,6 +1239,8 @@ export default function RideRequestScreen({ navigation, route }: Props) {
                 </Text>
               )}
             </TouchableOpacity>
+            </>
+            )}
           </ScrollView>
           </KeyboardAvoidingView>
         </SafeAreaView>
@@ -1306,6 +1374,34 @@ function getStyles(c: ColorPalette) { return StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
+  },
+
+  // Collapse / expand handle for the bottom sheet
+  sheetToggle: {
+    alignItems: 'center',
+    paddingBottom: 8,
+    marginTop: -4,
+  },
+  sheetGrabber: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: c.border,
+    marginBottom: 6,
+  },
+  sheetToggleText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: c.textSecondary,
+  },
+  collapsedSummary: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  collapsedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: c.text,
   },
   locationRow: {
     flexDirection: 'row',
