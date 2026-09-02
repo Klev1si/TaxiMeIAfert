@@ -99,18 +99,35 @@
       const statusKey = data.status || 'accepted';
       const statusText = STATUS_LABEL[statusKey] || statusKey;
 
-      let html = '';
-      html += '<div class="card">';
-      html += '  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">';
-      html += '    <span class="status">' + esc(statusText) + '</span>';
-      html += '  </div>';
-      html += '  <div class="row"><span class="label">Driver</span><span class="value">' + esc(data.driverFirstName || '—') + '</span></div>';
-      html += '  <div class="row"><span class="label">Car plate</span><span class="value">' + esc(data.driverPlate || '—') + '</span></div>';
-      html += '  <div class="row"><span class="label">From</span><span class="value">' + esc(data.pickupAddress || (data.pickupLat.toFixed(4) + ', ' + data.pickupLng.toFixed(4))) + '</span></div>';
-      html += '  <div class="row"><span class="label">To</span><span class="value">' + esc(data.dropoffAddress || (data.dropoffLat.toFixed(4) + ', ' + data.dropoffLng.toFixed(4))) + '</span></div>';
-      html += '</div>';
-      html += '<div id="map"></div>';
-      document.getElementById('main').innerHTML = html;
+      // Build the static shell exactly ONCE. Previously this rebuilt the whole
+      // #main innerHTML (including the <div id="map">) on every 5s poll, which
+      // detached the node Leaflet was rendering into — so the map showed on the
+      // first tick and then vanished on the next. Now we build the shell once
+      // and only patch the dynamic text values on each poll.
+      if (!document.getElementById('map')) {
+        document.getElementById('main').innerHTML =
+          '<div class="card">' +
+          '  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">' +
+          '    <span class="status" id="t-status"></span>' +
+          '  </div>' +
+          '  <div class="row"><span class="label">Driver</span><span class="value" id="t-driver"></span></div>' +
+          '  <div class="row"><span class="label">Car plate</span><span class="value" id="t-plate"></span></div>' +
+          '  <div class="row"><span class="label">From</span><span class="value" id="t-from"></span></div>' +
+          '  <div class="row"><span class="label">To</span><span class="value" id="t-to"></span></div>' +
+          '</div>' +
+          '<div id="map"></div>';
+        // The old map/marker objects (if any) pointed at the now-removed nodes;
+        // drop them so a fresh map is created into the new container below.
+        map = null; driverMk = null; pickupMk = null; dropMk = null;
+      }
+
+      // Patch the dynamic values in place. textContent is XSS-safe by design,
+      // so the untrusted driver/address fields need no manual escaping here.
+      document.getElementById('t-status').textContent = statusText;
+      document.getElementById('t-driver').textContent = data.driverFirstName || '—';
+      document.getElementById('t-plate').textContent  = data.driverPlate || '—';
+      document.getElementById('t-from').textContent   = data.pickupAddress  || (data.pickupLat.toFixed(4)  + ', ' + data.pickupLng.toFixed(4));
+      document.getElementById('t-to').textContent     = data.dropoffAddress || (data.dropoffLat.toFixed(4) + ', ' + data.dropoffLng.toFixed(4));
 
       if (!map) {
         map = L.map('map').setView([data.pickupLat, data.pickupLng], 14);
