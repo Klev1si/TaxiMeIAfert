@@ -178,8 +178,8 @@ export default {
       hello:                'Merhaba, {phone}',
       driversNearby:        'Yakında {count} sürücü',
       driversNearbyPlural:  'Yakında {count} sürücü',
-      firstRideTitle:       'İlk yolculuğunuz yarı fiyatına! 🎉',
-      firstRideBody:        '%50 indirim, 5€\'ya kadar — otomatik uygulanır.',
+      firstRideTitle:       'Şehir içi ilk yolculuğunuz ÜCRETSİZ! 🎉',
+      firstRideBody:        'Şehir içi yolculuklar için ücretsiz — otomatik uygulanır.',
     },
     profile: {
       sectionAccount:    'Hesap',

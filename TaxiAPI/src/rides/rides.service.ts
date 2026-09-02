@@ -84,6 +84,11 @@ const CANCEL_GRACE_MINUTES = Number(process.env.CANCEL_GRACE_MINUTES ?? 2);
 const CANCEL_FEE_ACCEPTED  = Number(process.env.CANCEL_FEE_ACCEPTED  ?? 2.00);
 const CANCEL_FEE_EN_ROUTE  = Number(process.env.CANCEL_FEE_EN_ROUTE  ?? 3.00);
 const CANCEL_FEE_ARRIVED   = Number(process.env.CANCEL_FEE_ARRIVED   ?? 5.00);
+// First-ride promo is a FREE in-city ride. "In-city" is gated on trip distance
+// (there is no city field on a ride): a ride at or under this many km counts as
+// in-city and is free; a longer (inter-city) first ride gets nothing, so we
+// never give away an expensive cross-country trip.
+const FREE_FIRST_RIDE_MAX_KM = Number(process.env.FREE_FIRST_RIDE_MAX_KM ?? 10);
 
 /**
  * Compute the cancellation fee the CLIENT would owe for cancelling `ride` right now.
@@ -1696,22 +1701,28 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         }
       }
     } else if (ride.totalFare != null) {
-      // ── First-ride auto-promo ──────────────────────────────────────────────
-      // If the client hasn't completed any ride yet (totalRides === 0) AND
-      // they didn't already use a promo code on this ride, automatically
-      // apply 50% off, capped at €5. The platform pays the discount so the
-      // driver still earns the full fare. The increment to client.totalRides
-      // happens a few lines below, so we read the still-zero value here.
+      // ── First-ride auto-promo: FREE in-city ride ───────────────────────────
+      // If the client hasn't completed any ride yet (totalRides === 0), they
+      // didn't use a promo code, AND this is an in-city trip, the ride is FREE
+      // (totalFare → 0). The platform absorbs the whole fare so the driver is
+      // still paid in full (see driverEarning below). "In-city" is gated on
+      // distance: at or under FREE_FIRST_RIDE_MAX_KM km. A longer inter-city
+      // first ride gets nothing — and if we can't determine the distance we
+      // fail closed (no free ride) so an expensive trip is never given away.
+      // The increment to client.totalRides happens below, so totalRides is
+      // still 0 here.
       const client = await this.clientRepo.findOne({
         where: { id: ride.clientId },
         select: ['id', 'totalRides'],
       });
       if (client && (client.totalRides ?? 0) === 0) {
+        const km = ride.actualDistanceKm != null
+          ? Number(ride.actualDistanceKm)
+          : (ride.distanceKm != null ? Number(ride.distanceKm) : null);
         const fare = Number(ride.totalFare);
-        const discount = Math.min(fare * 0.5, 5);
-        if (discount > 0) {
-          ride.discountAmount  = Math.round(discount * 100) / 100;
-          ride.totalFare       = Math.round((fare - discount) * 100) / 100;
+        if (km != null && isFinite(km) && km <= FREE_FIRST_RIDE_MAX_KM && fare > 0) {
+          ride.discountAmount  = Math.round(fare * 100) / 100; // whole fare
+          ride.totalFare       = 0;
           platformAbsorbed     = ride.discountAmount;
           platformReason       = PlatformCreditReason.FIRST_RIDE_PROMO;
         }
