@@ -1743,8 +1743,8 @@ export default {
     slide2Body:  'Elige tu punto de recogida y destino — encontramos al instante el conductor más cercano.',
     slide3Title: 'Viaja con confianza',
     slide3Body:  'Todos los conductores están verificados y tu seguridad es nuestra máxima prioridad.',
-    slide4Title: 'Tu primer viaje al 50%',
-    slide4Body:  'Los nuevos usuarios reciben 50% de descuento en su primer viaje — se aplica automáticamente.',
+    slide4Title: 'Tu primer viaje dentro de la ciudad gratis',
+    slide4Body:  'Los nuevos usuarios reciben su primer viaje dentro de la ciudad gratis — se aplica automáticamente.',
     getStarted:  'Empezar',
   },
 

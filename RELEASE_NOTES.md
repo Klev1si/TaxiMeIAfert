@@ -1,5 +1,89 @@
 # Release Notes
 
+## 1.95 (Android versionCode 108 · iOS build auto-set in Codemagic)
+
+Your **first in-city ride is now free** (previously 50% off). The offer applies
+to short in-city trips; longer inter-city rides are not included. Drivers are
+still paid in full — the platform covers the fare.
+
+### Store "What's New"
+
+#### English (en)
+
+**Google Play**
+
+> Even better welcome offer: your first in-city ride is now FREE (was 50% off). Just add your phone and book a short in-city trip — it's free automatically. Drivers are always paid in full.
+
+**App Store**
+
+> New in 1.95
+> • Your first in-city ride is now FREE (previously 50% off).
+> • Applies to short in-city trips; inter-city trips aren't included.
+> • Add your phone, book, and it's applied automatically.
+
+#### Albanian (sq)
+
+**Google Play**
+
+> Ofertë edhe më e mirë: udhëtimi yt i parë brenda qytetit tani është FALAS (më parë 50% zbritje). Shto numrin e telefonit dhe rezervo një udhëtim brenda qytetit — falas automatikisht. Shoferët paguhen gjithmonë plotësisht.
+
+**App Store**
+
+> E re në 1.95
+> • Udhëtimi yt i parë brenda qytetit tani është FALAS (më parë 50% zbritje).
+> • Vlen për udhëtime të shkurtra brenda qytetit; udhëtimet mes qyteteve nuk përfshihen.
+> • Shto telefonin, rezervo, dhe aplikohet automatikisht.
+
+#### Spanish (es)
+
+**Google Play**
+
+> Oferta de bienvenida aún mejor: tu primer viaje dentro de la ciudad ahora es GRATIS (antes 50% de descuento). Añade tu teléfono y reserva un viaje corto en la ciudad — gratis automáticamente. Los conductores siempre cobran el importe completo.
+
+**App Store**
+
+> Novedades en la 1.95
+> • Tu primer viaje dentro de la ciudad ahora es GRATIS (antes 50% de descuento).
+> • Válido para viajes cortos en la ciudad; los viajes entre ciudades no se incluyen.
+> • Añade tu teléfono, reserva y se aplica automáticamente.
+
+#### French (fr)
+
+**Google Play**
+
+> Offre de bienvenue encore meilleure : votre première course en ville est désormais GRATUITE (au lieu de -50%). Ajoutez votre téléphone et réservez un trajet en ville — gratuit automatiquement. Les chauffeurs sont toujours payés en totalité.
+
+**App Store**
+
+> Nouveautés de la 1.95
+> • Votre première course en ville est désormais GRATUITE (au lieu de -50%).
+> • Valable pour les trajets courts en ville ; les trajets entre villes ne sont pas inclus.
+> • Ajoutez votre téléphone, réservez, et c'est appliqué automatiquement.
+
+#### Turkish (tr)
+
+**Google Play**
+
+> Daha da iyi karşılama teklifi: şehir içi ilk yolculuğunuz artık ÜCRETSİZ (önceden %50 indirim). Telefonunuzu ekleyin ve kısa bir şehir içi yolculuk ayırtın — otomatik olarak ücretsiz. Sürücüler her zaman tam ücret alır.
+
+**App Store**
+
+> 1.95'te yenilikler
+> • Şehir içi ilk yolculuğunuz artık ÜCRETSİZ (önceden %50 indirim).
+> • Kısa şehir içi yolculuklar için geçerli; şehirler arası yolculuklar dahil değil.
+> • Telefonunuzu ekleyin, ayırtın, otomatik uygulanır.
+
+### Internal changelog
+
+- **`rides.service.ts`:** first-ride promo changed from 50%-off-capped-€5 to a
+  free ride, gated to in-city trips via distance (`FREE_FIRST_RIDE_MAX_KM`,
+  default 10 km). `totalFare → 0`; platform absorbs the whole fare so the driver
+  still earns the full amount. Fails closed on unknown/over-limit distance.
+- **Copy (en/sq/fr/es/tr):** home banner, onboarding slide 4, and PayCash
+  receipt label updated from "50% off" to "free in-city first ride".
+
+Builds on 1.94.
+
 ## 1.94 (Android versionCode 107 · iOS build auto-set in Codemagic)
 
 Fixes the live-trip share map that disappeared after a few seconds, lets you

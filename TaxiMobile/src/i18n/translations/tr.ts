@@ -129,8 +129,8 @@ export default {
     slide2Body:  'Alış ve varış noktanızı seçin — size en yakın sürücüyü anında buluyoruz.',
     slide3Title: 'Güvenle seyahat edin',
     slide3Body:  'Tüm sürücüler doğrulanmıştır ve güvenliğiniz önceliğimizdir.',
-    slide4Title: 'İlk yolculuğunuz %50 indirimli',
-    slide4Body:  'Yeni kullanıcılar ilk yolculuklarında %50 indirim alır — otomatik uygulanır.',
+    slide4Title: 'Şehir içi ilk yolculuğunuz ücretsiz',
+    slide4Body:  'Yeni kullanıcılar şehir içi ilk yolculuklarını ücretsiz alır — otomatik uygulanır.',
     getStarted:  'Başla',
   },
 
