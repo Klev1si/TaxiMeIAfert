@@ -46,7 +46,7 @@ interface RideCompletedEvent {
   baseFare?:     number | null;
   distanceFare?: number | null;
   timeFare?:     number | null;
-  /** Discount applied at completion (promo code OR the automatic first-ride 50% off). */
+  /** Discount applied at completion (promo code OR the automatic free in-city first ride). */
   discountAmount?: number | null;
   /** Promo code used, if any. null for the automatic first-ride discount. */
   promoCode?:      string | null;
