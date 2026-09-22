@@ -64,6 +64,18 @@ export class User {
   @Column({ type: 'varchar', name: 'avatar_url', nullable: true, length: 500 })
   avatarUrl: string | null;
 
+  /**
+   * Last time the user made an authenticated API call (i.e. had the app
+   * open). Bumped at most every few minutes by JwtStrategy. Drives the
+   * "you haven't opened the app in a while" engagement notifications.
+   */
+  @Column({ type: 'timestamptz', name: 'last_active_at', nullable: true })
+  lastActiveAt: Date | null;
+
+  /** Opt-out switch for automatic reminder / promo pushes (ride pushes are unaffected). */
+  @Column({ name: 'engagement_notifications_enabled', default: true })
+  engagementNotificationsEnabled: boolean;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

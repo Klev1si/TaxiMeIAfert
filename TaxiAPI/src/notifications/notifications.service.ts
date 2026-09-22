@@ -5,6 +5,11 @@ export interface FcmPayload {
   title: string;
   body: string;
   data?: Record<string, string>;
+  /**
+   * 'high' (default) wakes the device and breaks through iOS Focus — for
+   * ride events. 'normal' is for reminders / promos that can wait.
+   */
+  priority?: 'high' | 'normal';
 }
 
 @Injectable()
@@ -85,6 +90,8 @@ export class NotificationsService {
       return;
     }
 
+    const urgent = payload.priority !== 'normal';
+
     try {
       await this.adminApp.messaging().send({
         token,
@@ -92,10 +99,10 @@ export class NotificationsService {
         data: payload.data ?? {},
         // ── Android: high-priority so the device wakes even when screen-locked ──
         android: {
-          priority: 'high',
+          priority: urgent ? 'high' : 'normal',
           notification: {
             channelId:              'taxiapp_rides',
-            priority:               'max',
+            priority:               urgent ? 'max' : 'default',
             defaultSound:           true,
             defaultVibrateTimings:  true,
             visibility:             'public', // show full content on lock screen
@@ -103,12 +110,12 @@ export class NotificationsService {
         },
         // ── iOS: alert + sound, mark as time-sensitive so it bypasses focus modes ──
         apns: {
-          headers: { 'apns-priority': '10' },
+          headers: { 'apns-priority': urgent ? '10' : '5' },
           payload: {
             aps: {
               alert: { title: payload.title, body: payload.body },
               sound: 'default',
-              'interruption-level': 'time-sensitive',
+              'interruption-level': urgent ? 'time-sensitive' : 'active',
             },
           },
         },

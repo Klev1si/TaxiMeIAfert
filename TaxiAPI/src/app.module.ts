@@ -33,6 +33,7 @@ import { WalletModule } from './wallet/wallet.module';
 import { SupportModule } from './support/support.module';
 import { CompanyMessagesModule } from './company-messages/company-messages.module';
 import { SubscriptionCronModule } from './subscription-cron/subscription-cron.module';
+import { EngagementNotificationsModule } from './engagement-notifications/engagement-notifications.module';
 import {
   User,
   Company,
@@ -61,6 +62,7 @@ import {
   AdminNotification,
   IntercityRoute,
   SubscriptionNotification,
+  EngagementNotification,
 } from './entities';
 
 @Module({
@@ -160,6 +162,7 @@ import {
           AdminNotification,
           IntercityRoute,
           SubscriptionNotification,
+          EngagementNotification,
         ],
         // Safety net: also register every entity passed to forFeature() by a
         // feature module, so a class missing from the list above can't cause
@@ -198,6 +201,7 @@ import {
     SupportModule,
     CompanyMessagesModule,
     SubscriptionCronModule,
+    EngagementNotificationsModule,
     HealthModule,
     FraudModule,
     ScheduleModule.forRoot(),

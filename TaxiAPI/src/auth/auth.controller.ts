@@ -135,6 +135,7 @@ export class AuthController {
       return {
         id: user.id, phone: user.phone, email: user.email ?? null, role: user.role,
         avatarUrl: user.avatarUrl ?? null,
+        engagementNotificationsEnabled: user.engagementNotificationsEnabled,
         firstName: driver?.firstName ?? null,
         lastName:  driver?.lastName  ?? null,
         rating:    driver?.rating != null ? Number(driver.rating) : null,
@@ -155,6 +156,7 @@ export class AuthController {
       return {
         id: user.id, phone: user.phone, email: user.email ?? null, role: user.role,
         avatarUrl: user.avatarUrl ?? null,
+        engagementNotificationsEnabled: user.engagementNotificationsEnabled,
         companyName: company?.name    ?? null,
         address:     company?.address ?? null,
         city:        company?.city    ?? null,
@@ -168,6 +170,7 @@ export class AuthController {
     return {
       id: user.id, phone: user.phone, email: user.email ?? null, role: user.role,
       avatarUrl: user.avatarUrl ?? null,
+      engagementNotificationsEnabled: user.engagementNotificationsEnabled,
       firstName: client?.firstName ?? null,
       lastName:  client?.lastName  ?? null,
       rating:    client?.rating != null ? Number(client.rating) : null,
@@ -273,6 +276,22 @@ export class AuthController {
     await this.userRepo.update(user.id, { fcmToken: fcmToken ?? null });
   }
 
+  // PATCH /auth/notification-preferences — opt in/out of automatic reminder
+  // and promo pushes (morning reminders, win-backs, weekly summaries).
+  // Ride-related pushes are always sent.
+  @Patch('notification-preferences')
+  @UseGuards(JwtAuthGuard)
+  async updateNotificationPreferences(
+    @CurrentUser() user: User,
+    @Body('engagementNotificationsEnabled') enabled: unknown,
+  ) {
+    if (typeof enabled !== 'boolean') {
+      throw new BadRequestException('engagementNotificationsEnabled must be a boolean');
+    }
+    await this.userRepo.update(user.id, { engagementNotificationsEnabled: enabled });
+    return { engagementNotificationsEnabled: enabled };
+  }
+
   // PATCH /auth/email — let an existing account add or update their email
   // address. Required so legacy accounts (registered before email was
   // mandatory) can still use Forgot Password.
@@ -341,6 +360,7 @@ export class AuthController {
       return {
         id: user.id, phone: user.phone, email: user.email ?? null, role: user.role,
         avatarUrl: user.avatarUrl ?? null,
+        engagementNotificationsEnabled: user.engagementNotificationsEnabled,
         firstName:   driver.firstName,
         lastName:    driver.lastName,
         rating:      driver.rating != null ? Number(driver.rating) : null,
@@ -379,6 +399,7 @@ export class AuthController {
       return {
         id: user.id, phone: user.phone, email: user.email ?? null, role: user.role,
         avatarUrl: user.avatarUrl ?? null,
+        engagementNotificationsEnabled: user.engagementNotificationsEnabled,
         companyName: company.name,
         address:     company.address,
         city:        company.city,
