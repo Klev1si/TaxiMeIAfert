@@ -115,6 +115,8 @@ export const authApi = {
       id: string; phone: string; email: string | null; role: string;
       avatarUrl: string | null;
       firstName: string | null; lastName: string | null; rating: number | null;
+      /** Opt-in for automatic reminder / promo pushes (ride pushes are always sent). */
+      engagementNotificationsEnabled?: boolean;
       // client-only
       totalRides?: number;
       // driver-only
@@ -130,6 +132,12 @@ export const authApi = {
   /** PATCH /auth/fcm-token — register or clear the FCM push token */
   updateFcmToken: (fcmToken: string | null) =>
     apiClient.patch('/auth/fcm-token', { fcmToken }),
+
+  /** PATCH /auth/notification-preferences — opt in/out of reminder & promo pushes */
+  updateNotificationPreferences: (engagementNotificationsEnabled: boolean) =>
+    apiClient.patch<{ engagementNotificationsEnabled: boolean }>(
+      '/auth/notification-preferences', { engagementNotificationsEnabled },
+    ),
 
   /** PATCH /auth/email — let an existing account add or update their email */
   setEmail: (email: string) =>

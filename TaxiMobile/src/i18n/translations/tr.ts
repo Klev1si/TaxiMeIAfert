@@ -190,6 +190,9 @@ export default {
       savedDrivers:      'Favori sürücüler',
       helpSupport:       'Yardım ve Destek',
       howToUse:          "TaxiMeIAfert nasıl kullanılır",
+      offerNotifications:     'Teklifler ve hatırlatmalar',
+      offerNotificationsHint: 'Ücretsiz yolculuklar, kampanyalar ve hatırlatmalar. Yolculuk bildirimleri her zaman gönderilir.',
+      offerNotificationsError: 'Bildirim ayarları güncellenemedi. Lütfen tekrar deneyin.',
       deleteAccount:     'Hesabı sil',
     },
     savedLocations: {

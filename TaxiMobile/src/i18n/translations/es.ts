@@ -500,6 +500,9 @@ export default {
       manageCards: 'Gestionar tarjetas guardadas',
       helpSupport: 'Ayuda y soporte',
       howToUse:    'Cómo usar TaxiMeIAfert',
+      offerNotifications:     'Ofertas y recordatorios',
+      offerNotificationsHint: 'Viajes gratis, promociones y recordatorios. Las novedades de tus viajes siempre se envían.',
+      offerNotificationsError: 'No se pudo actualizar la configuración de notificaciones. Inténtalo de nuevo.',
     },
 
     favorites: {

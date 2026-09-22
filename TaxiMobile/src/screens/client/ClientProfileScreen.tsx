@@ -13,6 +13,7 @@ import {
   Platform,
   Pressable,
   Linking,
+  Switch,
 } from 'react-native';
 import { LEGAL_URLS } from '../../constants/legal';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,6 +34,7 @@ type Profile = {
   phone: string; role: string;
   avatarUrl: string | null;
   firstName: string | null; lastName: string | null; rating: number | null;
+  engagementNotificationsEnabled?: boolean;
 };
 
 // ── Edit Profile Modal ────────────────────────────────────────────────────────
@@ -271,6 +273,7 @@ export default function ClientProfileScreen() {
   const [langVisible,     setLangVisible]     = useState(false);
   const [tourVisible,     setTourVisible]     = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [savingOffers,    setSavingOffers]    = useState(false);
 
   useEffect(() => {
     authApi.getMe()
@@ -332,6 +335,22 @@ export default function ClientProfileScreen() {
     );
   };
 
+  // Optimistic toggle — revert if the server rejects the change.
+  const handleToggleOffers = async (enabled: boolean) => {
+    setProfile(prev => prev ? { ...prev, engagementNotificationsEnabled: enabled } : prev);
+    setSavingOffers(true);
+    try {
+      await authApi.updateNotificationPreferences(enabled);
+    } catch {
+      setProfile(prev => prev ? { ...prev, engagementNotificationsEnabled: !enabled } : prev);
+      Alert.alert(t('common.error'), t('client.profile.offerNotificationsError'));
+    } finally {
+      setSavingOffers(false);
+    }
+  };
+
+  const offersEnabled = profile?.engagementNotificationsEnabled ?? true;
+
   const handleProfileSaved = (firstName: string, lastName: string) => {
     setProfile(prev => prev ? { ...prev, firstName, lastName } : prev);
     setEditVisible(false);
@@ -374,6 +393,26 @@ export default function ClientProfileScreen() {
           {profile?.firstName && (
             <InfoRow label={t('profile.name')} value={`${profile.firstName} ${profile.lastName ?? ''}`.trim()} colors={colors} />
           )}
+        </View>
+
+        {/* Offer / reminder notifications opt-out */}
+        <View style={styles.card}>
+          <View style={styles.switchRow}>
+            <View style={styles.switchText}>
+              <Text style={styles.actionLabel}>🔔  {t('client.profile.offerNotifications')}</Text>
+              <Text style={styles.switchHint}>{t('client.profile.offerNotificationsHint')}</Text>
+            </View>
+            <Switch
+              value={offersEnabled}
+              onValueChange={handleToggleOffers}
+              disabled={loading || !profile || savingOffers}
+              trackColor={{ false: colors.border, true: colors.success + '80' }}
+              thumbColor={offersEnabled ? colors.success : colors.textDisabled}
+              accessibilityRole="switch"
+              accessibilityLabel="Offers and reminder notifications"
+              accessibilityState={{ checked: offersEnabled }}
+            />
+          </View>
         </View>
 
         {/* Theme toggle */}
@@ -605,6 +644,10 @@ function getStyles(c: ColorPalette) {
     },
     actionLabel:   { fontSize: 15, color: c.text, fontWeight: '500' },
     actionChevron: { fontSize: 22, color: c.textSecondary, lineHeight: 26 },
+
+    switchRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+    switchText: { flex: 1 },
+    switchHint: { fontSize: 12, color: c.textSecondary, marginTop: 4, lineHeight: 16 },
 
     logoutBtn:        { height: 50, borderRadius: 14, borderWidth: 2, borderColor: c.error, alignItems: 'center', justifyContent: 'center' },
     logoutBtnDisabled: { opacity: 0.5 },

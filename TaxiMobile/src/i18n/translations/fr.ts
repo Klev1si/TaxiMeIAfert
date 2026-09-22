@@ -500,6 +500,9 @@ export default {
       manageCards: 'Gérer les cartes enregistrées',
       helpSupport: 'Aide et support',
       howToUse:    'Comment utiliser TaxiMeIAfert',
+      offerNotifications:     'Offres et rappels',
+      offerNotificationsHint: 'Courses gratuites, promotions et rappels. Les notifications de course sont toujours envoyées.',
+      offerNotificationsError: 'Impossible de mettre à jour les notifications. Veuillez réessayer.',
     },
 
     favorites: {

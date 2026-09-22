@@ -509,6 +509,9 @@ export default {
       manageCards:   'Manage Saved Cards',
       helpSupport:   'Help & Support',
       howToUse:      'How to use TaxiMeIAfert',
+      offerNotifications:     'Offers & reminders',
+      offerNotificationsHint: 'Free rides, promotions and reminders. Ride updates are always sent.',
+      offerNotificationsError: 'Could not update notification settings. Please try again.',
     },
 
     favorites: {

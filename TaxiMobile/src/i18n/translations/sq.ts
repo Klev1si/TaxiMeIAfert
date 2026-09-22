@@ -504,6 +504,9 @@ export default {
       manageCards: 'Menaxho Kartat e Ruajtura',
       helpSupport: 'Ndihmë dhe Mbështetje',
       howToUse:    'Si të përdoret TaxiMeIAfert',
+      offerNotifications:     'Oferta dhe kujtesa',
+      offerNotificationsHint: 'Udhëtime falas, promocione dhe kujtesa. Njoftimet për udhëtimet dërgohen gjithmonë.',
+      offerNotificationsError: 'Cilësimet e njoftimeve nuk u ruajtën. Provoni përsëri.',
     },
 
     favorites: {
