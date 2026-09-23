@@ -74,6 +74,72 @@ server-side automatic notifications (already live on the API).
 > • Teklif ve hatırlatma almak isteyip istemediğinizi seçin — yolculuk bildirimleri her zaman gönderilir.
 > • Kararlılık iyileştirmeleri.
 
+### App Store — combined text (use this on iOS)
+
+iOS users are jumping straight from 1.92 to 1.96 (the hardcoded iOS version
+in Info.plist kept 1.93–1.95 from shipping), so the App Store "What's New"
+covers everything since 1.92. Google Play keeps the short 1.96 text above.
+
+#### Albanian (sq)
+
+> E re në 1.96
+> • Udhëtimi yt i parë brenda qytetit tani është FALAS. Vlen për udhëtime të shkurtra brenda qytetit dhe aplikohet automatikisht.
+> • Çelës i ri "Oferta dhe kujtesa" në profil: zgjidh nëse do të marrësh oferta dhe kujtesa. Njoftimet për udhëtimet dërgohen gjithmonë.
+> • Shto një ndalesë duke trokitur hartën, pa e humbur destinacionin.
+> • Minimizo panelin e destinacionit për të zgjedhur një vend në hartë, pastaj rihape për konfirmim.
+> • Harta e ndarjes së udhëtimit nuk zhduket më pas disa sekondash.
+> • Shoferët qëndrojnë online edhe pas humbjes së sinjalit, pa pasur nevojë të rihapin aplikacionin.
+> • Rregulluam rastin kur pasagjerët ngeleshin te "duke kërkuar shofer".
+> • Përmirësime të qëndrueshmërisë.
+
+#### English (en)
+
+> New in 1.96
+> • Your first in-city ride is now FREE. It applies to short trips within the city and is added automatically.
+> • New "Offers & reminders" switch in your profile: choose whether to get offers and reminders. Ride updates are always sent.
+> • Add a stop by tapping the map without losing your destination.
+> • Minimize the destination panel to pick a spot on the map, then reopen it to confirm.
+> • The live-trip share map no longer disappears after a few seconds.
+> • Drivers stay online reliably after network drops, with no need to restart the app.
+> • Fixed passengers getting stuck on "searching for a driver".
+> • Stability improvements.
+
+#### Spanish (es)
+
+> Novedades en la 1.96
+> • Tu primer viaje dentro de la ciudad ahora es GRATIS. Válido para trayectos cortos en la ciudad y se aplica automáticamente.
+> • Nuevo interruptor "Ofertas y recordatorios" en tu perfil: elige si quieres recibir ofertas y recordatorios. Las novedades de tus viajes siempre se envían.
+> • Añade una parada tocando el mapa sin perder tu destino.
+> • Minimiza el panel de destino para elegir un punto en el mapa y reábrelo para confirmar.
+> • El mapa para compartir el viaje ya no desaparece a los pocos segundos.
+> • Los conductores siguen en línea tras una caída de red, sin reiniciar la app.
+> • Corregido: los pasajeros ya no se quedan atascados en "buscando conductor".
+> • Mejoras de estabilidad.
+
+#### French (fr)
+
+> Nouveautés de la 1.96
+> • Votre première course en ville est désormais GRATUITE. Valable pour les trajets courts en ville et appliquée automatiquement.
+> • Nouvel interrupteur « Offres et rappels » dans votre profil : choisissez de recevoir ou non les offres et rappels. Les notifications de course sont toujours envoyées.
+> • Ajoutez un arrêt en touchant la carte sans perdre votre destination.
+> • Réduisez le panneau de destination pour choisir un point sur la carte, puis rouvrez-le pour confirmer.
+> • La carte de partage du trajet ne disparaît plus après quelques secondes.
+> • Les chauffeurs restent en ligne après une coupure réseau, sans redémarrer l'app.
+> • Corrigé : les passagers ne restent plus bloqués sur « recherche d'un chauffeur ».
+> • Améliorations de stabilité.
+
+#### Turkish (tr)
+
+> 1.96'da yenilikler
+> • Şehir içi ilk yolculuğunuz artık ÜCRETSİZ. Kısa şehir içi yolculuklarda geçerlidir ve otomatik uygulanır.
+> • Profilinizde yeni "Teklifler ve hatırlatmalar" anahtarı: teklif ve hatırlatma alıp almayacağınızı seçin. Yolculuk bildirimleri her zaman gönderilir.
+> • Varış noktanızı kaybetmeden haritaya dokunarak durak ekleyin.
+> • Varış noktası panelini küçültüp haritada bir nokta seçin, ardından onaylamak için yeniden açın.
+> • Yolculuk paylaşım haritası artık birkaç saniye sonra kaybolmuyor.
+> • Sürücüler ağ kesintisinden sonra uygulamayı yeniden başlatmadan çevrimiçi kalır.
+> • Yolcuların "sürücü aranıyor" ekranında takılı kalması düzeltildi.
+> • Kararlılık iyileştirmeleri.
+
 ### Internal changelog
 
 - **Client profile:** "Offers & reminders" switch backed by
