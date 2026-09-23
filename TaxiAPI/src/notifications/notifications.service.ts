@@ -10,6 +10,12 @@ export interface FcmPayload {
    * ride events. 'normal' is for reminders / promos that can wait.
    */
   priority?: 'high' | 'normal';
+  /**
+   * Drop the push if the device can't be reached within this many seconds
+   * (e.g. phone offline). Unset = FCM default (up to 4 weeks). Use for
+   * time-bound reminders so a "good morning" push doesn't land at night.
+   */
+  ttlSeconds?: number;
 }
 
 @Injectable()
@@ -91,6 +97,7 @@ export class NotificationsService {
     }
 
     const urgent = payload.priority !== 'normal';
+    const ttl = payload.ttlSeconds;
 
     try {
       await this.adminApp.messaging().send({
@@ -99,6 +106,7 @@ export class NotificationsService {
         data: payload.data ?? {},
         // ── Android: high-priority so the device wakes even when screen-locked ──
         android: {
+          ...(ttl != null ? { ttl: ttl * 1000 } : {}),
           priority: urgent ? 'high' : 'normal',
           notification: {
             channelId:              'taxiapp_rides',
@@ -110,7 +118,12 @@ export class NotificationsService {
         },
         // ── iOS: alert + sound, mark as time-sensitive so it bypasses focus modes ──
         apns: {
-          headers: { 'apns-priority': urgent ? '10' : '5' },
+          headers: {
+            'apns-priority': urgent ? '10' : '5',
+            ...(ttl != null
+              ? { 'apns-expiration': String(Math.floor(Date.now() / 1000) + ttl) }
+              : {}),
+          },
           payload: {
             aps: {
               alert: { title: payload.title, body: payload.body },

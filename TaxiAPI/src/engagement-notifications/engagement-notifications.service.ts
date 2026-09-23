@@ -20,6 +20,23 @@ const SEND_CONCURRENCY = 50;
 const HOUR = 1;
 const DAY  = 24 * HOUR;
 
+/**
+ * How long FCM keeps an undelivered push (phone offline) before dropping it.
+ * Time-of-day reminders expire quickly so they never arrive hours late.
+ */
+const TTL_SECONDS: Record<T, number> = {
+  [T.DRIVER_MORNING]:      3 * 3600,
+  [T.DRIVER_EVENING_PEAK]: 3 * 3600,
+  [T.COMPANY_MORNING]:     3 * 3600,
+  [T.CLIENT_WEEKEND]:      6 * 3600,
+  [T.DRIVER_WINBACK]:      12 * 3600,
+  [T.DRIVER_WEEKLY]:       12 * 3600,
+  [T.COMPANY_NO_DRIVERS]:  12 * 3600,
+  [T.COMPANY_WEEKLY]:      12 * 3600,
+  [T.CLIENT_FIRST_RIDE]:   12 * 3600,
+  [T.CLIENT_WINBACK]:      12 * 3600,
+};
+
 interface Candidate {
   userId:   string;
   fcmToken: string;
@@ -332,6 +349,7 @@ export class EngagementNotificationsService {
             body:     render(msg.body, c),
             data:     { event: 'engagement', type },
             priority: 'normal',
+            ttlSeconds: TTL_SECONDS[type],
           });
           return this.ledger.create({ userId: c.userId, type, messageKey: msg.key });
         }),
