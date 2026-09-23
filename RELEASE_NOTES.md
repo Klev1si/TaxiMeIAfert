@@ -1,5 +1,90 @@
 # Release Notes
 
+## 1.96 (Android versionCode 109 · iOS build auto-set in Codemagic)
+
+Adds an **"Offers & reminders"** switch on the client profile so passengers can
+turn off promotional notifications (free first ride, "we miss you", weekend
+offers) while still receiving every ride notification. Pairs with the new
+server-side automatic notifications (already live on the API).
+
+### Store "What's New"
+
+#### English (en)
+
+**Google Play**
+
+> New: control your notifications. Turn "Offers & reminders" on or off from your profile — ride updates always keep coming.
+
+**App Store**
+
+> New in 1.96
+> • New "Offers & reminders" switch in your profile.
+> • Choose whether to receive offers and reminders — ride updates are always sent.
+> • Stability improvements.
+
+#### Albanian (sq)
+
+**Google Play**
+
+> E re: kontrollo njoftimet. Aktivizo ose çaktivizo "Oferta dhe kujtesa" nga profili — njoftimet për udhëtimet vijnë gjithmonë.
+
+**App Store**
+
+> E re në 1.96
+> • Çelës i ri "Oferta dhe kujtesa" në profil.
+> • Zgjidh nëse dëshiron të marrësh oferta dhe kujtesa — njoftimet për udhëtimet dërgohen gjithmonë.
+> • Përmirësime të qëndrueshmërisë.
+
+#### Spanish (es)
+
+**Google Play**
+
+> Nuevo: controla tus notificaciones. Activa o desactiva "Ofertas y recordatorios" desde tu perfil — las novedades de tus viajes siempre llegan.
+
+**App Store**
+
+> Novedades en la 1.96
+> • Nuevo interruptor "Ofertas y recordatorios" en tu perfil.
+> • Elige si quieres recibir ofertas y recordatorios — las novedades de tus viajes siempre se envían.
+> • Mejoras de estabilidad.
+
+#### French (fr)
+
+**Google Play**
+
+> Nouveau : gérez vos notifications. Activez ou désactivez « Offres et rappels » depuis votre profil — les notifications de course arrivent toujours.
+
+**App Store**
+
+> Nouveautés de la 1.96
+> • Nouvel interrupteur « Offres et rappels » dans votre profil.
+> • Choisissez de recevoir ou non les offres et rappels — les notifications de course sont toujours envoyées.
+> • Améliorations de stabilité.
+
+#### Turkish (tr)
+
+**Google Play**
+
+> Yeni: bildirimlerinizi yönetin. Profilinizden "Teklifler ve hatırlatmalar"ı açıp kapatın — yolculuk bildirimleri her zaman gelir.
+
+**App Store**
+
+> 1.96'da yenilikler
+> • Profilinizde yeni "Teklifler ve hatırlatmalar" anahtarı.
+> • Teklif ve hatırlatma almak isteyip istemediğinizi seçin — yolculuk bildirimleri her zaman gönderilir.
+> • Kararlılık iyileştirmeleri.
+
+### Internal changelog
+
+- **Client profile:** "Offers & reminders" switch backed by
+  `PATCH /auth/notification-preferences` (optimistic toggle, reverts on error).
+  Translated in en/sq/fr/es/tr.
+- **API (deployed separately):** automatic engagement notifications for drivers,
+  companies and clients — see `TaxiAPI/src/engagement-notifications/`.
+  Migration `CreateEngagementNotifications1779500000000`.
+
+Builds on 1.95.
+
 ## 1.95 (Android versionCode 108 · iOS build auto-set in Codemagic)
 
 Your **first in-city ride is now free** (previously 50% off). The offer applies
