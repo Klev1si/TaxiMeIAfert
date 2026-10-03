@@ -50,3 +50,14 @@ export const DARK_MAP_STYLE = [
   { featureType: 'water',             elementType: 'geometry', stylers: [{ color: '#0e1626' }] },
   { featureType: 'water',             elementType: 'labels.text.fill', stylers: [{ color: '#4e6d70' }] },
 ];
+
+/**
+ * Default map view before the user's GPS location is known — frames all of
+ * Kosovo (≈41.85–43.27°N, 20.01–21.79°E) instead of a single city.
+ */
+export const KOSOVO_REGION = {
+  latitude:       42.57,
+  longitude:      20.90,
+  latitudeDelta:  1.6,
+  longitudeDelta: 1.9,
+};
