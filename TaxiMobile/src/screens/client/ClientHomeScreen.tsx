@@ -22,7 +22,7 @@ import { ridesApi } from '../../api/rides';
 import { authApi } from '../../api/auth';
 import { savedLocationsApi, type SavedLocation } from '../../api/saved-locations';
 import { useColors, useTheme } from '../../stores/themeStore';
-import { DARK_MAP_STYLE, KOSOVO_REGION } from '../../constants/mapStyles';
+import { DARK_MAP_STYLE } from '../../constants/mapStyles';
 import { useTranslation } from '../../i18n';
 import type { ColorPalette } from '../../constants/colors';
 import type { NearestDriver } from '../../types/api';
@@ -291,7 +291,14 @@ export default function ClientHomeScreen({ navigation }: Props) {
         showsMyLocationButton={false}
         onUserLocationChange={handleUserLocationChange}
         onRegionChangeComplete={(region) => { mapRegionRef.current = region; }}
-        initialRegion={userRegion ?? KOSOVO_REGION}>
+        initialRegion={
+          userRegion ?? {
+            latitude: 42.21015,    // Kosovo — same as driver default
+            longitude: 20.73453,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
+          }
+        }>
         {nearestDrivers.map((driver) => (
           <DriverMarker key={driver.driverId} driver={driver} />
         ))}
