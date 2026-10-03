@@ -13,7 +13,6 @@ import {
 import Geolocation from '@react-native-community/geolocation';
 import MapView, { UserLocationChangeEvent } from 'react-native-maps';
 import { MAP_PROVIDER } from '../../utils/mapProvider';
-import { KOSOVO_REGION } from '../../constants/mapStyles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 import { useDriverStore } from '../../stores/driverStore';
@@ -329,7 +328,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
         showsUserLocation
         showsMyLocationButton={false}
         onUserLocationChange={handleUserLocationChange}
-        initialRegion={KOSOVO_REGION}
+        initialRegion={{ latitude: 42.21015, longitude: 20.73453, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
       />
 
       {/* Top status bar */}
