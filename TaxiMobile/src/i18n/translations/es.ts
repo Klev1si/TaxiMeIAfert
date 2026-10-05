@@ -1393,6 +1393,11 @@ export default {
       fullLabel:          'Todo',
       noteLabel:          'Nota (opcional)',
       notePlaceholder:    'ej. Transferencia bancaria, entrega en efectivo…',
+      driverOwesLabel:    'El conductor debe',
+      debtHint:           'A este conductor se le pagó {amount} de más (viajes confirmados luego como efectivo o reducidos). Se descontará de sus futuras ganancias con tarjeta.',
+      payableLabel:       'Pagable ahora:',
+      pendingHint:        '{amount} aún espera la confirmación del pago y todavía no se puede pagar.',
+      amountExceedsPayable: 'El monto excede el saldo pagable ({balance}). Solo se pueden pagar los viajes pagados con tarjeta.',
     },
 
     finances: {

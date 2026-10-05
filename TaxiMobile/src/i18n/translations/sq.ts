@@ -1402,6 +1402,11 @@ export default {
       fullLabel:          'E plotë',
       noteLabel:          'Shënim (opsional)',
       notePlaceholder:    'p.sh. Transfer bankar, dorëzim cash…',
+      driverOwesLabel:    'Shoferi detyrohet',
+      debtHint:           'Ky shofer është paguar {amount} më shumë (udhëtime të konfirmuara më vonë si cash ose të ulura). Shuma do të zbritet nga fitimet e ardhshme me kartë.',
+      payableLabel:       'E pagueshme tani:',
+      pendingHint:        '{amount} ende pret konfirmimin e pagesës dhe nuk mund të paguhet ende.',
+      amountExceedsPayable: 'Shuma e tejkalon bilancin e pagueshëm ({balance}). Vetëm udhëtimet e paguara me kartë mund të paguhen.',
     },
 
     finances: {

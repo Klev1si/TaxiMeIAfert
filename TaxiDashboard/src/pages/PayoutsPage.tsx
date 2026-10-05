@@ -10,7 +10,10 @@ interface DriverBalance {
   vehiclePlate: string;
   totalCredits: number;
   totalPayouts: number;
+  /** Negative = driver was overpaid and owes the platform the difference. */
   balance:      number;
+  /** Max amount that can be paid out now (card-settled credits − payouts, ≥ 0). */
+  payableBalance: number;
 }
 
 type LedgerEntryType = 'credit' | 'payout';
@@ -30,6 +33,8 @@ interface DriverWallet {
   totalCredits: number;
   totalPayouts: number;
   balance:      number;
+  settledCredits: number;
+  payableBalance: number;
   entries:      LedgerEntry[];
 }
 
@@ -43,7 +48,7 @@ function fmt(dateStr: string) {
 }
 
 function money(n: number) {
-  return `$${n.toFixed(2)}`;
+  return n < 0 ? `-$${Math.abs(n).toFixed(2)}` : `$${n.toFixed(2)}`;
 }
 
 // ── Driver detail panel ───────────────────────────────────────────────────────
@@ -79,8 +84,10 @@ function DriverWalletPanel({
   const handlePayout = async () => {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) { setPayError('Enter a valid positive amount.'); return; }
-    if (wallet && amt > wallet.balance) {
-      setPayError(`Amount exceeds balance (${money(wallet.balance)}).`);
+    if (wallet && amt > wallet.payableBalance) {
+      setPayError(
+        `Amount exceeds payable balance (${money(wallet.payableBalance)}). Only card-paid rides can be paid out.`,
+      );
       return;
     }
     setPaying(true);
@@ -122,9 +129,13 @@ function DriverWalletPanel({
         ) : (
           <>
             {/* Balance summary */}
-            <div className="px-6 py-5 bg-indigo-600 text-white">
-              <p className="text-sm opacity-80 mb-1">Available Balance</p>
-              <p className="text-4xl font-bold">{money(wallet.balance)}</p>
+            <div className={`px-6 py-5 text-white ${wallet.balance < 0 ? 'bg-red-600' : 'bg-indigo-600'}`}>
+              <p className="text-sm opacity-80 mb-1">{wallet.balance < 0 ? 'Driver Owes' : 'Balance'}</p>
+              <p className="text-4xl font-bold">{money(Math.abs(wallet.balance))}</p>
+              <p className="text-sm mt-1">
+                <span className="opacity-70">Payable now </span>
+                <span className="font-semibold">{money(wallet.payableBalance)}</span>
+              </p>
               <div className="flex gap-6 mt-3 text-sm">
                 <div>
                   <span className="opacity-70">Earned </span>
@@ -136,6 +147,19 @@ function DriverWalletPanel({
                 </div>
               </div>
             </div>
+
+            {wallet.balance < 0 && (
+              <div className="px-6 py-3 bg-red-50 border-b border-red-200 text-red-700 text-xs">
+                This driver was overpaid by {money(-wallet.balance)} (rides later confirmed as cash or
+                reduced). It will be deducted from future card earnings.
+              </div>
+            )}
+            {wallet.balance > wallet.payableBalance && wallet.balance > 0 && (
+              <div className="px-6 py-3 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs">
+                {money(wallet.balance - wallet.payableBalance)} is still awaiting payment confirmation
+                and can't be paid out yet.
+              </div>
+            )}
 
             {/* Payout form */}
             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
@@ -159,7 +183,7 @@ function DriverWalletPanel({
                 />
                 <button
                   onClick={handlePayout}
-                  disabled={paying}
+                  disabled={paying || wallet.payableBalance <= 0}
                   className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                 >
                   {paying ? '…' : 'Pay Out'}
@@ -275,7 +299,7 @@ export default function PayoutsPage() {
           <div className="text-center py-20 text-gray-400">
             <p className="text-3xl mb-2">💵</p>
             <p className="text-sm">
-              {showAll ? 'No drivers with ledger entries yet' : 'No drivers with outstanding balance'}
+              {showAll ? 'No drivers with ledger entries yet' : 'No drivers with an open balance'}
             </p>
           </div>
         ) : (
@@ -305,9 +329,12 @@ export default function PayoutsPage() {
                       {money(d.totalPayouts)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className={`font-bold text-base ${d.balance > 0 ? 'text-indigo-700' : 'text-gray-400'}`}>
+                      <span className={`font-bold text-base ${d.balance > 0 ? 'text-indigo-700' : d.balance < 0 ? 'text-red-600' : 'text-gray-400'}`}>
                         {money(d.balance)}
                       </span>
+                      {d.balance < 0 && (
+                        <span className="block text-xs text-red-500">driver owes</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button

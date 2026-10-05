@@ -32,7 +32,7 @@ import { useTranslation } from '../../i18n';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmt(n: number): string {
-  return `$${n.toFixed(2)}`;
+  return n < 0 ? `-$${Math.abs(n).toFixed(2)}` : `$${n.toFixed(2)}`;
 }
 
 function fmtDate(iso: string): string {
@@ -82,9 +82,16 @@ function BalanceCard({
         </View>
       </View>
       <View style={balCard.right}>
-        <Text style={balCard.balanceLabel}>{t('admin.payouts.balanceLabel')}</Text>
-        <Text style={[balCard.balance, driver.balance > 0 && balCard.balancePositive]}>
-          {fmt(driver.balance)}
+        <Text style={[balCard.balanceLabel, driver.balance < 0 && balCard.balanceNegative]}>
+          {driver.balance < 0 ? t('admin.payouts.driverOwesLabel') : t('admin.payouts.balanceLabel')}
+        </Text>
+        <Text
+          style={[
+            balCard.balance,
+            driver.balance > 0 && balCard.balancePositive,
+            driver.balance < 0 && balCard.balanceNegative,
+          ]}>
+          {fmt(driver.balance < 0 ? -driver.balance : driver.balance)}
         </Text>
         <Text style={balCard.chevron}>›</Text>
       </View>
@@ -111,6 +118,7 @@ function getBalCardStyles(c: ColorPalette) { return StyleSheet.create({
   balanceLabel:  { fontSize: 11, color: c.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
   balance:       { fontSize: 20, fontWeight: '800', color: c.text },
   balancePositive: { color: c.success },
+  balanceNegative: { color: c.error },
   chevron:       { fontSize: 20, color: c.textSecondary },
 }); }
 
@@ -190,7 +198,7 @@ function PayoutModal({
   const handleSave = async () => {
     const amt = parseFloat(amount);
     if (isNaN(amt) || amt <= 0)       { setErr(t('admin.payouts.amountInvalid')); return; }
-    if (amt > balance)                 { setErr(t('admin.payouts.amountExceeds', { balance: fmt(balance) })); return; }
+    if (amt > balance)                 { setErr(t('admin.payouts.amountExceedsPayable', { balance: fmt(balance) })); return; }
 
     setErr(null);
     setSaving(true);
@@ -234,7 +242,7 @@ function PayoutModal({
             <View style={pm.driverRow}>
               <Text style={pm.driverName}>{driverName}</Text>
               <View style={pm.availRow}>
-                <Text style={pm.availLabel}>{t('admin.payouts.availableBalance')} </Text>
+                <Text style={pm.availLabel}>{t('admin.payouts.payableLabel')} </Text>
                 <Text style={pm.availAmount}>{fmt(balance)}</Text>
               </View>
             </View>
@@ -381,13 +389,17 @@ function WalletDetailModal({
     setWallet(prev => prev ? {
       ...prev,
       balance:      newBalance,
+      payableBalance: Math.max(0, Math.round((prev.payableBalance - entry.amount) * 100) / 100),
       totalPayouts: Math.round((prev.totalPayouts + entry.amount) * 100) / 100,
       entries:      [entry, ...prev.entries],
     } : prev);
   };
 
   const driverName = driver ? `${driver.firstName} ${driver.lastName}` : '';
-  const balance    = wallet?.balance ?? driver?.balance ?? 0;
+  // Payouts are capped at the card-settled balance, not the headline balance:
+  // pending credits may still turn out to be cash the driver already holds.
+  const payable    = wallet?.payableBalance ?? driver?.payableBalance ?? 0;
+  const pendingAmt = wallet ? Math.round((wallet.balance - wallet.payableBalance) * 100) / 100 : 0;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -402,7 +414,7 @@ function WalletDetailModal({
             <Text style={wd.closeText}>✕</Text>
           </TouchableOpacity>
           <Text style={wd.title} numberOfLines={1}>{driverName}</Text>
-          {wallet && wallet.balance > 0 && (
+          {wallet && wallet.payableBalance > 0 && (
             <TouchableOpacity
               style={wd.payoutBtn}
               onPress={() => setPayoutModal(true)}
@@ -432,12 +444,35 @@ function WalletDetailModal({
               </View>
               <View style={wd.summaryDivider} />
               <View style={wd.summaryItem}>
-                <Text style={wd.summaryLabel}>{t('admin.payouts.balanceLabel')}</Text>
-                <Text style={[wd.summaryValue, wd.summaryBalance]}>
-                  {fmt(wallet.balance)}
+                <Text style={wd.summaryLabel}>
+                  {wallet.balance < 0 ? t('admin.payouts.driverOwesLabel') : t('admin.payouts.balanceLabel')}
+                </Text>
+                <Text style={[wd.summaryValue, wallet.balance < 0 ? wd.summaryDebt : wd.summaryBalance]}>
+                  {fmt(Math.abs(wallet.balance))}
                 </Text>
               </View>
             </View>
+
+            {wallet.balance < 0 && (
+              <View style={[wd.notice, wd.noticeDebt]}>
+                <Text style={[wd.noticeText, { color: colors.error }]}>
+                  {t('admin.payouts.debtHint', { amount: fmt(-wallet.balance) })}
+                </Text>
+              </View>
+            )}
+            {wallet.balance > 0 && (
+              <View style={wd.notice}>
+                <Text style={wd.noticeText}>
+                  {t('admin.payouts.payableLabel')}{' '}
+                  <Text style={{ fontWeight: '700', color: colors.success }}>{fmt(wallet.payableBalance)}</Text>
+                </Text>
+                {pendingAmt > 0 && (
+                  <Text style={[wd.noticeText, { marginTop: 4 }]}>
+                    {t('admin.payouts.pendingHint', { amount: fmt(pendingAmt) })}
+                  </Text>
+                )}
+              </View>
+            )}
 
             {/* Ledger */}
             <Text style={wd.sectionLabel}>{t('admin.payouts.historyTitle')}</Text>
@@ -470,7 +505,7 @@ function WalletDetailModal({
           visible={payoutModal}
           driverId={driver.driverId}
           driverName={driverName}
-          balance={balance}
+          balance={payable}
           onClose={() => setPayoutModal(false)}
           onPaid={handlePaid}
         />
@@ -507,6 +542,14 @@ function getWdStyles(c: ColorPalette) { return StyleSheet.create({
   summaryLabel:   { fontSize: 11, color: c.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   summaryValue:   { fontSize: 16, fontWeight: '800', color: c.text },
   summaryBalance: { color: c.success },
+  summaryDebt:    { color: c.error },
+  notice: {
+    backgroundColor: c.surface, borderRadius: 12,
+    marginHorizontal: 16, marginTop: -4, marginBottom: 12,
+    padding: 12, borderWidth: 1, borderColor: c.border,
+  },
+  noticeDebt: { backgroundColor: c.errorLight, borderColor: c.error },
+  noticeText: { fontSize: 13, color: c.textSecondary, lineHeight: 18 },
   summaryDivider: { width: 1, backgroundColor: c.border, marginVertical: 4 },
 
   sectionLabel: {
