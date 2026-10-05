@@ -1,5 +1,75 @@
 # Release Notes
 
+## 1.97 (Android versionCode 110 · iOS build auto-set in Codemagic)
+
+Fixes driver balances that could go negative after a payout. The admin
+"Driver payouts" screen now shows an overpaid driver's balance in red as
+"Driver owes", shows how much can be paid out right now (card-paid rides
+only), and caps payouts at that amount. The server-side fix ships with the
+API deploy; drivers and passengers see no change in the app.
+
+### Store "What's New"
+
+#### English (en)
+
+**Google Play**
+
+> Improvements to driver wallet balances and payouts, plus bug fixes.
+
+**App Store**
+
+> New in 1.97
+> • More accurate driver wallet balances and payouts.
+> • Bug fixes and stability improvements.
+
+#### Albanian (sq)
+
+**Google Play**
+
+> Përmirësime në bilancet dhe pagesat e portofolit të shoferëve, si dhe rregullime gabimesh.
+
+**App Store**
+
+> E re në 1.97
+> • Bilance dhe pagesa më të sakta në portofolin e shoferëve.
+> • Rregullime gabimesh dhe përmirësime të qëndrueshmërisë.
+
+#### Spanish (es)
+
+**Google Play**
+
+> Mejoras en los saldos y pagos de la billetera de los conductores, y corrección de errores.
+
+**App Store**
+
+> Novedades en la 1.97
+> • Saldos y pagos más precisos en la billetera de los conductores.
+> • Corrección de errores y mejoras de estabilidad.
+
+#### French (fr)
+
+**Google Play**
+
+> Améliorations des soldes et des versements du portefeuille des chauffeurs, et corrections de bugs.
+
+**App Store**
+
+> Nouveautés de la 1.97
+> • Soldes et versements plus précis dans le portefeuille des chauffeurs.
+> • Corrections de bugs et améliorations de stabilité.
+
+#### Turkish (tr)
+
+**Google Play**
+
+> Sürücü cüzdanı bakiyeleri ve ödemelerinde iyileştirmeler ile hata düzeltmeleri.
+
+**App Store**
+
+> 1.97'de yenilikler
+> • Sürücü cüzdanında daha doğru bakiyeler ve ödemeler.
+> • Hata düzeltmeleri ve kararlılık iyileştirmeleri.
+
 ## 1.96 (Android versionCode 109 · iOS build auto-set in Codemagic)
 
 Adds an **"Offers & reminders"** switch on the client profile so passengers can
