@@ -184,7 +184,10 @@ export interface AdminDriverBalance {
   vehiclePlate: string;
   totalCredits: number;
   totalPayouts: number;
+  /** Negative = driver was overpaid and owes the platform the difference. */
   balance:      number;
+  /** Max amount that can be paid out now (card-settled credits − payouts, ≥ 0). */
+  payableBalance: number;
 }
 
 export interface AdminDriverBalancesResponse {
@@ -208,7 +211,12 @@ export interface AdminDriverWallet {
   driverId:     string;
   totalCredits: number;
   totalPayouts: number;
+  /** Negative = driver was overpaid and owes the platform the difference. */
   balance:      number;
+  /** Card-settled credits — money that actually reached the platform. */
+  settledCredits: number;
+  /** Max amount that can be paid out now (settledCredits − payouts, ≥ 0). */
+  payableBalance: number;
   entries:      AdminLedgerEntry[];
 }
 

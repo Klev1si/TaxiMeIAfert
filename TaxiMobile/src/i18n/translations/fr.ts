@@ -1393,6 +1393,11 @@ export default {
       fullLabel:          'Tout',
       noteLabel:          'Note (optionnel)',
       notePlaceholder:    'ex. Virement bancaire, remise en espèces…',
+      driverOwesLabel:    'Le chauffeur doit',
+      debtHint:           'Ce chauffeur a été trop payé de {amount} (courses confirmées ensuite en espèces ou réduites). Ce montant sera déduit des futurs gains par carte.',
+      payableLabel:       'Payable maintenant :',
+      pendingHint:        '{amount} attend encore la confirmation du paiement et ne peut pas encore être versé.',
+      amountExceedsPayable: 'Le montant dépasse le solde payable ({balance}). Seules les courses payées par carte peuvent être versées.',
     },
 
     finances: {

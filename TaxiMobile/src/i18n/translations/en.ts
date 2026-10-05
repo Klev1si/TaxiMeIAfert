@@ -1410,6 +1410,11 @@ export default {
       fullLabel:          'Full',
       noteLabel:          'Note (optional)',
       notePlaceholder:    'e.g. Bank transfer, cash handover…',
+      driverOwesLabel:    'Driver owes',
+      debtHint:           'This driver was overpaid by {amount} (rides later confirmed as cash or reduced). It will be deducted from future card earnings.',
+      payableLabel:       'Payable now:',
+      pendingHint:        '{amount} is still awaiting payment confirmation and can\'t be paid out yet.',
+      amountExceedsPayable: 'Amount exceeds the payable balance ({balance}). Only card-paid rides can be paid out.',
     },
 
     finances: {
