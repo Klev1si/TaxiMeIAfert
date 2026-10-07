@@ -1547,6 +1547,8 @@ export default {
       cancelledBy:          'Cancelado por',
       cancelledByPassenger: 'Pasajero',
       cancelledByDriver:    'Conductor',
+      cancelledBySystem:    'Sistema (automático)',
+      cancelledByAdmin:     'Administración',
       reasonLabel:          'Motivo',
       ratingsSection:       'Calificaciones',
       driverRated:          'Conductor calificó',

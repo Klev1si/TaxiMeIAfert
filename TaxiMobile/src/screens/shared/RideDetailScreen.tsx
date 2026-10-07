@@ -132,6 +132,18 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+
+/** Null on a cancelled ride (older API) also means the dispatcher auto-cancelled it. */
+function cancelledByLabel(cancelledBy: string | null, t: (key: string) => string): string {
+  switch (cancelledBy) {
+    case 'client':      return t('shared.rideDetail.cancelledByPassenger');
+    case 'driver':      return t('shared.rideDetail.cancelledByDriver');
+    case 'super_admin':
+    case 'company':     return t('shared.rideDetail.cancelledByAdmin');
+    default:            return t('shared.rideDetail.cancelledBySystem');
+  }
+}
+
 export default function RideDetailScreen({ route }: Props) {
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
@@ -495,7 +507,7 @@ export default function RideDetailScreen({ route }: Props) {
         {isCancelled && ride.cancelReason && (
           <View style={[styles.card, styles.cancelCard]}>
             <SectionTitle styles={styles}>{t('shared.rideDetail.cancellationSection')}</SectionTitle>
-            <InfoRow label={t('shared.rideDetail.cancelledBy')} value={ride.cancelledBy === 'client' ? t('shared.rideDetail.cancelledByPassenger') : t('shared.rideDetail.cancelledByDriver')} styles={styles} />
+            <InfoRow label={t('shared.rideDetail.cancelledBy')} value={cancelledByLabel(ride.cancelledBy, t)} styles={styles} />
             <InfoRow label={t('shared.rideDetail.reasonLabel')} value={ride.cancelReason} styles={styles} />
           </View>
         )}

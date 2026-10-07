@@ -69,6 +69,8 @@ export interface Ride {
   cancelledAt: string | null;
   cancelledBy: string | null;
   cancelReason: string | null;
+  /** Booked by a demo / reviewer account. Optional: older API builds omit it. */
+  isTest?: boolean;
   paymentStatus: PaymentStatus;
   /** Resolved at completion / Stripe webhook time. Null while pending. */
   paymentMethod: 'cash' | 'card' | null;
@@ -167,7 +169,7 @@ export interface WsRideAccepted {
 
 export interface WsRideCancelled {
   rideId: string;
-  cancelledBy: 'client' | 'driver';
+  cancelledBy: 'client' | 'driver' | 'system';
   reason: string | null;
 }
 

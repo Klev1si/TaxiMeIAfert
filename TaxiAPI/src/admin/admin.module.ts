@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Client, Company, CompanySubscription, Driver, PromoCode, Ride, SubscriptionPlan, Tariff, User } from '../entities';
+import { Client, Company, CompanySubscription, Driver, LoginEvent, PromoCode, Ride, SubscriptionPlan, Tariff, User } from '../entities';
 import { GpsModule } from '../gps/gps.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AuditModule } from '../audit/audit.module';
@@ -14,7 +14,7 @@ import { CompanyStatsController } from './company-stats.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Ride, Driver, Client, Company, CompanySubscription, Tariff, User, SubscriptionPlan, PromoCode]),
+    TypeOrmModule.forFeature([Ride, Driver, Client, Company, CompanySubscription, Tariff, User, SubscriptionPlan, PromoCode, LoginEvent]),
     GpsModule,
     NotificationsModule,
     AuditModule,

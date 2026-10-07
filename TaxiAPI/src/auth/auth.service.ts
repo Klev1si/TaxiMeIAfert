@@ -18,7 +18,8 @@ const appleSignin = require('apple-signin-auth') as {
     options: { audience?: string | string[]; nonce?: string; ignoreExpiration?: boolean },
   ) => Promise<{ sub: string; email?: string; email_verified?: string | boolean; aud: string }>;
 };
-import { Client, User } from '../entities';
+import { Client, LoginEvent, LoginMethod, User } from '../entities';
+import { RequestMeta } from '../common/decorators/request-meta.decorator';
 import { UserRole } from '../common/enums';
 import { AdminNotificationsService } from '../notifications/admin-notifications.service';
 import { LoginDto } from './dto/login.dto';
@@ -36,6 +37,8 @@ export class AuthService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(Client)
     private readonly clientRepo: Repository<Client>,
+    @InjectRepository(LoginEvent)
+    private readonly loginEventRepo: Repository<LoginEvent>,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly adminNotifications: AdminNotificationsService,
@@ -47,7 +50,7 @@ export class AuthService {
   }
 
   // ── Login ──────────────────────────────────────────────────────────────────
-  async login(dto: LoginDto): Promise<AuthTokensDto> {
+  async login(dto: LoginDto, meta?: RequestMeta): Promise<AuthTokensDto> {
     // Accept either { phone, password } (legacy callers) or
     // { identifier, password } (redesigned login screen with email/phone tabs).
     const raw = (dto.identifier ?? dto.phone ?? '').trim();
@@ -71,7 +74,7 @@ export class AuthService {
       throw new ForbiddenException('Phone number not verified');
     }
 
-    return this.issueTokens(user);
+    return this.issueTokens(user, { method: LoginMethod.PASSWORD, meta });
   }
 
   // ── Google Sign-In ─────────────────────────────────────────────────────────
@@ -83,7 +86,7 @@ export class AuthService {
    * Phone is left null until the user adds + verifies one in their profile.
    * The app gates ride booking on that step.
    */
-  async googleSignIn(idToken: string): Promise<AuthTokensDto> {
+  async googleSignIn(idToken: string, meta?: RequestMeta): Promise<AuthTokensDto> {
     if (!idToken || idToken.length < 100) {
       throw new BadRequestException('Missing or malformed Google ID token');
     }
@@ -175,7 +178,7 @@ export class AuthService {
       this.logger.log(`Google login: existing user ${user.id} (${user.email ?? user.phone})`);
     }
 
-    return this.issueTokens(user);
+    return this.issueTokens(user, { method: LoginMethod.GOOGLE, meta });
   }
 
   // ── Apple Sign-In ──────────────────────────────────────────────────────────
@@ -195,6 +198,7 @@ export class AuthService {
     identityToken: string,
     firstName?: string,
     lastName?: string,
+    meta?: RequestMeta,
   ): Promise<AuthTokensDto> {
     if (!identityToken || identityToken.length < 100) {
       throw new BadRequestException('Missing or malformed Apple identity token');
@@ -274,13 +278,13 @@ export class AuthService {
       this.logger.log(`Apple login: existing user ${user.id} (${user.email ?? user.phone ?? 'apple-only'})`);
     }
 
-    return this.issueTokens(user);
+    return this.issueTokens(user, { method: LoginMethod.APPLE, meta });
   }
 
   // ── Refresh ────────────────────────────────────────────────────────────────
   // Called after JwtRefreshGuard validates the refresh token
-  async refresh(user: User): Promise<AuthTokensDto> {
-    return this.issueTokens(user);
+  async refresh(user: User, meta?: RequestMeta): Promise<AuthTokensDto> {
+    return this.issueTokens(user, { method: LoginMethod.REFRESH, meta });
   }
 
   // ── Logout ─────────────────────────────────────────────────────────────────
@@ -297,7 +301,10 @@ export class AuthService {
   }
 
   // ── Token generation — also called by RegistrationService ─────────────────
-  async issueTokens(user: User): Promise<AuthTokensDto> {
+  async issueTokens(
+    user: User,
+    login?: { method: LoginMethod; meta?: RequestMeta },
+  ): Promise<AuthTokensDto> {
     const payload: JwtPayload = {
       sub: user.id,
       phone: user.phone ?? '',
@@ -323,10 +330,28 @@ export class AuthService {
     const hashedRefresh = await bcrypt.hash(refreshToken, this.BCRYPT_ROUNDS);
     await this.userRepo.update(user.id, { refreshToken: hashedRefresh });
 
+    if (login) void this.recordLogin(user.id, login.method, login.meta);
+
     return {
       accessToken,
       refreshToken,
       expiresIn: 15 * 60, // 15 minutes in seconds
     };
+  }
+
+  /** Never throws — a logging failure must not block a sign-in. */
+  private async recordLogin(userId: string, method: LoginMethod, meta?: RequestMeta): Promise<void> {
+    try {
+      await this.loginEventRepo.insert({
+        userId,
+        method,
+        ip:             meta?.ip ?? null,
+        forwardedFor:   meta?.forwardedFor ?? null,
+        userAgent:      meta?.userAgent ?? null,
+        clientPlatform: meta?.clientPlatform ?? null,
+      });
+    } catch (err) {
+      this.logger.error(`Failed to record login event for ${userId}`, err as Error);
+    }
   }
 }

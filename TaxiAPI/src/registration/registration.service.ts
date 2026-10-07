@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { User, Client, Driver, Company } from '../entities/index.js';
+import { User, Client, Driver, Company, LoginMethod } from '../entities/index.js';
+import { RequestMeta } from '../common/decorators/request-meta.decorator.js';
 import { UserRole } from '../common/enums/index.js';
 import { AuthService } from '../auth/auth.service.js';
 import { AuthTokensDto } from '../auth/dto/auth-tokens.dto.js';
@@ -41,7 +42,7 @@ export class RegistrationService {
 
   // ── Client registration ───────────────────────────────────────────────────
   // Client is auto-approved → returns JWT tokens immediately
-  async registerClient(dto: RegisterClientDto): Promise<AuthTokensDto> {
+  async registerClient(dto: RegisterClientDto, meta?: RequestMeta): Promise<AuthTokensDto> {
     await this.assertPhoneVerified(dto.phone);
     const email = await this.assertPhoneAndEmailAvailable(dto.phone, dto.email);
 
@@ -80,7 +81,7 @@ export class RegistrationService {
       role: UserRole.CLIENT,
     });
 
-    return this.authService.issueTokens(user);
+    return this.authService.issueTokens(user, { method: LoginMethod.REGISTER, meta });
   }
 
   // ── Driver registration ───────────────────────────────────────────────────

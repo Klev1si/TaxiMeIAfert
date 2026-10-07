@@ -4,15 +4,20 @@ import axios, {
   AxiosResponse,
   AxiosError,
 } from 'axios';
+import { Platform } from 'react-native';
 import Config from '../config';
 import { notifyNetworkError } from '../services/connectivity';
 import { tokenStorage } from '../utils/tokenStorage';
+
+// Lets the server log which kind of device signed in / booked a ride
+// (admin "recent logins" view), e.g. "ios 18.1".
+export const CLIENT_PLATFORM = `${Platform.OS} ${Platform.Version}`;
 
 // ── Create the singleton axios instance ───────────────────────────────────────
 const apiClient: AxiosInstance = axios.create({
   baseURL: Config.API_BASE_URL,
   timeout: 30_000,  // 30s — allows time for Railway cold start (sleeps after inactivity)
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 'Content-Type': 'application/json', 'X-Client-Platform': CLIENT_PLATFORM },
 });
 
 // ── Request interceptor — attach access token ──────────────────────────────
@@ -82,7 +87,7 @@ apiClient.interceptors.response.use(
       const { data } = await axios.post(
         `${Config.API_BASE_URL}/auth/refresh`,
         {},
-        { headers: { Authorization: `Bearer ${refreshToken}` } },
+        { headers: { Authorization: `Bearer ${refreshToken}`, 'X-Client-Platform': CLIENT_PLATFORM } },
       );
       const newAccess: string  = data.accessToken;
       const newRefresh: string = data.refreshToken;

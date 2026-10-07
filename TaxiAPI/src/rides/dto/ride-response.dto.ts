@@ -26,8 +26,11 @@ export class RideResponseDto {
   startedAt: Date | null;
   completedAt: Date | null;
   cancelledAt: Date | null;
+  /** 'client' | 'driver' | 'super_admin' | 'company' | 'system' (auto-cancelled by the dispatcher) | null */
   cancelledBy: string | null;
   cancelReason: string | null;
+  /** Booked by a demo / reviewer account (DEMO_ACCOUNT_PHONES). */
+  isTest: boolean;
   paymentStatus: string;
   /** 'cash' | 'card' | null — derived from stripePaymentIntentId + paymentStatus. */
   paymentMethod: 'cash' | 'card' | null;
