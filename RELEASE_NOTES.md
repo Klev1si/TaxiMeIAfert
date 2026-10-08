@@ -1,5 +1,85 @@
 # Release Notes
 
+## 1.98 (Android versionCode 111 · iOS build auto-set in Codemagic)
+
+Admin panel in the app gets a **Rides** screen (Profile → Rides, or "View all
+rides" on the Dashboard) with status filters, a TEST badge for demo / App
+Review bookings, the IP and device each booking came from, and who cancelled
+it. Rides cancelled automatically because no driver was found now say
+"System (automatic)" instead of "Driver". The app sends its platform
+(e.g. "ios 18.1") so admins can see which device signed in. Fixes screens
+that showed raw text keys (e.g. the admin tariff editor title, promo code
+form, Android location-permission buttons).
+
+Backend (PR #24) must be deployed with its migration before this build.
+
+### Store "What's New"
+
+#### English (en)
+
+**Google Play**
+
+> Clearer cancellation info on your rides, admin improvements and bug fixes.
+
+**App Store**
+
+> New in 1.98
+> • Rides cancelled because no driver was available now show as cancelled by the system.
+> • Improvements for administrators.
+> • Bug fixes and missing translations.
+
+#### Albanian (sq)
+
+**Google Play**
+
+> Informacion më i qartë për anulimet e udhëtimeve, përmirësime për administratorët dhe rregullime gabimesh.
+
+**App Store**
+
+> E re në 1.98
+> • Udhëtimet e anuluara sepse nuk kishte shofer të lirë tani shfaqen si të anuluara nga sistemi.
+> • Përmirësime për administratorët.
+> • Rregullime gabimesh dhe përkthime që mungonin.
+
+#### Spanish (es)
+
+**Google Play**
+
+> Información más clara sobre las cancelaciones de viajes, mejoras para administradores y corrección de errores.
+
+**App Store**
+
+> Novedades en la 1.98
+> • Los viajes cancelados por falta de conductores ahora aparecen como cancelados por el sistema.
+> • Mejoras para administradores.
+> • Corrección de errores y traducciones que faltaban.
+
+#### French (fr)
+
+**Google Play**
+
+> Informations plus claires sur l'annulation des courses, améliorations pour les administrateurs et corrections de bugs.
+
+**App Store**
+
+> Nouveautés de la 1.98
+> • Les courses annulées faute de chauffeur disponible apparaissent désormais comme annulées par le système.
+> • Améliorations pour les administrateurs.
+> • Corrections de bugs et traductions manquantes.
+
+#### Turkish (tr)
+
+**Google Play**
+
+> Yolculuk iptalleri hakkında daha net bilgi, yöneticiler için iyileştirmeler ve hata düzeltmeleri.
+
+**App Store**
+
+> 1.98'de yenilikler
+> • Müsait sürücü olmadığı için iptal edilen yolculuklar artık sistem tarafından iptal edildi olarak gösteriliyor.
+> • Yöneticiler için iyileştirmeler.
+> • Hata düzeltmeleri ve eksik çeviriler.
+
 ## 1.97 (Android versionCode 110 · iOS build auto-set in Codemagic)
 
 Fixes driver balances that could go negative after a payout. The admin
