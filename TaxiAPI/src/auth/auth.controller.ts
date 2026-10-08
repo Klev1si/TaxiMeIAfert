@@ -37,6 +37,7 @@ import { AuthTokensDto } from './dto/auth-tokens.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { ReqMeta, type RequestMeta } from '../common/decorators/request-meta.decorator';
 import { Client, Company, Driver, User } from '../entities';
 
 // ── Avatar upload config ──────────────────────────────────────────────────────
@@ -224,8 +225,8 @@ export class AuthController {
   @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.OK)
   @Throttle({ strict: { limit: 10, ttl: 60_000 } })
-  login(@Body() dto: LoginDto): Promise<AuthTokensDto> {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @ReqMeta() meta: RequestMeta): Promise<AuthTokensDto> {
+    return this.authService.login(dto, meta);
   }
 
   // POST /auth/google — exchange a Google ID token for our JWTs.
@@ -234,8 +235,8 @@ export class AuthController {
   @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.OK)
   @Throttle({ strict: { limit: 10, ttl: 60_000 } })
-  googleSignIn(@Body('idToken') idToken: string): Promise<AuthTokensDto> {
-    return this.authService.googleSignIn(idToken);
+  googleSignIn(@Body('idToken') idToken: string, @ReqMeta() meta: RequestMeta): Promise<AuthTokensDto> {
+    return this.authService.googleSignIn(idToken, meta);
   }
 
   // POST /auth/apple — exchange an Apple identity token for our JWTs.
@@ -245,16 +246,16 @@ export class AuthController {
   @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.OK)
   @Throttle({ strict: { limit: 10, ttl: 60_000 } })
-  appleSignIn(@Body() dto: AppleSignInDto): Promise<AuthTokensDto> {
-    return this.authService.appleSignIn(dto.identityToken, dto.firstName, dto.lastName);
+  appleSignIn(@Body() dto: AppleSignInDto, @ReqMeta() meta: RequestMeta): Promise<AuthTokensDto> {
+    return this.authService.appleSignIn(dto.identityToken, dto.firstName, dto.lastName, meta);
   }
 
   // POST /auth/refresh  — requires valid refresh token in Authorization header
   @Post('refresh')
   @UseGuards(JwtRefreshGuard)
   @HttpCode(HttpStatus.OK)
-  refresh(@CurrentUser() user: User): Promise<AuthTokensDto> {
-    return this.authService.refresh(user);
+  refresh(@CurrentUser() user: User, @ReqMeta() meta: RequestMeta): Promise<AuthTokensDto> {
+    return this.authService.refresh(user, meta);
   }
 
   // POST /auth/logout  — requires valid access token

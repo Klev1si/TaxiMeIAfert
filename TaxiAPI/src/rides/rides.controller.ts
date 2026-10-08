@@ -27,6 +27,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { UserRole, VehicleType } from '../common/enums/index.js';
+import { ReqMeta, type RequestMeta } from '../common/decorators/request-meta.decorator.js';
 
 class CompleteRideDto {
   @IsNumber() @Min(0) @IsOptional() @Type(() => Number)
@@ -186,8 +187,9 @@ export class RidesController {
   requestRide(
     @Request() req: { user: { id: string } },
     @Body() dto: RequestRideDto,
+    @ReqMeta() meta: RequestMeta,
   ): Promise<RideResponseDto> {
-    return this.ridesService.requestRide(req.user.id, dto);
+    return this.ridesService.requestRide(req.user.id, dto, meta);
   }
 
   // ── POST /rides/:id/accept ─────────────────────────────────────────────────

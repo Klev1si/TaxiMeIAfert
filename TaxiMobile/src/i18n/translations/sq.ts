@@ -1556,6 +1556,8 @@ export default {
       cancelledBy:          'Anuluar nga',
       cancelledByPassenger: 'Pasagjeri',
       cancelledByDriver:    'Shoferi',
+      cancelledBySystem:    'Sistemi (automatikisht)',
+      cancelledByAdmin:     'Administrata',
       reasonLabel:          'Arsyeja',
       ratingsSection:       'Vlerësimet',
       driverRated:          'Shoferi vlerësoi',

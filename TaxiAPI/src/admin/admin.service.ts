@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere, In, DataSource } from 'typeorm';
-import { Client, Company, Driver, Ride, User } from '../entities';
+import { Client, Company, Driver, LoginEvent, Ride, User } from '../entities';
 import { RideStatus, UserRole } from '../common/enums';
 import { GpsService } from '../gps/gps.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -29,6 +29,7 @@ export class AdminService {
     @InjectRepository(Client)  private readonly clientRepo:  Repository<Client>,
     @InjectRepository(Company) private readonly companyRepo: Repository<Company>,
     @InjectRepository(User)    private readonly userRepo:    Repository<User>,
+    @InjectRepository(LoginEvent) private readonly loginEventRepo: Repository<LoginEvent>,
     private readonly gpsService:           GpsService,
     private readonly notificationsService: NotificationsService,
     private readonly auditService:         AuditService,
@@ -41,9 +42,10 @@ export class AdminService {
       totalRides, completedRides, cancelledRides,
       activeDrivers, pendingDrivers, totalClients, totalCompanies,
     ] = await Promise.all([
-      this.rideRepo.count(),
-      this.rideRepo.count({ where: { status: RideStatus.COMPLETED } }),
-      this.rideRepo.count({ where: { status: RideStatus.CANCELLED } }),
+      // Demo / reviewer bookings (isTest) are not real demand — keep them out.
+      this.rideRepo.count({ where: { isTest: false } }),
+      this.rideRepo.count({ where: { status: RideStatus.COMPLETED, isTest: false } }),
+      this.rideRepo.count({ where: { status: RideStatus.CANCELLED, isTest: false } }),
       this.driverRepo.count({ where: { isApproved: true } }),
       this.driverRepo.count({ where: { isApproved: false } }),
       this.clientRepo.count(),
@@ -270,6 +272,12 @@ export class AdminService {
       take: 10,
     });
 
+    const recentLogins = await this.loginEventRepo.find({
+      where: { userId: client.userId },
+      order: { createdAt: 'DESC' },
+      take: 20,
+    });
+
     const authProvider: 'google' | 'apple' | 'phone' =
       user?.googleSub ? 'google' : user?.appleSub ? 'apple' : 'phone';
 
@@ -296,6 +304,17 @@ export class AdminService {
         totalFare:     r.totalFare != null ? Number(r.totalFare) : null,
         paymentStatus: r.paymentStatus,
         createdAt:     r.createdAt,
+        isTest:        r.isTest,
+        requestIp:     r.requestIp,
+        requestDevice: r.requestDevice,
+      })),
+      recentLogins: recentLogins.map(e => ({
+        id:             e.id,
+        method:         e.method,
+        ip:             e.forwardedFor?.split(',')[0]?.trim() || e.ip,
+        userAgent:      e.userAgent,
+        clientPlatform: e.clientPlatform,
+        createdAt:      e.createdAt,
       })),
     };
   }
@@ -586,6 +605,10 @@ export class AdminService {
       pickupLng:      Number(r.pickupLng),
       paymentStatus:  r.paymentStatus,
       cancelReason:   r.cancelReason,
+      cancelledBy:    r.cancelledBy ?? (r.status === RideStatus.CANCELLED ? 'system' : null),
+      isTest:         r.isTest,
+      requestIp:      r.requestIp,
+      requestDevice:  r.requestDevice,
       driverRating:   r.driverRating,
       clientRating:   r.clientRating,
       totalFare:      r.totalFare      != null ? Number(r.totalFare)      : null,

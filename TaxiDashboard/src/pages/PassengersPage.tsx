@@ -26,6 +26,18 @@ interface RecentRide {
   totalFare: number | null;
   paymentStatus: string;
   createdAt: string;
+  isTest?: boolean;
+  requestIp?: string | null;
+  requestDevice?: string | null;
+}
+
+interface LoginEvent {
+  id: string;
+  method: 'password' | 'google' | 'apple' | 'register' | 'refresh';
+  ip: string | null;
+  userAgent: string | null;
+  clientPlatform: string | null;
+  createdAt: string;
 }
 
 interface ClientDetail extends Client {
@@ -33,9 +45,18 @@ interface ClientDetail extends Client {
   authProvider: 'google' | 'apple' | 'phone';
   accountCreatedAt: string | null;
   recentRides: RecentRide[];
+  recentLogins?: LoginEvent[];
 }
 
 const LIMIT = 20;
+
+const LOGIN_METHOD_LABEL: Record<LoginEvent['method'], string> = {
+  password: 'Sign-in',
+  google:   'Google sign-in',
+  apple:    'Apple sign-in',
+  register: 'Sign-up',
+  refresh:  'Session refresh',
+};
 
 const PROVIDER_LABEL: Record<ClientDetail['authProvider'], string> = {
   google: 'Google',
@@ -151,7 +172,10 @@ function PassengerDetailPanel({ clientId, onClose }: { clientId: string; onClose
                   {detail.recentRides.map(r => (
                     <li key={r.id} className="border border-gray-100 rounded-lg px-3 py-2 text-sm">
                       <div className="flex items-center justify-between gap-2">
-                        <StatusBadge label={r.status.replace(/_/g, ' ')} variant={rideStatusVariant(r.status)} />
+                        <span className="flex items-center gap-1.5">
+                          <StatusBadge label={r.status.replace(/_/g, ' ')} variant={rideStatusVariant(r.status)} />
+                          {r.isTest && <StatusBadge label="TEST" variant="gray" />}
+                        </span>
                         <span className="text-xs text-gray-400 whitespace-nowrap">
                           {new Date(r.createdAt).toLocaleDateString()}
                         </span>
@@ -159,12 +183,40 @@ function PassengerDetailPanel({ clientId, onClose }: { clientId: string; onClose
                       <p className="text-gray-600 text-xs mt-1.5 truncate" title={`${r.pickupAddress ?? '—'} → ${r.dropoffAddress ?? '—'}`}>
                         {r.pickupAddress ?? '—'} → {r.dropoffAddress ?? '—'}
                       </p>
+                      {(r.requestIp || r.requestDevice) && (
+                        <p className="text-[11px] text-gray-400 mt-0.5 truncate" title={r.requestDevice ?? ''}>
+                          Booked from {r.requestIp ?? '?'}{r.requestDevice ? ` · ${r.requestDevice}` : ''}
+                        </p>
+                      )}
                       {r.totalFare != null && (
                         <p className="text-xs text-gray-900 font-semibold mt-0.5">
                           ${r.totalFare.toFixed(2)}
                           <span className="ml-1 font-normal text-gray-400">· {r.paymentStatus}</span>
                         </p>
                       )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Recent sign-ins — which device / network used this account */}
+            <div>
+              <h4 className="font-semibold text-gray-900 text-sm mb-2">Recent sign-ins</h4>
+              {!detail.recentLogins || detail.recentLogins.length === 0 ? (
+                <p className="text-sm text-gray-400">None recorded yet.</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {detail.recentLogins.map(e => (
+                    <li key={e.id} className="border border-gray-100 rounded-lg px-3 py-1.5 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-gray-700">{LOGIN_METHOD_LABEL[e.method] ?? e.method}</span>
+                        <span className="text-gray-400 whitespace-nowrap">{new Date(e.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="text-gray-500 mt-0.5 truncate" title={e.userAgent ?? ''}>
+                        <span className="font-mono">{e.ip ?? '—'}</span>
+                        {' · '}{e.clientPlatform ?? e.userAgent ?? 'unknown device'}
+                      </p>
                     </li>
                   ))}
                 </ul>

@@ -20,6 +20,11 @@ interface Ride {
   dropoffAddress: string | null;
   paymentStatus: string;
   cancelReason: string | null;
+  /** Admin endpoint only. 'system' = auto-cancelled by the dispatcher. */
+  cancelledBy?: string | null;
+  isTest?: boolean;
+  requestIp?: string | null;
+  requestDevice?: string | null;
   driverRating: number | null;
   totalFare: number | null;
   discountAmount: number | null;
@@ -286,10 +291,17 @@ export default function RidesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <StatusBadge
-                      label={r.status.replace(/_/g, ' ')}
-                      variant={rideStatusVariant(r.status)}
-                    />
+                    <div className="flex flex-col items-start gap-1">
+                      <StatusBadge
+                        label={r.status.replace(/_/g, ' ')}
+                        variant={rideStatusVariant(r.status)}
+                      />
+                      {r.isTest && (
+                        <span title="Booked by a demo / App Review account (DEMO_ACCOUNT_PHONES)">
+                          <StatusBadge label="TEST" variant="gray" />
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 max-w-[160px]">
                     {r.clientName ? (
@@ -299,6 +311,11 @@ export default function RidesPage() {
                         </span>
                         {r.clientPhone && (
                           <span className="text-xs text-gray-400 truncate">{r.clientPhone}</span>
+                        )}
+                        {r.requestIp && (
+                          <span className="text-[11px] text-gray-400 font-mono truncate" title={r.requestDevice ?? ''}>
+                            {r.requestIp}
+                          </span>
                         )}
                       </div>
                     ) : (
@@ -337,6 +354,9 @@ export default function RidesPage() {
                     {r.driverRating != null ? `⭐ ${r.driverRating}` : '—'}
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs max-w-[140px]">
+                    {r.cancelledBy && (
+                      <p className="not-italic text-gray-400">by {r.cancelledBy === 'super_admin' ? 'admin' : r.cancelledBy}</p>
+                    )}
                     <p className="truncate italic" title={r.cancelReason ?? ''}>{r.cancelReason ?? '—'}</p>
                   </td>
                   {!isAdmin && (

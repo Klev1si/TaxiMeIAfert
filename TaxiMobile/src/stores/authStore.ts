@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 import Config from '../config';
 import { authApi } from '../api/auth';
+import { CLIENT_PLATFORM } from '../api/client';
 import { socketService } from '../services/socket';
 import { crash } from '../services/crashlytics';
 import { track } from '../services/analytics';
@@ -156,7 +157,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { data } = await axios.post(
       `${Config.API_BASE_URL}/auth/refresh`,
       {},
-      { headers: { Authorization: `Bearer ${refreshToken}` } },
+      { headers: { Authorization: `Bearer ${refreshToken}`, 'X-Client-Platform': CLIENT_PLATFORM } },
     );
     const accessToken: string = data.accessToken;
     const newRefresh: string = data.refreshToken;

@@ -26,3 +26,4 @@ export * from './subscription-notification.entity';
 export * from './intercity-route.entity';
 export * from './admin-notification.entity';
 export * from './engagement-notification.entity';
+export * from './login-event.entity';

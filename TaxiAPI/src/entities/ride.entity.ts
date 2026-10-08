@@ -159,6 +159,18 @@ export class Ride {
   @Column({ type: 'timestamptz', name: 'scheduled_at', nullable: true })
   scheduledAt: Date | null;
 
+  /** Booked by a demo / reviewer account (DEMO_ACCOUNT_PHONES) — not real demand. */
+  @Column({ type: 'boolean', name: 'is_test', default: false })
+  isTest: boolean;
+
+  /** Network the booking request came from (first X-Forwarded-For hop, else socket). */
+  @Column({ type: 'varchar', name: 'request_ip', length: 64, nullable: true })
+  requestIp: string | null;
+
+  /** Device that sent the booking: X-Client-Platform, else User-Agent. */
+  @Column({ type: 'varchar', name: 'request_device', length: 300, nullable: true })
+  requestDevice: string | null;
+
   // Timestamps
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

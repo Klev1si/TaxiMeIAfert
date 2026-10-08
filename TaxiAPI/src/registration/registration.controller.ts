@@ -5,6 +5,7 @@ import { RegisterClientDto } from './dto/register-client.dto.js';
 import { RegisterDriverDto } from './dto/register-driver.dto.js';
 import { RegisterCompanyDto } from './dto/register-company.dto.js';
 import { AuthTokensDto } from '../auth/dto/auth-tokens.dto.js';
+import { ReqMeta, type RequestMeta } from '../common/decorators/request-meta.decorator.js';
 
 // All registration endpoints share the strict throttle:
 // max 5 accounts per minute per IP — prevents mass account creation
@@ -18,8 +19,8 @@ export class RegistrationController {
   // Phone must be verified first. Auto-approves → returns JWT tokens.
   @Post('client')
   @HttpCode(HttpStatus.CREATED)
-  registerClient(@Body() dto: RegisterClientDto): Promise<AuthTokensDto> {
-    return this.registrationService.registerClient(dto);
+  registerClient(@Body() dto: RegisterClientDto, @ReqMeta() meta: RequestMeta): Promise<AuthTokensDto> {
+    return this.registrationService.registerClient(dto, meta);
   }
 
   // POST /auth/register/driver

@@ -31,6 +31,8 @@ import { RequestRideDto } from './dto/request-ride.dto.js';
 import { RideResponseDto, RideStopResponseDto, TariffSnapshotDto } from './dto/ride-response.dto.js';
 import { CancelRideDto } from './dto/cancel-ride.dto.js';
 import { RateRideDto } from './dto/rate-ride.dto.js';
+import { publicIp, RequestMeta } from '../common/decorators/request-meta.decorator.js';
+import { isDemoPhone } from '../common/demo-accounts.js';
 
 /** Seconds a driver has to respond before their pending slot expires */
 const PENDING_TTL_SECONDS = 60;
@@ -273,6 +275,7 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
           if (clientUser) {
             this.gatewayService.emitToUser(clientUser.id, 'ride_cancelled', {
               rideId: ride.id,
+              cancelledBy: 'system',
               reason: ride.cancelReason,
             });
             await this.notificationsService.sendToToken(clientUser.fcmToken, {
@@ -714,7 +717,7 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
   // ─────────────────────────────────────────────────────────────────────────────
   // Step 18: POST /rides/request  (CLIENT only)
   // ─────────────────────────────────────────────────────────────────────────────
-  async requestRide(clientUserId: string, dto: RequestRideDto): Promise<RideResponseDto> {
+  async requestRide(clientUserId: string, dto: RequestRideDto, meta?: RequestMeta): Promise<RideResponseDto> {
     // 1. Resolve client record
     const client = await this.clientRepo.findOne({ where: { userId: clientUserId } });
     if (!client) throw new NotFoundException('Client profile not found');
@@ -833,6 +836,9 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       scheduledAt,
       promoCode: appliedPromo?.code ?? null,
       discountAmount,
+      isTest:        isDemoPhone(bookingUser.phone),
+      requestIp:     meta ? publicIp(meta) : null,
+      requestDevice: meta?.clientPlatform ?? meta?.userAgent ?? null,
     });
     const savedRide = await this.rideRepo.save(ride);
 
@@ -1082,6 +1088,7 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       if (clientUser) {
         this.gatewayService.emitToUser(clientUser.id, 'ride_cancelled', {
           rideId,
+          cancelledBy: 'system',
           reason: 'No available drivers',
         });
         await this.notificationsService.sendToToken(clientUser.fcmToken, {
@@ -2920,8 +2927,12 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       startedAt: ride.startedAt,
       completedAt: ride.completedAt,
       cancelledAt: ride.cancelledAt,
-      cancelledBy: ride.cancelledBy,
+      // Null on a cancelled ride means no person cancelled it: the dispatcher
+      // gave up (no drivers / scheduled-ride grace period expired).
+      cancelledBy: ride.cancelledBy
+        ?? (ride.status === RideStatus.CANCELLED ? 'system' : null),
       cancelReason: ride.cancelReason,
+      isTest: ride.isTest,
       paymentStatus: ride.paymentStatus,
       // Derive paymentMethod from Stripe state — the canonical paymentMethod
       // lives on driver_ledger but for DTO consumers a quick read off
