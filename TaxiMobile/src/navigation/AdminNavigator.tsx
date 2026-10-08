@@ -24,6 +24,7 @@ import AdminPayoutsScreen           from '../screens/admin/AdminPayoutsScreen';
 import AdminFinancesScreen          from '../screens/admin/AdminFinancesScreen';
 import AdminAuditLogsScreen         from '../screens/admin/AdminAuditLogsScreen';
 import AdminFraudEventsScreen       from '../screens/admin/AdminFraudEventsScreen';
+import AdminRidesScreen             from '../screens/admin/AdminRidesScreen';
 
 const Tab          = createBottomTabNavigator<AdminTabParamList>();
 const DriversStack = createNativeStackNavigator<AdminDriverStackParamList>();
@@ -50,6 +51,7 @@ function AdminProfileNavigator() {
       <ProfileStack.Screen name="AdminFinances"      component={AdminFinancesScreen}          />
       <ProfileStack.Screen name="AdminAuditLogs"    component={AdminAuditLogsScreen}         />
       <ProfileStack.Screen name="AdminFraudEvents"  component={AdminFraudEventsScreen}       />
+      <ProfileStack.Screen name="AdminRides"        component={AdminRidesScreen}             />
     </ProfileStack.Navigator>
   );
 }

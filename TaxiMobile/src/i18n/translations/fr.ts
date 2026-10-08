@@ -30,6 +30,13 @@ export default {
     companies:    'Sociétés',
   },
   common: {
+    eg:          'ex.',
+    minChars:    '6 caractères min.',
+    colorWhite:  'Blanc',
+    create:        'Créer',
+    allow:         'Autoriser',
+    deny:          'Refuser',
+    notAvailable:  'Non disponible',
     save:          'Enregistrer',
     cancel:        'Annuler',
     ok:            'OK',
@@ -560,6 +567,8 @@ export default {
     },
 
     activeRide: {
+      stopReached:    'Atteint à {time}',
+      markStopLabel:  "Marquer l'arrêt {n} comme atteint",
       statusRequested:      'Demandé',
       statusAccepted:       'Accepté — en route vers la prise en charge',
       statusArrivedAlt:     'En route vers la prise en charge',
@@ -684,6 +693,7 @@ export default {
     },
 
     expenses: {
+      descriptionPlaceholder:  'ex. Plein à la station Shell',
       title:           'Dépenses',
       addBtn:          '+ Ajouter',
       totalLabel:      'Dépenses totales',
@@ -1289,6 +1299,16 @@ export default {
     },
 
     globalTariffs: {
+      newTariffTitle:      'Nouveau tarif',
+      editTariffTitle:     'Modifier le tarif',
+      nameRequired:        'Le nom du tarif est obligatoire',
+      baseFareInvalid:     'Le tarif de base doit être un nombre ≥ 0',
+      perKmInvalid:        'Le tarif au km doit être un nombre ≥ 0',
+      perMinuteInvalid:    'Le tarif à la minute doit être un nombre ≥ 0',
+      minimumFareInvalid:  'Le tarif minimum doit être un nombre ≥ 0',
+      nightStartInvalid:   "L'heure de début de nuit doit être entre 0 et 23",
+      nightEndInvalid:     "L'heure de fin de nuit doit être entre 0 et 23",
+      saveError:           "Impossible d'enregistrer le tarif. Réessayez.",
       title:          'Tarifs globaux',
       addBtn:         '+ Nouveau',
       editBtn:        'Modifier',
@@ -1423,6 +1443,17 @@ export default {
     },
 
     promoCodes: {
+      codeFieldLabel:          'Code',
+      descriptionLabel:        'Description (facultatif)',
+      descriptionPlaceholder:  "ex. Promotion d'été",
+      discountTypeLabel:       'Type de remise',
+      typeFlat:                'Montant fixe',
+      typePercent:             'Pourcentage',
+      discountValueLabel:      'Valeur de la remise',
+      maxDiscountLabel:        'Remise maximale ($)',
+      minFareFieldLabel:       'Tarif minimum ($)',
+      maxUsesFieldLabel:       'Utilisations maximales',
+      expiryFieldLabel:        "Date d'expiration (AAAA-MM-JJ)",
       title:          'Codes promo',
       addBtn:         '+ Nouveau',
       editBtn:        'Modifier',
@@ -1445,6 +1476,31 @@ export default {
       expiryInvalid:       'La date d\'expiration doit être YYYY-MM-DD',
     },
 
+    rides: {
+      title:                     'Courses',
+      viewAll:                   'Voir toutes les courses',
+      emptyMsg:                  'Aucune course trouvée.',
+      loadError:                 'Impossible de charger les courses.',
+      filterAll:                 'Toutes',
+      status_requested:          'Demandée',
+      status_accepted:           'Acceptée',
+      status_driving_to_pickup:  'Vers la prise en charge',
+      status_in_progress:        'En cours',
+      status_completed:          'Terminée',
+      status_cancelled:          'Annulée',
+      testBadge:                 'Test',
+      noDropoff:                 'Sans destination',
+      scheduledFor:              'Prévue pour {time}',
+      cancelledBy:               'Annulée par {who}',
+      byClient:                  'passager',
+      byDriver:                  'chauffeur',
+      byAdmin:                   'administration',
+      bySystem:                  'système (automatique)',
+      bookedFrom:                'Réservée depuis',
+      rideId:                    'ID de la course',
+      coords:                    'Coordonnées de prise en charge',
+    },
+
     auditLogs: {
       title:             "Journaux d'audit",
       searchPlaceholder: 'Rechercher dans les journaux…',
@@ -1463,6 +1519,7 @@ export default {
     },
 
     support: {
+      replyPlaceholder:  'Écrivez une réponse…',
       title:             'Tickets de support',
       searchPlaceholder: 'Rechercher des tickets…',
       emptyMsg:          'Aucun ticket de support trouvé.',

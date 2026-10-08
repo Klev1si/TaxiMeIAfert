@@ -31,6 +31,10 @@ export default {
     companies:    'Kompanitë',
   },
   common: {
+    create:        'Krijo',
+    allow:         'Lejo',
+    deny:          'Refuzo',
+    notAvailable:  'Nuk është i disponueshëm',
     eg:            'p.sh.',
     minChars:      'Min. 6 karaktere',
     colorWhite:    'E bardhë',
@@ -564,6 +568,8 @@ export default {
     },
 
     activeRide: {
+      stopReached:    'U arrit në {time}',
+      markStopLabel:  'Shëno ndalesën {n} si të arritur',
       statusRequested:        'Kërkuar',
       statusAccepted:         'Pranuar — duke shkuar te pikëmarrja',
       statusArrivedAlt:       'Duke udhëtuar te pikëmarrja',
@@ -1298,6 +1304,16 @@ export default {
     },
 
     globalTariffs: {
+      newTariffTitle:      'Tarifë e re',
+      editTariffTitle:     'Ndrysho tarifën',
+      nameRequired:        'Emri i tarifës është i detyrueshëm',
+      baseFareInvalid:     'Tarifa bazë duhet të jetë numër ≥ 0',
+      perKmInvalid:        'Çmimi për km duhet të jetë numër ≥ 0',
+      perMinuteInvalid:    'Çmimi për minutë duhet të jetë numër ≥ 0',
+      minimumFareInvalid:  'Tarifa minimale duhet të jetë numër ≥ 0',
+      nightStartInvalid:   'Ora e fillimit të natës duhet të jetë nga 0 deri në 23',
+      nightEndInvalid:     'Ora e mbarimit të natës duhet të jetë nga 0 deri në 23',
+      saveError:           'Tarifa nuk u ruajt. Provoni sërish.',
       title:          'Tarifat globale',
       addBtn:         '+ E re',
       editBtn:        'Ndrysho',
@@ -1432,6 +1448,17 @@ export default {
     },
 
     promoCodes: {
+      codeFieldLabel:          'Kodi',
+      descriptionLabel:        'Përshkrimi (opsional)',
+      descriptionPlaceholder:  'p.sh. Promocion veror',
+      discountTypeLabel:       'Lloji i zbritjes',
+      typeFlat:                'Shumë fikse',
+      typePercent:             'Përqindje',
+      discountValueLabel:      'Vlera e zbritjes',
+      maxDiscountLabel:        'Zbritja maksimale ($)',
+      minFareFieldLabel:       'Tarifa minimale ($)',
+      maxUsesFieldLabel:       'Përdorime maksimale',
+      expiryFieldLabel:        'Data e skadimit (VVVV-MM-DD)',
       title:          'Kodet promovuese',
       addBtn:         '+ E re',
       editBtn:        'Ndrysho',
@@ -1454,6 +1481,31 @@ export default {
       expiryInvalid:       'Data e skadimit duhet të jetë YYYY-MM-DD',
     },
 
+    rides: {
+      title:                     'Udhëtimet',
+      viewAll:                   'Shiko të gjitha udhëtimet',
+      emptyMsg:                  'Nuk u gjet asnjë udhëtim.',
+      loadError:                 'Udhëtimet nuk u ngarkuan.',
+      filterAll:                 'Të gjitha',
+      status_requested:          'Kërkuar',
+      status_accepted:           'Pranuar',
+      status_driving_to_pickup:  'Drejt pikëmarrjes',
+      status_in_progress:        'Në udhëtim',
+      status_completed:          'Përfunduar',
+      status_cancelled:          'Anuluar',
+      testBadge:                 'Test',
+      noDropoff:                 'Pa destinacion',
+      scheduledFor:              'Planifikuar për {time}',
+      cancelledBy:               'Anuluar nga {who}',
+      byClient:                  'pasagjeri',
+      byDriver:                  'shoferi',
+      byAdmin:                   'administrata',
+      bySystem:                  'sistemi (automatikisht)',
+      bookedFrom:                'Rezervuar nga',
+      rideId:                    'ID e udhëtimit',
+      coords:                    'Koordinatat e pikëmarrjes',
+    },
+
     auditLogs: {
       title:             'Regjistrat e auditimit',
       searchPlaceholder: 'Kërkoni në regjistër…',
@@ -1472,6 +1524,7 @@ export default {
     },
 
     support: {
+      replyPlaceholder:  'Shkruani një përgjigje…',
       title:             'Biletat e mbështetjes',
       searchPlaceholder: 'Kërkoni bileta…',
       emptyMsg:          'Asnjë biletë mbështetjeje nuk u gjet.',

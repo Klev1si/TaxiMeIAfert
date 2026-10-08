@@ -15,6 +15,7 @@ import { useColors } from '../../stores/themeStore';
 import type { ColorPalette } from '../../constants/colors';
 import { adminApi, type AdminStats, type Analytics, type TopDriver } from '../../api/admin';
 import { useTranslation } from '../../i18n';
+import type { AdminTabScreenProps } from '../../navigation/types';
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
 
@@ -100,7 +101,7 @@ function AnalyticsSection({ data, colors }: { data: Analytics; colors: ColorPale
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
-export default function AdminDashboardScreen() {
+export default function AdminDashboardScreen({ navigation }: AdminTabScreenProps<'AdminDashboard'>) {
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
@@ -157,6 +158,13 @@ export default function AdminDashboardScreen() {
                   <StatCard label={t('admin.dashboard.statClients')}          value={stats.totalClients}    colors={colors} />
                   <StatCard label={t('admin.dashboard.statCompanies')}        value={stats.totalCompanies}  colors={colors} />
                 </View>
+                <TouchableOpacity
+                  style={styles.ridesLink}
+                  onPress={() => navigation.navigate('AdminProfile', { screen: 'AdminRides' })}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('admin.rides.viewAll')}>
+                  <Text style={styles.ridesLinkText}>🚕  {t('admin.rides.viewAll')} →</Text>
+                </TouchableOpacity>
               </>
             )}
 
@@ -194,6 +202,11 @@ function getStyles(c: ColorPalette) {
 
     title: { fontSize: 26, fontWeight: '800', color: c.text, marginBottom: 20 },
 
+    ridesLink: {
+      backgroundColor: c.surface, borderRadius: 12, borderWidth: 1, borderColor: c.border,
+      paddingVertical: 12, paddingHorizontal: 14, marginBottom: 20, marginTop: -4,
+    },
+    ridesLinkText: { fontSize: 14, fontWeight: '700', color: c.primary },
     sectionLabel: {
       fontSize: 12, fontWeight: '700', color: c.textSecondary,
       letterSpacing: 0.8, textTransform: 'uppercase',

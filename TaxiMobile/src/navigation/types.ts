@@ -1,5 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { Ride } from '../types/api';
 // (Ride imported above — used for RideDetail params in both history stacks)
 
@@ -116,7 +117,7 @@ export type AdminTabParamList = {
   AdminCompanies:  undefined;
   AdminPromos:     undefined;
   AdminSupport:    undefined;
-  AdminProfile:    undefined;
+  AdminProfile:    NavigatorScreenParams<AdminProfileStackParamList> | undefined;
 };
 
 export type AdminTabScreenProps<T extends keyof AdminTabParamList> =
@@ -140,6 +141,7 @@ export type AdminProfileStackParamList = {
   AdminFinances:        undefined;
   AdminAuditLogs:       undefined;
   AdminFraudEvents:     undefined;
+  AdminRides:           undefined;
 };
 
 export type AdminProfileStackScreenProps<T extends keyof AdminProfileStackParamList> =

@@ -35,6 +35,44 @@ export interface AdminDriver {
   createdAt: string;
 }
 
+export type AdminRideStatusFilter =
+  | 'all' | 'requested' | 'accepted' | 'driving_to_pickup' | 'in_progress' | 'completed' | 'cancelled';
+
+export interface AdminRide {
+  id: string;
+  status: string;
+  clientId: string;
+  clientName: string | null;
+  clientPhone: string | null;
+  driverId: string | null;
+  pickupAddress: string | null;
+  dropoffAddress: string | null;
+  pickupLat: number;
+  pickupLng: number;
+  paymentStatus: string;
+  cancelReason: string | null;
+  /** 'client' | 'driver' | 'super_admin' | 'company' | 'system' (auto-cancelled) */
+  cancelledBy?: string | null;
+  /** Booked by a demo / App Review account (DEMO_ACCOUNT_PHONES). */
+  isTest?: boolean;
+  requestIp?: string | null;
+  requestDevice?: string | null;
+  driverRating: number | null;
+  clientRating: number | null;
+  totalFare: number | null;
+  discountAmount: number | null;
+  promoCode: string | null;
+  createdAt: string;
+  scheduledAt?: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+}
+
+export interface AdminRidesResponse {
+  rides: AdminRide[];
+  total: number;
+}
+
 export interface AdminDriversResponse {
   drivers: AdminDriver[];
   total: number;
@@ -329,6 +367,10 @@ export const adminApi = {
   /** PATCH /admin/drivers/:id/reject */
   rejectDriver: (id: string, reason?: string) =>
     apiClient.patch<{ message: string }>(`/admin/drivers/${id}/reject`, { reason }),
+
+  /** GET /admin/rides?status=all&page=1&limit=20 */
+  getRides: (status: AdminRideStatusFilter = 'all', page = 1, limit = 20) =>
+    apiClient.get<AdminRidesResponse>('/admin/rides', { params: { status, page, limit } }),
 
   /** GET /admin/clients?page=1&limit=20&search= */
   getClients: (page = 1, limit = 20, search?: string) =>

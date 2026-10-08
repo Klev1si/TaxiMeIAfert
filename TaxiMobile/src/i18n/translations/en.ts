@@ -36,6 +36,10 @@ export default {
     companies:    'Companies',
   },
   common: {
+    create:        'Create',
+    allow:         'Allow',
+    deny:          'Deny',
+    notAvailable:  'Not available',
     eg:             'e.g.',
     minChars:       'Min. 6 characters',
     colorWhite:     'White',
@@ -569,6 +573,8 @@ export default {
     },
 
     activeRide: {
+      stopReached:    'Reached at {time}',
+      markStopLabel:  'Mark stop {n} as reached',
       statusRequested:        'Requested',
       statusAccepted:         'Accepted — heading to pickup',
       statusArrivedAlt:       'Driving to pickup',
@@ -1306,6 +1312,16 @@ export default {
     },
 
     globalTariffs: {
+      newTariffTitle:      'New Tariff',
+      editTariffTitle:     'Edit Tariff',
+      nameRequired:        'Tariff name is required',
+      baseFareInvalid:     'Base fare must be a number ≥ 0',
+      perKmInvalid:        'Per-km rate must be a number ≥ 0',
+      perMinuteInvalid:    'Per-minute rate must be a number ≥ 0',
+      minimumFareInvalid:  'Minimum fare must be a number ≥ 0',
+      nightStartInvalid:   'Night start hour must be between 0 and 23',
+      nightEndInvalid:     'Night end hour must be between 0 and 23',
+      saveError:           'Could not save the tariff. Please try again.',
       title:          'Global Tariffs',
       addBtn:         '+ New',
       editBtn:        'Edit',
@@ -1440,6 +1456,17 @@ export default {
     },
 
     promoCodes: {
+      codeFieldLabel:          'Code',
+      descriptionLabel:        'Description (optional)',
+      descriptionPlaceholder:  'e.g. Summer promotion',
+      discountTypeLabel:       'Discount type',
+      typeFlat:                'Fixed amount',
+      typePercent:             'Percentage',
+      discountValueLabel:      'Discount value',
+      maxDiscountLabel:        'Maximum discount ($)',
+      minFareFieldLabel:       'Minimum fare ($)',
+      maxUsesFieldLabel:       'Maximum uses',
+      expiryFieldLabel:        'Expiry date (YYYY-MM-DD)',
       title:          'Promo Codes',
       addBtn:         '+ New',
       editBtn:        'Edit',
@@ -1462,6 +1489,31 @@ export default {
       expiryInvalid:       'Expiry date must be YYYY-MM-DD',
     },
 
+    rides: {
+      title:                     'Rides',
+      viewAll:                   'View all rides',
+      emptyMsg:                  'No rides found.',
+      loadError:                 'Could not load rides.',
+      filterAll:                 'All',
+      status_requested:          'Requested',
+      status_accepted:           'Accepted',
+      status_driving_to_pickup:  'To pickup',
+      status_in_progress:        'In progress',
+      status_completed:          'Completed',
+      status_cancelled:          'Cancelled',
+      testBadge:                 'Test',
+      noDropoff:                 'No destination',
+      scheduledFor:              'Scheduled for {time}',
+      cancelledBy:               'Cancelled by {who}',
+      byClient:                  'passenger',
+      byDriver:                  'driver',
+      byAdmin:                   'admin',
+      bySystem:                  'system (automatic)',
+      bookedFrom:                'Booked from',
+      rideId:                    'Ride ID',
+      coords:                    'Pickup coordinates',
+    },
+
     auditLogs: {
       title:             'Audit Logs',
       searchPlaceholder: 'Search logs…',
@@ -1480,6 +1532,7 @@ export default {
     },
 
     support: {
+      replyPlaceholder:  'Write a reply…',
       title:             'Support Tickets',
       searchPlaceholder: 'Search tickets…',
       emptyMsg:          'No support tickets found.',
