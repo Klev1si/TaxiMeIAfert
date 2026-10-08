@@ -118,6 +118,12 @@ export default function AdminProfileScreen({ navigation }: Props) {
           />
           <View style={{ height: 1, backgroundColor: colors.border }} />
           <NavRow
+            icon="🚕"
+            label={t('admin.rides.title')}
+            onPress={() => navigation.navigate('AdminRides')}
+          />
+          <View style={{ height: 1, backgroundColor: colors.border }} />
+          <NavRow
             icon="📊"
             label="Platform Finances"
             onPress={() => navigation.navigate('AdminFinances')}

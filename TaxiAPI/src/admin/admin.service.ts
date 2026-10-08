@@ -615,6 +615,7 @@ export class AdminService {
       discountAmount: r.discountAmount != null ? Number(r.discountAmount) : null,
       promoCode:      r.promoCode,
       createdAt:      r.createdAt,
+      scheduledAt:    r.scheduledAt,
       completedAt:    r.completedAt,
       cancelledAt:    r.cancelledAt,
     };
