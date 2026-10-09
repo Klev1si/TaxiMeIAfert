@@ -16,7 +16,7 @@ import {
   Dimensions, Modal, StyleSheet, Text,
   TouchableOpacity, View, FlatList,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation, useI18nStore, type Lang } from '../i18n';
 
@@ -259,6 +259,10 @@ export default function OnboardingTour({ visible, onDone, replay = false }: Prop
 
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={() => void finish()} statusBarTranslucent>
+      {/* Modals render outside the root SafeAreaProvider, so SafeAreaView
+          inside reports 0 insets on iOS and the header slides under the
+          status bar. A provider inside the Modal measures them correctly. */}
+      <SafeAreaProvider>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         {/* Language toggle */}
         <View style={styles.topBar}>
@@ -310,6 +314,7 @@ export default function OnboardingTour({ visible, onDone, replay = false }: Prop
           </Text>
         </TouchableOpacity>
       </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 }

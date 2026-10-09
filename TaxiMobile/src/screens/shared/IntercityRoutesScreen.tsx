@@ -21,7 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { intercityRoutesApi, type IntercityRoute } from '../../api/intercityRoutes';
 import { useColors } from '../../stores/themeStore';
@@ -197,6 +197,10 @@ export default function IntercityRoutesScreen() {
 
       {/* ── Create / Edit modal ─────────────────────────────────────── */}
       <Modal visible={modal !== null} animationType="slide" onRequestClose={() => setModal(null)}>
+        {/* Modals render outside the root SafeAreaProvider, so SafeAreaView
+            inside reports 0 insets on iOS and the header slides under the
+            status bar. A provider inside the Modal measures them correctly. */}
+        <SafeAreaProvider>
         {modal && (
           <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
             <KeyboardAvoidingView
@@ -271,6 +275,7 @@ export default function IntercityRoutesScreen() {
             </KeyboardAvoidingView>
           </SafeAreaView>
         )}
+        </SafeAreaProvider>
       </Modal>
     </SafeAreaView>
   );
