@@ -11,7 +11,7 @@ import {
   Platform, RefreshControl, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   companyMessagesApi,
   type CompanyMessage,
@@ -118,6 +118,10 @@ function CompanyChatThread({
 
   return (
     <Modal visible animationType="slide" onRequestClose={onClose}>
+      {/* Modals render outside the root SafeAreaProvider, so SafeAreaView
+          inside reports 0 insets on iOS and the header slides under the
+          status bar. A provider inside the Modal measures them correctly. */}
+      <SafeAreaProvider>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -179,6 +183,7 @@ function CompanyChatThread({
           </KeyboardAvoidingView>
         )}
       </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 }
@@ -269,6 +274,10 @@ export default function CompanyMessagesScreen({ visible, onClose }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      {/* Modals render outside the root SafeAreaProvider, so SafeAreaView
+          inside reports 0 insets on iOS and the header slides under the
+          status bar. A provider inside the Modal measures them correctly. */}
+      <SafeAreaProvider>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -311,6 +320,7 @@ export default function CompanyMessagesScreen({ visible, onClose }: Props) {
           />
         )}
       </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 }
