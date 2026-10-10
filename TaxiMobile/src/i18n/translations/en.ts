@@ -297,10 +297,27 @@ export default {
       subtitle:  "We need your email so you can reset your password if you ever forget it. We won't send marketing or share it with anyone.",
       saveBtn:   'Save and continue',
       saveError: 'Could not save email.',
+      skipBtn:   'Skip for now',
+      logoutBtn: 'Log out',
     },
   },
 
   client: {
+    completeProfile: {
+      title:             'Complete your profile',
+      intro:             'Enter your real first and last name and your phone number. We will send you a code by SMS to verify it. Drivers use this to identify and contact you.',
+      introNameOnly:     'Enter your real first and last name so drivers know who they are picking up.',
+      firstName:         'First name',
+      lastName:          'Last name',
+      phoneHint:         'Include the country code, e.g. +383 for Kosovo.',
+      invalidNameTitle:  'Invalid name',
+      invalidNameMsg:    'Enter your real first and last name (at least 2 letters each, no numbers).',
+      invalidPhoneMsg:   'Enter the number in international format, e.g. +38344123456.',
+      saveBtn:           'Save and continue',
+      saveError:         'Could not save your profile. Please try again.',
+      changeNumber:      'Change number',
+      logout:            'Log out',
+    },
     addPhone: {
       title:             'Add Your Phone',
       intro:             'Add a phone number so your driver can reach you. We\'ll text you a verification code.',
