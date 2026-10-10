@@ -295,6 +295,21 @@ export default {
   },
 
   client: {
+    completeProfile: {
+      title:             'Complétez votre profil',
+      intro:             'Saisissez vos vrais prénom et nom ainsi que votre numéro de téléphone. Nous vous enverrons un code par SMS pour le vérifier. Les chauffeurs l’utilisent pour vous identifier et vous contacter.',
+      introNameOnly:     'Saisissez vos vrais prénom et nom pour que les chauffeurs sachent qui ils prennent en charge.',
+      firstName:         'Prénom',
+      lastName:          'Nom',
+      phoneHint:         'Incluez l’indicatif du pays, p. ex. +383 pour le Kosovo.',
+      invalidNameTitle:  'Nom invalide',
+      invalidNameMsg:    'Saisissez vos vrais prénom et nom (au moins 2 lettres chacun, sans chiffres).',
+      invalidPhoneMsg:   'Saisissez le numéro au format international, p. ex. +38344123456.',
+      saveBtn:           'Enregistrer et continuer',
+      saveError:         'Impossible d’enregistrer votre profil. Réessayez.',
+      changeNumber:      'Changer de numéro',
+      logout:            'Se déconnecter',
+    },
     addPhone: {
       title:             'Ajoutez votre téléphone',
       intro:             'Ajoutez un numéro de téléphone pour que votre chauffeur puisse vous joindre. Nous vous enverrons un code de vérification.',

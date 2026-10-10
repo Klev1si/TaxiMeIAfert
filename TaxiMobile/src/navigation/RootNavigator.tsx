@@ -9,6 +9,8 @@ import CompanyNavigator from './CompanyNavigator';
 import AdminNavigator from './AdminNavigator';
 import AppLoadingScreen from '../components/AppLoadingScreen';
 import AddEmailScreen from '../screens/auth/AddEmailScreen';
+import CompleteProfileScreen from '../screens/client/CompleteProfileScreen';
+import { isRealName } from '../utils/validators';
 import { authApi } from '../api/auth';
 import { setupFcm } from '../services/fcm';
 
@@ -20,6 +22,11 @@ export default function RootNavigator() {
 
   // null = not yet checked, true = needs email, false = OK
   const [needsEmail, setNeedsEmail] = useState<boolean | null>(null);
+  // Passengers without a verified phone or a real name (Google/Apple sign-ins)
+  // must complete their profile before reaching the app. null = nothing missing.
+  const [profileGap, setProfileGap] = useState<{
+    firstName: string | null; lastName: string | null; hasPhone: boolean;
+  } | null>(null);
   // Forces the branded splash to stay on-screen long enough for the entry
   // animation to play through, even when AsyncStorage rehydrates instantly.
   const [minSplashElapsed, setMinSplashElapsed] = useState(false);
@@ -33,10 +40,18 @@ export default function RootNavigator() {
   // Whenever the logged-in user changes, fetch their full profile and decide
   // whether to force the "add your email" prompt (for legacy accounts).
   useEffect(() => {
-    if (!user) { setNeedsEmail(null); return; }
+    if (!user) { setNeedsEmail(null); setProfileGap(null); return; }
     let cancelled = false;
     authApi.getMe()
-      .then(({ data }) => { if (!cancelled) setNeedsEmail(!data.email); })
+      .then(({ data }) => {
+        if (cancelled) { return; }
+        setNeedsEmail(!data.email);
+        const incomplete = data.role === 'client'
+          && (!data.phone || !isRealName(data.firstName) || !isRealName(data.lastName));
+        setProfileGap(incomplete
+          ? { firstName: data.firstName, lastName: data.lastName, hasPhone: !!data.phone }
+          : null);
+      })
       .catch(() => { if (!cancelled) setNeedsEmail(false); /* fail open */ });
     return () => { cancelled = true; };
   }, [user?.id]);
@@ -75,6 +90,17 @@ export default function RootNavigator() {
   // succeeds. We don't render the role navigator until the prompt clears.
   if (user && needsEmail === true) {
     return <AddEmailScreen onCompleted={() => setNeedsEmail(false)} />;
+  }
+
+  if (user && profileGap) {
+    return (
+      <CompleteProfileScreen
+        initialFirstName={profileGap.firstName}
+        initialLastName={profileGap.lastName}
+        hasPhone={profileGap.hasPhone}
+        onCompleted={() => setProfileGap(null)}
+      />
+    );
   }
 
   return (

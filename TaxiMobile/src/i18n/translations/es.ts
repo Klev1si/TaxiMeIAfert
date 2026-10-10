@@ -295,6 +295,21 @@ export default {
   },
 
   client: {
+    completeProfile: {
+      title:             'Completa tu perfil',
+      intro:             'Introduce tu nombre y apellido reales y tu número de teléfono. Te enviaremos un código por SMS para verificarlo. Los conductores lo usan para identificarte y contactarte.',
+      introNameOnly:     'Introduce tu nombre y apellido reales para que los conductores sepan a quién recogen.',
+      firstName:         'Nombre',
+      lastName:          'Apellido',
+      phoneHint:         'Incluye el prefijo del país, p. ej. +383 para Kosovo.',
+      invalidNameTitle:  'Nombre no válido',
+      invalidNameMsg:    'Introduce tu nombre y apellido reales (al menos 2 letras cada uno, sin números).',
+      invalidPhoneMsg:   'Introduce el número en formato internacional, p. ej. +38344123456.',
+      saveBtn:           'Guardar y continuar',
+      saveError:         'No se pudo guardar tu perfil. Inténtalo de nuevo.',
+      changeNumber:      'Cambiar número',
+      logout:            'Cerrar sesión',
+    },
     addPhone: {
       title:             'Añade tu teléfono',
       intro:             'Añade un número de teléfono para que tu conductor pueda contactarte. Te enviaremos un código de verificación.',

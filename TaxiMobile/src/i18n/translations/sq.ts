@@ -296,6 +296,21 @@ export default {
   },
 
   client: {
+    completeProfile: {
+      title:             'Plotëso profilin',
+      intro:             'Shkruaj emrin dhe mbiemrin tënd të vërtetë dhe numrin e telefonit. Do të të dërgojmë një kod me SMS për ta verifikuar. Shoferët e përdorin këtë për të të identifikuar dhe kontaktuar.',
+      introNameOnly:     'Shkruaj emrin dhe mbiemrin tënd të vërtetë që shoferët ta dinë kë po marrin.',
+      firstName:         'Emri',
+      lastName:          'Mbiemri',
+      phoneHint:         'Përfshi prefiksin e shtetit, p.sh. +383 për Kosovën.',
+      invalidNameTitle:  'Emër i pavlefshëm',
+      invalidNameMsg:    'Shkruaj emrin dhe mbiemrin e vërtetë (të paktën 2 shkronja secili, pa numra).',
+      invalidPhoneMsg:   'Shkruaj numrin në format ndërkombëtar, p.sh. +38344123456.',
+      saveBtn:           'Ruaj dhe vazhdo',
+      saveError:         'Profili nuk u ruajt. Provo përsëri.',
+      changeNumber:      'Ndrysho numrin',
+      logout:            'Dil nga llogaria',
+    },
     addPhone: {
       title:             'Shto numrin tënd',
       intro:             'Shto një numër telefoni që shoferi të mund të të kontaktojë. Do të të dërgojmë një kod verifikimi.',
