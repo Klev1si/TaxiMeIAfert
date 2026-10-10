@@ -291,6 +291,8 @@ export default {
       subtitle:  "Nous avons besoin de votre email pour que vous puissiez réinitialiser votre mot de passe en cas d'oubli. Pas de marketing, et nous ne le partagerons avec personne.",
       saveBtn:   'Enregistrer et continuer',
       saveError: "Impossible d'enregistrer l'email.",
+      skipBtn:   "Passer pour l'instant",
+      logoutBtn: 'Se déconnecter',
     },
   },
 

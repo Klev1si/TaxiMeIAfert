@@ -291,6 +291,8 @@ export default {
       subtitle:  'Necesitamos su email para que pueda restablecer su contraseña si la olvida. No enviaremos marketing ni lo compartiremos con nadie.',
       saveBtn:   'Guardar y continuar',
       saveError: 'No se pudo guardar el email.',
+      skipBtn:   'Omitir por ahora',
+      logoutBtn: 'Cerrar sesión',
     },
   },
 

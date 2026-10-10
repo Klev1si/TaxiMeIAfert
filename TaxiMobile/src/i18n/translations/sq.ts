@@ -292,6 +292,8 @@ export default {
       subtitle:  'Na duhet email-i juaj që të mund të rivendosni fjalëkalimin nëse e harroni ndonjëherë. Nuk do t\'ju dërgojmë marketing dhe nuk do ta ndajmë me askënd.',
       saveBtn:   'Ruaj dhe vazhdo',
       saveError: 'Email-i nuk mund të ruhej.',
+      skipBtn:   'Kalo tani',
+      logoutBtn: 'Dil nga llogaria',
     },
   },
 

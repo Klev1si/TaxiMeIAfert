@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { authApi } from '../../api/auth';
+import { useAuthStore } from '../../stores/authStore';
 import { useColors } from '../../stores/themeStore';
 import type { ColorPalette } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
@@ -27,14 +28,17 @@ interface Props {
   /** Called after the email is successfully saved — root navigator
    *  re-reads getMe() and dismisses this modal. */
   onCompleted: () => void;
+  /** Skips the prompt for this app session; it is asked again on next launch. */
+  onSkip: () => void;
 }
 
-export default function AddEmailScreen({ onCompleted }: Props) {
+export default function AddEmailScreen({ onCompleted, onSkip }: Props) {
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const logout = useAuthStore(s => s.logout);
 
   const handleSave = async () => {
     const v = email.trim();
@@ -87,6 +91,14 @@ export default function AddEmailScreen({ onCompleted }: Props) {
               ? <ActivityIndicator color="#fff" />
               : <Text style={styles.btnText}>{t('auth.addEmail.saveBtn')}</Text>}
           </TouchableOpacity>
+
+          {/* Ways out, so a user who can't add an email right now isn't stuck here. */}
+          <TouchableOpacity style={styles.secondaryBtn} onPress={onSkip} disabled={loading} accessibilityRole="button">
+            <Text style={styles.secondaryText}>{t('auth.addEmail.skipBtn')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={() => { void logout(); }} disabled={loading} accessibilityRole="button">
+            <Text style={styles.mutedText}>{t('auth.addEmail.logoutBtn')}</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -121,5 +133,8 @@ function getStyles(c: ColorPalette) {
     },
     btnDisabled: { opacity: 0.5 },
     btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    secondaryBtn:  { marginTop: 18, paddingVertical: 6 },
+    secondaryText: { color: c.primary, fontSize: 15, fontWeight: '700' },
+    mutedText:     { color: c.textSecondary, fontSize: 14 },
   });
 }

@@ -89,7 +89,7 @@ export default function RootNavigator() {
   // reach any role's home screen. They can only continue once setEmail
   // succeeds. We don't render the role navigator until the prompt clears.
   if (user && needsEmail === true) {
-    return <AddEmailScreen onCompleted={() => setNeedsEmail(false)} />;
+    return <AddEmailScreen onCompleted={() => setNeedsEmail(false)} onSkip={() => setNeedsEmail(false)} />;
   }
 
   if (user && profileGap) {

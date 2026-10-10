@@ -297,6 +297,8 @@ export default {
       subtitle:  "We need your email so you can reset your password if you ever forget it. We won't send marketing or share it with anyone.",
       saveBtn:   'Save and continue',
       saveError: 'Could not save email.',
+      skipBtn:   'Skip for now',
+      logoutBtn: 'Log out',
     },
   },
 

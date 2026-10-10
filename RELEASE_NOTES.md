@@ -1,5 +1,82 @@
 # Release Notes
 
+## 1.99 (Android versionCode 112 · iOS build auto-set in Codemagic)
+
+Passengers who sign in with Google or Apple (or whose account has no verified
+phone or a placeholder name like "Apple User") now see a required **Complete
+your profile** screen: real first and last name plus a phone number verified by
+SMS, before they can use the app. Phone-registered users who were stuck on the
+"Add your email" screen can now skip it for now or log out. Both screens have a
+log-out link. Also includes the fix for company screens whose header sat under
+the iOS status bar (promo codes, messages, intercity routes).
+
+### Store "What's New"
+
+#### English (en)
+
+**Google Play**
+
+> Simpler account setup with phone verification, and bug fixes.
+
+**App Store**
+
+> New in 1.99
+> • Complete your profile with your name and a verified phone number so drivers can reach you.
+> • Adding an email can now be skipped.
+> • Bug fixes and improvements.
+
+#### Albanian (sq)
+
+**Google Play**
+
+> Konfigurim më i thjeshtë i llogarisë me verifikim të numrit, si dhe rregullime gabimesh.
+
+**App Store**
+
+> E re në 1.99
+> • Plotësoni profilin me emrin dhe numrin e verifikuar që shoferët t'ju kontaktojnë.
+> • Shtimi i email-it tani mund të kalohet për më vonë.
+> • Rregullime gabimesh dhe përmirësime.
+
+#### Spanish (es)
+
+**Google Play**
+
+> Configuración de cuenta más sencilla con verificación del teléfono y corrección de errores.
+
+**App Store**
+
+> Novedades en la 1.99
+> • Completa tu perfil con tu nombre y un teléfono verificado para que los conductores puedan contactarte.
+> • Ahora puedes omitir añadir el email.
+> • Corrección de errores y mejoras.
+
+#### French (fr)
+
+**Google Play**
+
+> Configuration du compte simplifiée avec vérification du téléphone, et corrections de bugs.
+
+**App Store**
+
+> Nouveautés de la 1.99
+> • Complétez votre profil avec votre nom et un numéro vérifié pour que les chauffeurs puissent vous joindre.
+> • L'ajout de l'email peut désormais être reporté.
+> • Corrections de bugs et améliorations.
+
+#### Turkish (tr)
+
+**Google Play**
+
+> Telefon doğrulamalı daha basit hesap kurulumu ve hata düzeltmeleri.
+
+**App Store**
+
+> 1.99'da yenilikler
+> • Sürücülerin size ulaşabilmesi için profilinizi adınız ve doğrulanmış telefon numaranızla tamamlayın.
+> • E-posta ekleme artık atlanabilir.
+> • Hata düzeltmeleri ve iyileştirmeler.
+
 ## 1.98 (Android versionCode 111 · iOS build auto-set in Codemagic)
 
 Admin panel in the app gets a **Rides** screen (Profile → Rides, or "View all
