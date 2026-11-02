@@ -11,6 +11,7 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module.js';
 import { IntercityRoutesModule } from '../intercity-routes/intercity-routes.module.js';
 import { RidesService } from './rides.service.js';
 import { RouteTrackerModule } from './route-tracker.module.js';
+import { FirstRideOfferModule } from '../first-ride-offer/first-ride-offer.module.js';
 import { RidesController } from './rides.controller.js';
 import { PublicRidesController } from './public-rides.controller.js';
 
@@ -25,6 +26,7 @@ import { PublicRidesController } from './public-rides.controller.js';
     SubscriptionsModule,
     IntercityRoutesModule,
     RouteTrackerModule,
+    FirstRideOfferModule,
   ],
   controllers: [RidesController, PublicRidesController],
   providers: [RidesService],

@@ -1,3 +1,4 @@
+import { FirstRideOfferService } from '../first-ride-offer/first-ride-offer.service.js';
 import { randomBytes } from 'node:crypto';
 import {
   BadRequestException,
@@ -88,11 +89,6 @@ const CANCEL_GRACE_MINUTES = Number(process.env.CANCEL_GRACE_MINUTES ?? 2);
 const CANCEL_FEE_ACCEPTED  = Number(process.env.CANCEL_FEE_ACCEPTED  ?? 2.00);
 const CANCEL_FEE_EN_ROUTE  = Number(process.env.CANCEL_FEE_EN_ROUTE  ?? 3.00);
 const CANCEL_FEE_ARRIVED   = Number(process.env.CANCEL_FEE_ARRIVED   ?? 5.00);
-// First-ride promo is a FREE in-city ride. "In-city" is gated on trip distance
-// (there is no city field on a ride): a ride at or under this many km counts as
-// in-city and is free; a longer (inter-city) first ride gets nothing, so we
-// never give away an expensive cross-country trip.
-const FREE_FIRST_RIDE_MAX_KM = Number(process.env.FREE_FIRST_RIDE_MAX_KM ?? 10);
 
 /**
  * Compute the cancellation fee the CLIENT would owe for cancelling `ride` right now.
@@ -170,6 +166,7 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     private readonly walletService: WalletService,
     private readonly fraudService: FraudService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly firstRideOffers: FirstRideOfferService,
     private readonly intercityService: IntercityRoutesService,
     private readonly routeTracker: RouteTrackerService,
   ) {}
@@ -1723,30 +1720,35 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         }
       }
     } else if (ride.totalFare != null) {
-      // ── First-ride auto-promo: FREE in-city ride ───────────────────────────
-      // If the client hasn't completed any ride yet (totalRides === 0), they
-      // didn't use a promo code, AND this is an in-city trip, the ride is FREE
-      // (totalFare → 0). The platform absorbs the whole fare so the driver is
-      // still paid in full (see driverEarning below). "In-city" is gated on
-      // distance: at or under FREE_FIRST_RIDE_MAX_KM km. A longer inter-city
-      // first ride gets nothing — and if we can't determine the distance we
-      // fail closed (no free ride) so an expensive trip is never given away.
-      // The increment to client.totalRides happens below, so totalRides is
-      // still 0 here.
+      // ── First-ride offer (admin-configurable, e.g. free or 50 % off) ───────
+      // Applies when the passenger has no completed rides, didn't use a promo
+      // code, the trip is "in-city" (at or under the offer's maxKm), and none
+      // of their identities (phone/email/Google/Apple) used the offer before —
+      // so deleting the account and registering again doesn't repeat it.
+      // The platform absorbs the discount so the driver is paid in full (see
+      // driverEarning below). If the distance is unknown we fail closed.
+      // client.totalRides is incremented below, so it's still 0 here.
       const client = await this.clientRepo.findOne({
         where: { id: ride.clientId },
         select: ['id', 'totalRides'],
       });
-      if (client && (client.totalRides ?? 0) === 0) {
+      const clientUser = client ? await this.getClientUser(ride.clientId) : null;
+      if (
+        client && clientUser &&
+        await this.firstRideOffers.isEligible(clientUser, client.totalRides ?? 0)
+      ) {
+        const offer = await this.firstRideOffers.getOffer();
         const km = ride.actualDistanceKm != null
           ? Number(ride.actualDistanceKm)
           : (ride.distanceKm != null ? Number(ride.distanceKm) : null);
         const fare = Number(ride.totalFare);
-        if (km != null && isFinite(km) && km <= FREE_FIRST_RIDE_MAX_KM && fare > 0) {
-          ride.discountAmount  = Math.round(fare * 100) / 100; // whole fare
-          ride.totalFare       = 0;
-          platformAbsorbed     = ride.discountAmount;
+        if (km != null && isFinite(km) && km <= offer.maxKm && fare > 0) {
+          const discount = Math.round(fare * offer.discountPct) / 100;
+          ride.discountAmount  = discount;
+          ride.totalFare       = Math.round((fare - discount) * 100) / 100;
+          platformAbsorbed     = discount;
           platformReason       = PlatformCreditReason.FIRST_RIDE_PROMO;
+          await this.firstRideOffers.recordUsage(clientUser);
         }
       }
     }
@@ -1804,7 +1806,7 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         distanceFare: saved.distanceFare != null ? Number(saved.distanceFare) : null,
         timeFare:     saved.timeFare     != null ? Number(saved.timeFare)     : null,
         // Discount so the client's receipt can show the line item. promoCode is
-        // null for the automatic first-ride 50% off — the client labels that case.
+        // null for the automatic first-ride offer — the client labels that case.
         discountAmount: saved.discountAmount != null ? Number(saved.discountAmount) : null,
         promoCode:      saved.promoCode ?? null,
         // Include driverId so the RateRide screen can show the ❤️ "save driver"

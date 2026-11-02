@@ -33,6 +33,7 @@ import { Type } from 'class-transformer';
 import { SafeText } from '../common/validators/safe-text.decorator.js';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
+import { FirstRideOfferService } from '../first-ride-offer/first-ride-offer.service.js';
 import { LoginDto } from './dto/login.dto';
 import { AppleSignInDto } from './dto/apple-signin.dto';
 import { AuthTokensDto } from './dto/auth-tokens.dto';
@@ -129,6 +130,7 @@ export class AuthController {
     @InjectRepository(Company) private readonly companyRepo: Repository<Company>,
     @InjectRepository(User)    private readonly userRepo:    Repository<User>,
     @InjectRepository(Ride)    private readonly rideRepo:    Repository<Ride>,
+    private readonly firstRideOffers: FirstRideOfferService,
   ) {}
 
   // GET /auth/me — returns profile for the authenticated user
@@ -497,6 +499,17 @@ export class AuthController {
     // and the account effectively un-deleted.
     const tombstone = `del_${Date.now().toString(36)}`;
 
+    // A passenger who has already ridden has used (or forfeited) the
+    // first-ride offer. Remember their identities as one-way hashes BEFORE
+    // they're erased, so registering again with the same phone, email or
+    // Google/Apple account doesn't grant the offer a second time.
+    if (user.role === UserRole.CLIENT) {
+      const client = await this.clientRepo.findOne({ where: { userId: user.id }, select: ['id', 'totalRides'] });
+      if ((client?.totalRides ?? 0) > 0) {
+        await this.firstRideOffers.recordUsage(user);
+      }
+    }
+
     // Wrap the whole operation in a transaction so that, on any failure,
     // partial state (e.g., anonymised name but not deactivated user) doesn't
     // get committed and leave the account in an inconsistent state.
@@ -562,6 +575,10 @@ export class AuthController {
         avatarUrl:    null,
         fcmToken:     null,
         refreshToken: null,
+        // Release the Google/Apple link. Both columns are unique, so keeping
+        // them made signing up again with the same account fail.
+        googleSub:    null,
+        appleSub:     null,
         isActive:     false,
       });
     });

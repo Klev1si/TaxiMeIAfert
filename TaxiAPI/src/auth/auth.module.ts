@@ -1,3 +1,4 @@
+import { FirstRideOfferModule } from '../first-ride-offer/first-ride-offer.module.js';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
@@ -19,6 +20,7 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
     // each signAsync call passes its own secret explicitly
     JwtModule.register({}),
     NotificationsModule,
+    FirstRideOfferModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, JwtRefreshStrategy],
