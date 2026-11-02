@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import { Controller, Get, Inject } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
@@ -14,6 +15,7 @@ interface HealthStatus {
   checkedAt: string;
 }
 
+@SkipThrottle()
 @Controller('health')
 export class HealthController {
   constructor(
