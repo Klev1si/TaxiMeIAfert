@@ -1,0 +1,50 @@
+diff --git a/node_modules/@react-native-community/geolocation/ios/RNCGeolocation.mm b/node_modules/@react-native-community/geolocation/ios/RNCGeolocation.mm
+index 03df64d..efbe08d 100644
+--- a/node_modules/@react-native-community/geolocation/ios/RNCGeolocation.mm
++++ b/node_modules/@react-native-community/geolocation/ios/RNCGeolocation.mm
+@@ -173,17 +173,28 @@ RCT_EXPORT_MODULE()
+ 
+ - (void)beginLocationUpdatesWithDesiredAccuracy:(CLLocationAccuracy)desiredAccuracy distanceFilter:(CLLocationDistance)distanceFilter useSignificantChanges:(BOOL)useSignificantChanges
+ {
++  // TaxiMeIAfert patch: create the manager BEFORE enabling background updates.
++  // Upstream called enableBackgroundLocationUpdates while _locationManager could
++  // still be nil, so allowsBackgroundLocationUpdates was silently never set.
++  if (!_locationManager) {
++    _locationManager = [CLLocationManager new];
++    _locationManager.delegate = self;
++  }
++#if !TARGET_OS_VISION
++  // A taxi stopped at a light or waiting for a passenger must keep reporting.
++  // With the iOS default (YES) Core Location pauses updates when it thinks the
++  // device is stationary and never resumes them while the app is backgrounded,
++  // leaving gaps in the ride's route.
++  _locationManager.pausesLocationUpdatesAutomatically = NO;
++  _locationManager.activityType = CLActivityTypeAutomotiveNavigation;
++#endif
++
+   if (!_locationConfiguration.skipPermissionRequests) {
+     [self requestAuthorization:nil error:nil];
+   } else if (_locationConfiguration.enableBackgroundLocationUpdates) {
+     [self enableBackgroundLocationUpdates];
+   }
+ 
+-  if (!_locationManager) {
+-    _locationManager = [CLLocationManager new];
+-    _locationManager.delegate = self;
+-  }
+-
+   _locationManager.distanceFilter  = distanceFilter;
+   _locationManager.desiredAccuracy = desiredAccuracy;
+   _usingSignificantChanges = useSignificantChanges;
+@@ -301,6 +312,11 @@ RCT_REMAP_METHOD(requestAuthorization, requestAuthorization:(RCTResponseSenderBl
+     if ([_locationManager respondsToSelector:@selector(setAllowsBackgroundLocationUpdates:)]) {
+       [_locationManager setAllowsBackgroundLocationUpdates:YES];
+     }
++    // TaxiMeIAfert patch: show the blue status-bar pill while tracking in the
++    // background, which keeps "While Using" authorization valid in background.
++    if (@available(iOS 11.0, *)) {
++      _locationManager.showsBackgroundLocationIndicator = YES;
++    }
+   }
+ #endif
+ }

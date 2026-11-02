@@ -17,20 +17,13 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { v2 as cloudinary } from 'cloudinary';
+import { uploadPrivateDocument } from './document-storage';
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole, DocumentType } from '../common/enums';
 import { DriverDocumentsService, DocumentDto } from './driver-documents.service';
-
-// ── Cloudinary config (reads env vars at runtime) ─────────────────────────────
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key:    process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 const ALLOWED_MIME = [
   'image/jpeg', 'image/png', 'image/webp', 'image/heic',
@@ -47,24 +40,6 @@ function docFileFilter(
   } else {
     cb(new BadRequestException('Only images (JPG/PNG/WEBP/HEIC) and PDF files are accepted'), false);
   }
-}
-
-/** Upload a buffer to Cloudinary and return the secure URL. */
-async function uploadToCloudinary(
-  buffer: Buffer,
-  folder: string,
-  resourceType: 'image' | 'raw' = 'image',
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder, resource_type: resourceType },
-      (error, result) => {
-        if (error || !result) return reject(error ?? new Error('Cloudinary upload failed'));
-        resolve(result.secure_url);
-      },
-    );
-    stream.end(buffer);
-  });
 }
 
 // ── DTOs ─────────────────────────────────────────────────────────────────────
@@ -99,7 +74,8 @@ export class DriverDocumentsController {
   /**
    * POST /driver/documents
    * Multipart form: field "file" (image/PDF) + field "type" (DocumentType enum).
-   * File is uploaded to Cloudinary; the secure URL is stored in the database.
+   * File is uploaded to Cloudinary as a private asset; its URL is stored in the
+   * database and only ever returned to the app as a short-lived signed link.
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -122,7 +98,7 @@ export class DriverDocumentsController {
 
     let fileUrl: string;
     try {
-      fileUrl = await uploadToCloudinary(file.buffer, 'driver-documents', resourceType);
+      fileUrl = await uploadPrivateDocument(file.buffer, 'driver-documents', resourceType);
     } catch {
       throw new InternalServerErrorException('Failed to upload file. Please try again.');
     }

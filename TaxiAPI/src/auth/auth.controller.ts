@@ -13,6 +13,8 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Req,
+  Res,
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { In } from 'typeorm';
@@ -31,9 +33,12 @@ import { Type } from 'class-transformer';
 import { SafeText } from '../common/validators/safe-text.decorator.js';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
+import { FirstRideOfferService } from '../first-ride-offer/first-ride-offer.service.js';
 import { LoginDto } from './dto/login.dto';
 import { AppleSignInDto } from './dto/apple-signin.dto';
 import { AuthTokensDto } from './dto/auth-tokens.dto';
+import { clearRefreshCookie, deliverTokens } from './refresh-cookie';
+import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -125,6 +130,7 @@ export class AuthController {
     @InjectRepository(Company) private readonly companyRepo: Repository<Company>,
     @InjectRepository(User)    private readonly userRepo:    Repository<User>,
     @InjectRepository(Ride)    private readonly rideRepo:    Repository<Ride>,
+    private readonly firstRideOffers: FirstRideOfferService,
   ) {}
 
   // GET /auth/me — returns profile for the authenticated user
@@ -175,8 +181,8 @@ export class AuthController {
       firstName: client?.firstName ?? null,
       lastName:  client?.lastName  ?? null,
       rating:    client?.rating != null ? Number(client.rating) : null,
-      // totalRides drives the first-ride 50% off banner on Client Home —
-      // 0 = banner visible, anything else = hidden.
+      // Number of completed rides. (The first-ride banner uses
+      // GET /first-ride-offer, which also checks previous accounts.)
       totalRides: client?.totalRides ?? 0,
     };
   }
@@ -225,8 +231,13 @@ export class AuthController {
   @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.OK)
   @Throttle({ strict: { limit: 10, ttl: 60_000 } })
-  login(@Body() dto: LoginDto, @ReqMeta() meta: RequestMeta): Promise<AuthTokensDto> {
-    return this.authService.login(dto, meta);
+  async login(
+    @Body() dto: LoginDto,
+    @ReqMeta() meta: RequestMeta,
+    @Req() req: ExpressRequest,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<AuthTokensDto> {
+    return deliverTokens(req, res, await this.authService.login(dto, meta));
   }
 
   // POST /auth/google — exchange a Google ID token for our JWTs.
@@ -250,19 +261,29 @@ export class AuthController {
     return this.authService.appleSignIn(dto.identityToken, dto.firstName, dto.lastName, meta);
   }
 
-  // POST /auth/refresh  — requires valid refresh token in Authorization header
+  // POST /auth/refresh  — requires a valid refresh token: Authorization header
+  // (mobile) or the httpOnly cookie + X-Client header (web dashboard).
   @Post('refresh')
   @UseGuards(JwtRefreshGuard)
   @HttpCode(HttpStatus.OK)
-  refresh(@CurrentUser() user: User, @ReqMeta() meta: RequestMeta): Promise<AuthTokensDto> {
-    return this.authService.refresh(user, meta);
+  async refresh(
+    @CurrentUser() user: User,
+    @ReqMeta() meta: RequestMeta,
+    @Req() req: ExpressRequest,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<AuthTokensDto> {
+    return deliverTokens(req, res, await this.authService.refresh(user, meta));
   }
 
   // POST /auth/logout  — requires valid access token
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  logout(@CurrentUser() user: User): Promise<void> {
+  async logout(
+    @CurrentUser() user: User,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<void> {
+    clearRefreshCookie(res);
     return this.authService.logout(user.id);
   }
 
@@ -478,6 +499,17 @@ export class AuthController {
     // and the account effectively un-deleted.
     const tombstone = `del_${Date.now().toString(36)}`;
 
+    // A passenger who has already ridden has used (or forfeited) the
+    // first-ride offer. Remember their identities as one-way hashes BEFORE
+    // they're erased, so registering again with the same phone, email or
+    // Google/Apple account doesn't grant the offer a second time.
+    if (user.role === UserRole.CLIENT) {
+      const client = await this.clientRepo.findOne({ where: { userId: user.id }, select: ['id', 'totalRides'] });
+      if ((client?.totalRides ?? 0) > 0) {
+        await this.firstRideOffers.recordUsage(user);
+      }
+    }
+
     // Wrap the whole operation in a transaction so that, on any failure,
     // partial state (e.g., anonymised name but not deactivated user) doesn't
     // get committed and leave the account in an inconsistent state.
@@ -543,6 +575,10 @@ export class AuthController {
         avatarUrl:    null,
         fcmToken:     null,
         refreshToken: null,
+        // Release the Google/Apple link. Both columns are unique, so keeping
+        // them made signing up again with the same account fail.
+        googleSub:    null,
+        appleSub:     null,
         isActive:     false,
       });
     });

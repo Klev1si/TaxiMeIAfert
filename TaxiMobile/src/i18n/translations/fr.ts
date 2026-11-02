@@ -337,7 +337,9 @@ export default {
       driversNearby:           '{count} conducteur à proximité',
       driversNearbyPlural:     '{count} conducteurs à proximité',
       firstRideTitle:          'Votre première course en ville est GRATUITE ! 🎉',
-      firstRideBody:           'Gratuite pour les trajets en ville — appliquée automatiquement.',
+      firstRideBody:           'Gratuite pour les trajets en ville (jusqu\'à {km} km) — appliquée automatiquement.',
+      firstRidePctTitle:       '{pct} % de réduction sur votre première course en ville ! 🎉',
+      firstRidePctBody:        'Pour les trajets en ville (jusqu\'à {km} km) — appliquée automatiquement.',
       gettingLocation:         'Récupération de votre position…',
       whereGoing:              'Où allez-vous ?',
       requestRideBtn:          'Demander un trajet',
@@ -481,7 +483,7 @@ export default {
       paymentFailMsg:   'Échec du paiement. Veuillez réessayer.',
       genericErrorMsg:  'Une erreur est survenue. Veuillez réessayer.',
       farePending:      'Le tarif n\'est pas encore finalisé…',
-      firstRideDiscount: 'Première course gratuite',
+      firstRideDiscount: 'Réduction première course',
       coveredByPlatform: 'Offert par TaxiMeIAfert 🎁',
     },
 
@@ -525,7 +527,7 @@ export default {
       helpSupport: 'Aide et support',
       howToUse:    'Comment utiliser TaxiMeIAfert',
       offerNotifications:     'Offres et rappels',
-      offerNotificationsHint: 'Courses gratuites, promotions et rappels. Les notifications de course sont toujours envoyées.',
+      offerNotificationsHint: 'Offres, promotions et rappels. Les notifications de course sont toujours envoyées.',
       offerNotificationsError: 'Impossible de mettre à jour les notifications. Veuillez réessayer.',
     },
 

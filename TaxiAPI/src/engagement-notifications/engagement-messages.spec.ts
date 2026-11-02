@@ -35,7 +35,7 @@ describe('engagement messages', () => {
   });
 
   it('leaves no unfilled placeholders in any rendered template', () => {
-    const vars = { rides: 1, amount: '1', online: 1, total: 2 };
+    const vars = { rides: 1, amount: '1', online: 1, total: 2, offer: 'FALAS', offerText: 'falas' };
     for (const type of Object.values(T)) {
       for (const m of ENGAGEMENT_MESSAGES[type]) {
         expect(render(m.title + m.body, { name: 'X', vars })).not.toMatch(/\{\w+\}/);

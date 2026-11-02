@@ -15,8 +15,9 @@
  * in via the `position` prop. The parent is responsible for the GPS plumbing
  * (which differs between client and driver screens).
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ColorPalette } from '../constants/colors';
 import { useColors } from '../stores/themeStore';
 
@@ -32,6 +33,8 @@ export interface TariffSnapshot {
 export interface LatLng { latitude: number; longitude: number }
 
 interface Props {
+  /** Ride id — lets the meter restore its distance after the app restarts. */
+  rideId?: string;
   /** Tariff rates locked for this ride. Hides the meter if null. */
   tariff: TariffSnapshot | null;
   /** When the meter started counting time. Usually ride.startedAt. */
@@ -56,7 +59,19 @@ function haversineKm(a: LatLng, b: LatLng): number {
   return 2 * EARTH_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
+/** One key for the single ride a device can be on — overwritten per ride, so
+ *  nothing accumulates in storage. */
+const STORAGE_KEY = 'taximeter:active';
+
+interface SavedMeter {
+  rideId:     string;
+  startedAt:  string;
+  distanceKm: number;
+  lastPos:    LatLng | null;
+}
+
 export default function Taximeter({
+  rideId,
   tariff,
   startedAt,
   position,
@@ -75,27 +90,80 @@ export default function Taximeter({
   const distanceRef   = useRef(0); // km
   const [distanceKm, setDistanceKm] = useState(0);
 
-  // Reset accumulated distance the moment the ride transitions to "running".
+  // ── Persistence across app restarts ────────────────────────────────────────
+  // The distance lives in memory, so reopening the app mid-ride would restart
+  // the meter at 0 km. Save it per ride and restore it on mount.
+  const startedKey = startedAt ? new Date(startedAt as string | Date).toISOString() : null;
+  const restoredRef = useRef(false);
+
+  const persist = useCallback(() => {
+    if (!rideId || !startedKey || !restoredRef.current) return;
+    const saved: SavedMeter = {
+      rideId,
+      startedAt:  startedKey,
+      distanceKm: distanceRef.current,
+      lastPos:    lastPosRef.current,
+    };
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved)).catch(() => {});
+  }, [rideId, startedKey]);
+
+  // Reset accumulated distance the moment the ride transitions to "running",
+  // then add back whatever was saved for this same ride before a restart.
   useEffect(() => {
-    if (startedAt) {
-      distanceRef.current = 0;
-      setDistanceKm(0);
-    }
-  }, [startedAt]);
+    if (!startedKey) return;
+    distanceRef.current = 0;
+    setDistanceKm(0);
+    restoredRef.current = false;
+    if (!rideId) { restoredRef.current = true; return; }
+
+    let cancelled = false;
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then((raw) => {
+        if (cancelled) return;
+        const saved: SavedMeter | null = raw ? JSON.parse(raw) : null;
+        if (saved && saved.rideId === rideId && saved.startedAt === startedKey) {
+          let restored = saved.distanceKm;
+          // Bridge the gap between the last saved point and where we are now,
+          // if it's plausible (same ≤ 2 km rule as live updates).
+          const now = lastPosRef.current;
+          if (saved.lastPos && now && distanceRef.current === 0) {
+            const gap = haversineKm(saved.lastPos, now);
+            if (gap >= 0.01 && gap <= 2) restored += gap;
+          }
+          distanceRef.current += restored;
+          setDistanceKm(distanceRef.current);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (cancelled) return;
+        restoredRef.current = true;
+        persist();
+      });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rideId, startedKey]);
 
   useEffect(() => {
     if (!position) return;
     const last = lastPosRef.current;
-    if (last && startedAt) {
-      const d = haversineKm(last, position);
-      // Ignore tiny jitter (<5 m) and impossible jumps (>2 km in one update)
-      if (d >= 0.005 && d <= 2) {
-        distanceRef.current += d;
-        setDistanceKm(distanceRef.current);
-      }
+    if (!last || !startedAt) {
+      lastPosRef.current = position;
+      return;
+    }
+    const d = haversineKm(last, position);
+    // Same rule the server uses for billed distance: movement under 10 m
+    // from the last counted point is GPS jitter (e.g. waiting at a light),
+    // so keep the anchor and wait for real movement. Impossible jumps
+    // (>2 km in one update) are skipped and the anchor is reset.
+    if (d < 0.01) return;
+    if (d <= 2) {
+      distanceRef.current += d;
+      setDistanceKm(distanceRef.current);
     }
     lastPosRef.current = position;
-  }, [position, startedAt]);
+    persist();
+  }, [position, startedAt, persist]);
 
   // ── 1-second ticker to keep the time component fresh ───────────────────────
   const [nowMs, setNowMs] = useState(Date.now());

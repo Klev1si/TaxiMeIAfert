@@ -20,6 +20,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
 import { authApi } from '../../api/auth';
+import { firstRideOfferApi, type FirstRideOffer } from '../../api/first-ride-offer';
 import { savedLocationsApi, type SavedLocation } from '../../api/saved-locations';
 import { useColors, useTheme } from '../../stores/themeStore';
 import { DARK_MAP_STYLE } from '../../constants/mapStyles';
@@ -49,8 +50,10 @@ export default function ClientHomeScreen({ navigation }: Props) {
   const [userRegion,       setUserRegion]       = useState<Region | null>(null);
   const [loadingDrivers,   setLoadingDrivers]   = useState(false);
   const [savedLocations,   setSavedLocations]   = useState<SavedLocation[]>([]);
-  // First-ride banner — show until the user has completed their first ride.
-  const [isFirstRide,      setIsFirstRide]      = useState(false);
+  // First-ride banner — shown only while the server says this passenger will
+  // get the offer (0 rides, offer enabled, and not already used on a
+  // previous account). Text follows the admin's settings (free vs. N % off).
+  const [firstRideOffer,   setFirstRideOffer]   = useState<FirstRideOffer | null>(null);
 
   // Re-check on every focus (not just first mount) so the first-ride banner
   // disappears the moment the client returns from completing their first ride —
@@ -60,10 +63,12 @@ export default function ClientHomeScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      firstRideOfferApi.get()
+        .then(({ data }) => { if (!cancelled) { setFirstRideOffer(data); } })
+        .catch(() => { if (!cancelled) { setFirstRideOffer(null); } });
       authApi.getMe()
         .then(({ data }) => {
           if (cancelled) { return; }
-          setIsFirstRide((data as { totalRides?: number }).totalRides === 0);
           // Google/Apple clients register without a phone. Nudge them to add one
           // (required before booking). `phone` here is live DB truth, so this
           // won't fire once a number is attached. Prompt once per mount.
@@ -330,12 +335,21 @@ export default function ClientHomeScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {isFirstRide && (
+        {firstRideOffer?.enabled && firstRideOffer.eligible && (
           <View style={styles.firstRideBanner}>
             <Text style={styles.firstRideEmoji}>🎁</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.firstRideTitle}>{t('client.home.firstRideTitle')}</Text>
-              <Text style={styles.firstRideBody}>{t('client.home.firstRideBody')}</Text>
+              <Text style={styles.firstRideTitle}>
+                {firstRideOffer.discountPct >= 100
+                  ? t('client.home.firstRideTitle')
+                  : t('client.home.firstRidePctTitle', { pct: firstRideOffer.discountPct })}
+              </Text>
+              <Text style={styles.firstRideBody}>
+                {t(
+                  firstRideOffer.discountPct >= 100 ? 'client.home.firstRideBody' : 'client.home.firstRidePctBody',
+                  { km: firstRideOffer.maxKm },
+                )}
+              </Text>
             </View>
           </View>
         )}

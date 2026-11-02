@@ -120,7 +120,12 @@ export class AuthService {
     }
 
     const googleSub = payload.sub;
-    const email     = payload.email?.toLowerCase() ?? null;
+    // Only trust the email if Google has verified the user owns it. An
+    // unverified address must never be used to link to (and log into) an
+    // existing account registered with that email.
+    const email     = payload.email_verified === true
+      ? payload.email?.toLowerCase() ?? null
+      : null;
 
     if (!googleSub) throw new UnauthorizedException('Google token missing sub claim');
 
@@ -142,7 +147,7 @@ export class AuthService {
     // 3. New user — create a CLIENT account. Phone/password stay null;
     //    they're prompted to add a phone in the profile flow.
     if (!user) {
-      if (!email) throw new BadRequestException('Google account must expose an email address');
+      if (!email) throw new BadRequestException('Google account must have a verified email address');
 
       user = this.userRepo.create({
         phone:        null,
@@ -214,7 +219,7 @@ export class AuthService {
       throw new BadRequestException('Apple sign-in is not enabled on the server');
     }
 
-    let payload: { sub: string; email?: string };
+    let payload: { sub: string; email?: string; email_verified?: boolean | string };
     try {
       payload = await appleSignin.verifyIdToken(identityToken, {
         audience: audiences,
@@ -225,7 +230,10 @@ export class AuthService {
     }
 
     const appleSub = payload.sub;
-    const email    = payload.email?.toLowerCase() ?? null;
+    // Apple sends email_verified as true or "true"; ignore unverified emails so
+    // they can't be used to link to someone else's account.
+    const emailVerified = payload.email_verified === true || payload.email_verified === 'true';
+    const email    = emailVerified ? payload.email?.toLowerCase() ?? null : null;
     if (!appleSub) throw new UnauthorizedException('Apple token missing sub claim');
 
     // 1. Try to find by stable Apple sub (already linked)

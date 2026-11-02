@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import {
   Controller,
   Get,
@@ -177,6 +178,7 @@ export class SubscriptionsController {
    * Server-to-server notification from Paysera. Public — verified via signature.
    * Must respond with the literal text "OK" so Paysera stops retrying.
    */
+  @SkipThrottle()
   @Post('paysera/callback')
   @HttpCode(HttpStatus.OK)
   async payseraCallback(

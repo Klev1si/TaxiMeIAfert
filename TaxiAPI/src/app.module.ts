@@ -1,7 +1,8 @@
-import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, type ExecutionContext } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
@@ -34,6 +35,7 @@ import { SupportModule } from './support/support.module';
 import { CompanyMessagesModule } from './company-messages/company-messages.module';
 import { SubscriptionCronModule } from './subscription-cron/subscription-cron.module';
 import { EngagementNotificationsModule } from './engagement-notifications/engagement-notifications.module';
+import { FirstRideOfferModule } from './first-ride-offer/first-ride-offer.module';
 import {
   User,
   Company,
@@ -63,7 +65,29 @@ import {
   IntercityRoute,
   SubscriptionNotification,
   EngagementNotification,
+  PlatformSetting,
+  PromoFingerprint,
 } from './entities';
+
+/**
+ * In @nestjs/throttler v6 every named limiter applies to every guarded route.
+ * The "strict" and "otp" limiters are meant only for routes that opt in with
+ * @Throttle({ strict | otp: ... }) — without this, login was silently capped
+ * by the 3/min OTP limiter, and a global guard would cap the whole API at it.
+ */
+const onlyWhereConfigured = (name: string) => (ctx: ExecutionContext): boolean => {
+  const key = `THROTTLER:LIMIT${name}`;
+  return Reflect.getMetadata(key, ctx.getHandler()) === undefined &&
+         Reflect.getMetadata(key, ctx.getClass())   === undefined;
+};
+
+/** Local development: the dashboard, simulator and API all share 127.0.0.1,
+ *  so the general limiter would throttle the developer. Real clients never
+ *  come from loopback (main.ts trusts the proxy's X-Forwarded-For). */
+const isLoopback = (ctx: ExecutionContext): boolean => {
+  const ip: string = ctx.switchToHttp().getRequest()?.ip ?? '';
+  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+};
 
 @Module({
   imports: [
@@ -114,6 +138,7 @@ import {
         name:  'default',
         ttl:   60_000,  // ms
         limit: 200,
+        skipIf: isLoopback,
       },
       {
         // "strict" — auth / OTP / registration routes
@@ -121,6 +146,7 @@ import {
         name:  'strict',
         ttl:   60_000,
         limit: 10,
+        skipIf: onlyWhereConfigured('strict'),
       },
       {
         // "otp" — SMS send-otp route (prevent SMS-bombing)
@@ -128,6 +154,7 @@ import {
         name:  'otp',
         ttl:   60_000,
         limit: 3,
+        skipIf: onlyWhereConfigured('otp'),
       },
     ]),
 
@@ -163,6 +190,8 @@ import {
           IntercityRoute,
           SubscriptionNotification,
           EngagementNotification,
+          PlatformSetting,
+          PromoFingerprint,
         ],
         // Safety net: also register every entity passed to forFeature() by a
         // feature module, so a class missing from the list above can't cause
@@ -202,6 +231,7 @@ import {
     CompanyMessagesModule,
     SubscriptionCronModule,
     EngagementNotificationsModule,
+    FirstRideOfferModule,
     HealthModule,
     FraudModule,
     ScheduleModule.forRoot(),
@@ -209,10 +239,11 @@ import {
   controllers: [AppController],
   providers: [
     AppService,
-    // ThrottlerGuard is applied per-controller/per-method on sensitive auth
-    // routes only (login, OTP, registration, change-password, delete-account).
-    // No global guard here — applying it globally blocks admin/dashboard routes
-    // in development where all requests share the same 127.0.0.1 IP.
+    // Global rate limit: 200 req/min per client IP on every HTTP route.
+    // Sensitive routes add the stricter "strict"/"otp" limiters on top via
+    // @Throttle. Loopback (local development) is exempt from the general
+    // limiter — see isLoopback above. Webhooks and health checks opt out.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule implements NestModule {

@@ -21,6 +21,12 @@ async function bootstrap() {
   //   X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security,
   //   X-XSS-Protection, Content-Security-Policy, etc.
   // contentSecurityPolicy is relaxed slightly for the REST API (no HTML served).
+  // Production runs behind Railway's proxy. Without this, req.ip is the
+  // proxy's address and every user shares one rate-limit bucket. Override
+  // with TRUST_PROXY (number of proxy hops, or "false" when exposed directly).
+  const trustProxy = process.env.TRUST_PROXY ?? '1';
+  app.set('trust proxy', trustProxy === 'false' ? false : (Number(trustProxy) || trustProxy));
+
   app.use(
     helmet({
       contentSecurityPolicy: process.env.NODE_ENV === 'production',
@@ -47,7 +53,7 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Raw-Body'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-Raw-Body', 'X-Client'],
     exposedHeaders: ['X-Request-Id'],
   });
 

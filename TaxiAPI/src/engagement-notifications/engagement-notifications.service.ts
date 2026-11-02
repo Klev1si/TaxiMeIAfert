@@ -6,6 +6,7 @@ import Redis from 'ioredis';
 import { EngagementNotification, EngagementNotificationType as T } from '../entities/index.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { REDIS_CLIENT } from '../redis/redis.module.js';
+import { FirstRideOfferService } from '../first-ride-offer/first-ride-offer.service.js';
 import { ENGAGEMENT_MESSAGES, EngagementMessage } from './engagement-messages.js';
 
 /** Local time zone all engagement crons run in (Kosovo / Albania = CET/CEST). */
@@ -97,6 +98,7 @@ export class EngagementNotificationsService {
     private readonly ledger: Repository<EngagementNotification>,
     private readonly notifications: NotificationsService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    private readonly firstRideOffers: FirstRideOfferService,
   ) {}
 
   // ── Drivers ────────────────────────────────────────────────────────────────
@@ -253,14 +255,33 @@ export class EngagementNotificationsService {
     await this.runCampaign(
       T.CLIENT_FIRST_RIDE,
       { minIntervalHours: 3 * DAY - 4 * HOUR, maxTotal: 4 },
-      () =>
-        this.query(`
-          SELECT u.id AS "userId", u.fcm_token AS "fcmToken", cl.first_name AS name
+      async () => {
+        // No offer running → don't advertise one.
+        const offer = await this.firstRideOffers.getOffer();
+        if (!offer.enabled) return [];
+        const free = offer.discountPct >= 100;
+        const vars = {
+          offer:     free ? 'FALAS' : `${offer.discountPct}% ZBRITJE`,
+          offerText: free ? 'falas' : `me ${offer.discountPct}% zbritje`,
+        };
+        const rows = await this.query<Candidate & {
+          phone: string | null; email: string | null; googleSub: string | null; appleSub: string | null;
+        }>(`
+          SELECT u.id AS "userId", u.fcm_token AS "fcmToken", cl.first_name AS name,
+                 u.phone, u.email, u.google_sub AS "googleSub", u.apple_sub AS "appleSub"
           FROM clients cl JOIN users u ON u.id = cl.user_id
           WHERE ${REACHABLE_USER}
             AND cl.total_rides = 0
             AND u.created_at BETWEEN now() - interval '30 days' AND now() - interval '1 day'
-        `),
+        `);
+        // Skip people who already used the offer on a previous (deleted) account.
+        const out: Candidate[] = [];
+        for (const r of rows) {
+          if (await this.firstRideOffers.hasUsedOffer(r)) continue;
+          out.push({ userId: r.userId, fcmToken: r.fcmToken, name: r.name, vars });
+        }
+        return out;
+      },
     );
   }
 

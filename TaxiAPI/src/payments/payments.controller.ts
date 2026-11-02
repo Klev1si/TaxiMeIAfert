@@ -1,3 +1,4 @@
+import { SkipThrottle } from '@nestjs/throttler';
 import type { RawBodyRequest } from '@nestjs/common';
 import {
   BadRequestException,
@@ -118,6 +119,7 @@ export class PaymentsController {
    *     • payment_intent.payment_failed
    *     • payment_intent.canceled
    */
+  @SkipThrottle()
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   async webhook(

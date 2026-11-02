@@ -176,7 +176,7 @@ export class EventsGateway
   @Roles(UserRole.DRIVER)
   @SubscribeMessage('gps_update')
   async handleGpsUpdate(
-    @MessageBody() body: { lat: number; lng: number },
+    @MessageBody() body: { lat: number; lng: number; accuracy?: number | null; mocked?: boolean },
     @ConnectedSocket() client: AuthenticatedSocket,
   ): Promise<void> {
     // Guard against the race condition where gps_update arrives before
@@ -206,7 +206,11 @@ export class EventsGateway
     }
 
     // Persist to Redis GEO index + throttled DB update
-    await this.gpsService.updateLocation(driverId, lat, lng);
+    const accuracy = Number(body?.accuracy);
+    await this.gpsService.updateLocation(driverId, lat, lng, {
+      accuracy: isFinite(accuracy) && accuracy >= 0 ? accuracy : null,
+      mocked:   body?.mocked === true,
+    });
 
     const ts = Date.now();
 

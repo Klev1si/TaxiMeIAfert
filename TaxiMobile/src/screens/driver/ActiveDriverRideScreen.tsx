@@ -13,8 +13,8 @@ import {
   Platform,
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
+import Geolocation from '@react-native-community/geolocation';
 import { MAP_PROVIDER } from '../../utils/mapProvider';
-import type { UserLocationChangeEvent } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
@@ -44,6 +44,9 @@ function bearingDegrees(a: LatLng, b: LatLng): number {
 import { toAlertString } from '../../utils/errorMessage';
 
 type Props = DriverStackScreenProps<'ActiveDriverRide'>;
+
+/** GPS fixes less accurate than this (metres) are ignored by the meter. */
+const MAX_FIX_ACCURACY_M = 30;
 
 interface RideCancelledEvent { rideId: string; cancelledBy: string; reason: string | null }
 
@@ -146,16 +149,19 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ride?.id]);
 
-  // ── Handle driver's device location updates from MapView ─────────────────────
+  // ── Handle driver's device location updates ──────────────────────────────────
+  //
+  // Positions come from Geolocation.watchPosition (below). MapView's
+  // onUserLocationChange can't be used here: it only fires when
+  // showsUserLocation is true, and this screen hides the blue dot to draw its
+  // own 🚕 marker — so the taximeter would never receive a position.
   //
   // Two things happen on every significant move (≥ 150 m):
   //  1. Emit `gps_update` → server broadcasts `driver_location_update` to the
   //     client, which then shows the 🚕 marker moving on their map.
   //  2. Re-fetch the driver→pickup route polyline for the local map.
-  const handleUserLocationChange = (e: UserLocationChangeEvent) => {
-    const coord = e.nativeEvent.coordinate;
-    if (!coord || !ride) return;
-    const { latitude, longitude } = coord;
+  const handlePosition = (latitude: number, longitude: number) => {
+    if (!ride) return;
 
     const driverLatLng: LatLng = { latitude, longitude };
 
@@ -192,6 +198,26 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
       if (pts.length) setCurrentToPickupRoute(pts);
     });
   };
+
+  // Keep the latest handler in a ref so the long-lived GPS watcher below always
+  // sees the current ride/status without being torn down on every render.
+  const handlePositionRef = useRef(handlePosition);
+  handlePositionRef.current = handlePosition;
+
+  useEffect(() => {
+    const id = Geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        // Drop low-quality fixes (e.g. cell-tower / urban-canyon fallbacks) —
+        // they would add phantom distance to the meter.
+        if (accuracy != null && accuracy > MAX_FIX_ACCURACY_M) return;
+        handlePositionRef.current(latitude, longitude);
+      },
+      () => { /* transient GPS errors — keep the last known position */ },
+      { enableHighAccuracy: true, distanceFilter: 5, interval: 2000, fastestInterval: 1000, maximumAge: 5000, timeout: 20000 },
+    );
+    return () => { Geolocation.clearWatch(id); };
+  }, []);
 
   // ── Lifecycle action helpers ──────────────────────────────────────────────────
   const doAction = async (apiCall: () => Promise<{ data: Ride }>) => {
@@ -389,7 +415,6 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
         style={styles.map}
         provider={MAP_PROVIDER}
         showsUserLocation={false}  /* hide default blue dot — we draw our own 🚕 */
-        onUserLocationChange={handleUserLocationChange}
         initialRegion={{
           latitude: ride.pickupLat,
           longitude: ride.pickupLng,
@@ -469,6 +494,7 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
             ticking when the driver taps "Start ride" (status → in_progress). */}
       {(status === 'accepted' || status === 'driving_to_pickup' || status === 'in_progress') && (
         <Taximeter
+          rideId={ride.id}
           tariff={ride.tariffSnapshot ?? null}
           startedAt={status === 'in_progress' ? ride.startedAt : null}
           position={driverPos}

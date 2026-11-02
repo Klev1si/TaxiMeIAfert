@@ -111,7 +111,10 @@ export class RidesController {
   }
 
   // ── GET /rides/nearest-drivers ─────────────────────────────────────────────
+  // Restricted to passengers (and admins): the response contains drivers' live
+  // positions, names and plates, which other drivers/companies must not see.
   @Get('nearest-drivers')
+  @Roles(UserRole.CLIENT, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
   findNearestDrivers(
     @Query() query: NearestDriversQueryDto,

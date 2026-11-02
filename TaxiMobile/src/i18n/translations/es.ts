@@ -337,7 +337,9 @@ export default {
       driversNearby:           '{count} conductor cercano',
       driversNearbyPlural:     '{count} conductores cercanos',
       firstRideTitle:          '¡Tu primer viaje dentro de la ciudad es GRATIS! 🎉',
-      firstRideBody:           'Gratis para viajes dentro de la ciudad — aplicado automáticamente.',
+      firstRideBody:           'Gratis para viajes dentro de la ciudad (hasta {km} km) — aplicado automáticamente.',
+      firstRidePctTitle:       '¡{pct}% de descuento en tu primer viaje dentro de la ciudad! 🎉',
+      firstRidePctBody:        'Para viajes dentro de la ciudad (hasta {km} km) — aplicado automáticamente.',
       gettingLocation:         'Obteniendo su ubicación…',
       whereGoing:              '¿A dónde va?',
       requestRideBtn:          'Solicitar un viaje',
@@ -481,7 +483,7 @@ export default {
       paymentFailMsg:   'El pago falló. Por favor intente de nuevo.',
       genericErrorMsg:  'Algo salió mal. Por favor intente de nuevo.',
       farePending:      'La tarifa aún no está finalizada…',
-      firstRideDiscount: 'Primer viaje gratis',
+      firstRideDiscount: 'Descuento del primer viaje',
       coveredByPlatform: 'Cubierto por TaxiMeIAfert 🎁',
     },
 
@@ -525,7 +527,7 @@ export default {
       helpSupport: 'Ayuda y soporte',
       howToUse:    'Cómo usar TaxiMeIAfert',
       offerNotifications:     'Ofertas y recordatorios',
-      offerNotificationsHint: 'Viajes gratis, promociones y recordatorios. Las novedades de tus viajes siempre se envían.',
+      offerNotificationsHint: 'Ofertas, promociones y recordatorios. Las novedades de tus viajes siempre se envían.',
       offerNotificationsError: 'No se pudo actualizar la configuración de notificaciones. Inténtalo de nuevo.',
     },
 

@@ -7,8 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { unlinkSync, existsSync } from 'fs';
-import { join } from 'path';
+import { deleteDocumentFile, documentViewUrl } from './document-storage';
 import { Driver, User } from '../entities';
 import { DriverDocument } from '../entities/driver-document.entity';
 import { DocumentStatus, DocumentType } from '../common/enums';
@@ -200,14 +199,7 @@ export class DriverDocumentsService {
   }
 
   private deleteFile(fileUrl: string): void {
-    try {
-      // fileUrl is stored as a relative path like /uploads/documents/xxx.jpg
-      const abs = join(process.cwd(), fileUrl);
-      if (existsSync(abs)) unlinkSync(abs);
-    } catch {
-      // Non-fatal — log but don't throw
-      this.logger.warn(`Failed to delete file: ${fileUrl}`);
-    }
+    void deleteDocumentFile(fileUrl);
   }
 
   private toDto(doc: DriverDocument): DocumentDto {
@@ -215,7 +207,7 @@ export class DriverDocumentsService {
       id:              doc.id,
       type:            doc.type,
       status:          doc.status,
-      fileUrl:         doc.fileUrl,
+      fileUrl:         documentViewUrl(doc.fileUrl),
       originalName:    doc.originalName,
       rejectionReason: doc.rejectionReason,
       reviewedAt:      doc.reviewedAt,

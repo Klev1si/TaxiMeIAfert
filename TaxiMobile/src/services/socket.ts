@@ -117,9 +117,11 @@ class SocketService {
     this.socket?.off(event);
   }
 
-  /** Send a GPS update (driver only) */
-  sendGpsUpdate(lat: number, lng: number): void {
-    this.emit('gps_update', { lat, lng });
+  /** Send a GPS update (driver only). `accuracy` (metres) and `mocked`
+   *  (Android mock-location flag) let the server keep bad or fake fixes out
+   *  of the ride's billed distance. */
+  sendGpsUpdate(lat: number, lng: number, accuracy?: number | null, mocked?: boolean): void {
+    this.emit('gps_update', { lat, lng, accuracy: accuracy ?? null, mocked: !!mocked });
   }
 
   /** Signal the server that driver is now online and accepting rides */

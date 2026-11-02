@@ -86,12 +86,14 @@ export const ENGAGEMENT_MESSAGES: Record<T, EngagementMessage[]> = {
 
   // ── Clients ─────────────────────────────────────────────────────────────
   [T.CLIENT_FIRST_RIDE]: [
-    { key: 'cf_free', title: 'Udhëtimi i parë është FALAS 🎁',
-      body: 'Udhëtimi yt i parë brenda qytetit është pa pagesë. Porosit tani, {name}!' },
+    // {offer} / {offerText} follow the admin's first-ride offer:
+    //   100 % → "FALAS" / "falas"; otherwise e.g. "50% ZBRITJE" / "me 50% zbritje".
+    { key: 'cf_free', title: 'Udhëtimi i parë: {offer} 🎁',
+      body: 'Udhëtimi yt i parë brenda qytetit është {offerText}. Porosit tani, {name}!' },
     { key: 'cf_try', title: 'Ende nuk e ke provuar?',
-      body: 'Porosit taksinë me një prekje — udhëtimi i parë në qytet është dhuratë nga ne.' },
+      body: 'Porosit taksinë me një prekje — udhëtimi i parë në qytet është {offerText}.' },
     { key: 'cf_waiting', title: 'Dhurata jote të pret 🚕',
-      body: 'Udhëtimi i parë falas brenda qytetit është ende aktiv. Mos e humb!' },
+      body: 'Udhëtimi i parë brenda qytetit {offerText} është ende aktiv. Mos e humb!' },
   ],
 
   [T.CLIENT_WINBACK]: [
