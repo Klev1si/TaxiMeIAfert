@@ -8,6 +8,7 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import { randomInt } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -216,7 +217,8 @@ export class PhoneVerificationService {
 
   /** Public so password-reset and other OTP-style flows can share one impl. */
   generateCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    // Cryptographically secure — Math.random() output can be predicted.
+    return randomInt(100000, 1000000).toString();
   }
 
   private async deliverCode(phone: string, code: string): Promise<void> {

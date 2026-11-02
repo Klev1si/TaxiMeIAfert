@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -2671,9 +2672,9 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (!ride.shareToken) {
-      ride.shareToken =
-        Math.random().toString(36).slice(2, 14) +
-        Math.random().toString(36).slice(2, 14);
+      // 24 random bytes → 32 URL-safe chars from a secure source, so the
+      // public live-tracking link can't be guessed.
+      ride.shareToken = randomBytes(24).toString('base64url');
       await this.rideRepo.update(ride.id, { shareToken: ride.shareToken });
     }
     return { token: ride.shareToken };
