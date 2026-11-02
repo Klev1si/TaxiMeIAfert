@@ -338,7 +338,9 @@ export default {
       driversNearby:           '{count} shofer pranë',
       driversNearbyPlural:     '{count} shoferë pranë',
       firstRideTitle:          'Udhëtimi i parë brenda qytetit FALAS! 🎉',
-      firstRideBody:           'Falas për udhëtimet brenda qytetit — aplikohet automatikisht.',
+      firstRideBody:           'Falas për udhëtimet brenda qytetit (deri në {km} km) — aplikohet automatikisht.',
+      firstRidePctTitle:       '{pct}% zbritje në udhëtimin e parë brenda qytetit! 🎉',
+      firstRidePctBody:        'Për udhëtimet brenda qytetit (deri në {km} km) — aplikohet automatikisht.',
       gettingLocation:         'Po merret vendndodhja juaj…',
       whereGoing:              'Ku doni të shkoni?',
       requestRideBtn:          'Kërkoni një udhëtim',
@@ -482,7 +484,7 @@ export default {
       paymentFailMsg:   'Pagesa dështoi. Ju lutemi provoni sërish.',
       genericErrorMsg:  'Diçka shkoi keq. Ju lutemi provoni sërish.',
       farePending:      'Tarifa nuk është finalizuar ende…',
-      firstRideDiscount: 'Udhëtimi i parë falas',
+      firstRideDiscount: 'Zbritja e udhëtimit të parë',
       coveredByPlatform: 'Mbuluar nga TaxiMeIAfert 🎁',
     },
 
@@ -526,7 +528,7 @@ export default {
       helpSupport: 'Ndihmë dhe Mbështetje',
       howToUse:    'Si të përdoret TaxiMeIAfert',
       offerNotifications:     'Oferta dhe kujtesa',
-      offerNotificationsHint: 'Udhëtime falas, promocione dhe kujtesa. Njoftimet për udhëtimet dërgohen gjithmonë.',
+      offerNotificationsHint: 'Oferta, promocione dhe kujtesa. Njoftimet për udhëtimet dërgohen gjithmonë.',
       offerNotificationsError: 'Cilësimet e njoftimeve nuk u ruajtën. Provoni përsëri.',
     },
 
