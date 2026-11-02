@@ -1583,13 +1583,13 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
 
     // ── Fare calculation ────────────────────────────────────────────────────
 
-    // 1. Distance: prefer driver-supplied value; then actual GPS distance from
-    //    waypoints; fall back to Haversine from stored coordinates.
-    if (fareInput?.distanceKm != null) {
-      ride.distanceKm = fareInput.distanceKm;
-    } else if (ride.distanceKm == null && actualKm != null) {
-      // Use actual GPS-tracked distance
+    // 1. Distance: prefer the GPS distance the server recorded from waypoints
+    //    (the driver can't alter it); then a driver-supplied value; fall back
+    //    to Haversine from stored coordinates.
+    if (actualKm != null) {
       ride.distanceKm = actualKm;
+    } else if (fareInput?.distanceKm != null) {
+      ride.distanceKm = fareInput.distanceKm;
     } else if (ride.distanceKm == null && ride.dropoffLat != null && ride.dropoffLng != null) {
       // Auto-calculate straight-line distance from stored coordinates
       ride.distanceKm = this.haversineKm(
@@ -1598,8 +1598,13 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    // 2. Duration: prefer driver-supplied; estimate from distance if missing
-    if (fareInput?.durationMinutes != null) {
+    // 2. Duration: the real elapsed time between "start ride" and "complete",
+    //    measured on the server clock. Only when startedAt is missing (legacy
+    //    data) fall back to a driver-supplied value or a distance estimate.
+    if (ride.startedAt) {
+      const elapsedMs = ride.completedAt.getTime() - new Date(ride.startedAt).getTime();
+      ride.durationMinutes = Math.round(Math.max(0, elapsedMs) / 60_000 * 10) / 10;
+    } else if (fareInput?.durationMinutes != null) {
       ride.durationMinutes = fareInput.durationMinutes;
     } else if (ride.durationMinutes == null && ride.distanceKm != null) {
       // Rough estimate: 30 km/h average city speed
