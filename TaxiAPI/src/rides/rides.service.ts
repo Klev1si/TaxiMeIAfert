@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -917,7 +918,9 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       throw new ForbiddenException('You are not the assigned driver for this ride');
     }
 
-    // Accept: update ride
+    // Accept: claim the ride atomically so a concurrent cancel (or another
+    // accept) can't be silently overwritten.
+    await this.claimStatus(rideId, RideStatus.REQUESTED, RideStatus.ACCEPTED);
     ride.driverId  = driver.id;
     ride.companyId = driver.companyId;
     ride.status    = RideStatus.ACCEPTED;
@@ -1374,6 +1377,9 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     const fee = computeCancellationFee(ride, userRole);
 
     // ── Persist cancellation ──────────────────────────────────────────────────
+    // Atomic: if a driver accepted (or the ride moved on) since we loaded it,
+    // fail instead of overwriting that change with stale data.
+    await this.claimStatus(rideId, ride.status, RideStatus.CANCELLED);
     ride.status = RideStatus.CANCELLED;
     ride.cancelledAt = new Date();
     ride.cancelledBy = userRole;
@@ -1570,6 +1576,9 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    // Claim the completion atomically — a retried/double-tapped request must
+    // not finalize the fare and credit the driver's wallet twice.
+    await this.claimStatus(rideId, RideStatus.IN_PROGRESS, RideStatus.COMPLETED);
     ride.status = RideStatus.COMPLETED;
     ride.completedAt = new Date();
 
@@ -2527,6 +2536,19 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
    * ensuring the ride's driverId matches this driver.
    * Used by all Step 19 lifecycle endpoints.
    */
+  /**
+   * Atomically move a ride from `from` to `to`. The status check and the write
+   * happen in one UPDATE … WHERE status = :from, so two concurrent requests
+   * (a double-tapped "complete", or a cancel racing an accept) can't both
+   * succeed. Throws 409 if the ride is no longer in the expected status.
+   */
+  private async claimStatus(rideId: string, from: RideStatus, to: RideStatus): Promise<void> {
+    const result = await this.rideRepo.update({ id: rideId, status: from }, { status: to });
+    if (!result.affected) {
+      throw new ConflictException('The ride was updated by someone else — please refresh and try again.');
+    }
+  }
+
   private async resolveDriverRide(
     driverUserId: string,
     rideId: string,
