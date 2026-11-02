@@ -7,6 +7,12 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../../entities';
 import { Request } from 'express';
+import { readRefreshCookie } from '../refresh-cookie';
+
+/** Mobile apps send the refresh token as a Bearer header; the web dashboard
+ *  sends it as an httpOnly cookie (together with X-Client: web-dashboard). */
+const extractRefreshToken = (req: Request): string | null =>
+  ExtractJwt.fromAuthHeaderAsBearerToken()(req) ?? readRefreshCookie(req);
 
 export interface JwtRefreshPayload {
   sub: string;
@@ -22,7 +28,7 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
     private readonly userRepo: Repository<User>,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: extractRefreshToken,
       secretOrKey: config.getOrThrow<string>('JWT_REFRESH_SECRET'),
       ignoreExpiration: false,
       passReqToCallback: true,
@@ -30,7 +36,7 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
   }
 
   async validate(req: Request, payload: JwtRefreshPayload): Promise<User> {
-    const rawToken = ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+    const rawToken = extractRefreshToken(req);
     if (!rawToken) throw new UnauthorizedException('Refresh token missing');
 
     const user = await this.userRepo.findOne({

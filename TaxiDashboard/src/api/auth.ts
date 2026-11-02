@@ -4,7 +4,7 @@ import type { AuthTokens, AuthUser } from '../types/api';
 export const authApi = {
   /** Login with phone + password */
   login: (phone: string, password: string) =>
-    apiClient.post<AuthTokens & { expiresIn: number }>('/auth/login', { phone, password }),
+    apiClient.post<Omit<AuthTokens, 'refreshToken'> & { expiresIn: number }>('/auth/login', { phone, password }),
 
   /** GET /auth/me — full profile for the current user */
   getMe: () =>

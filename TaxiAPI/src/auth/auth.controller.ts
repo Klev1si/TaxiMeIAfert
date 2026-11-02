@@ -13,6 +13,8 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Req,
+  Res,
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { In } from 'typeorm';
@@ -34,6 +36,8 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { AppleSignInDto } from './dto/apple-signin.dto';
 import { AuthTokensDto } from './dto/auth-tokens.dto';
+import { clearRefreshCookie, deliverTokens } from './refresh-cookie';
+import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -225,8 +229,13 @@ export class AuthController {
   @UseGuards(ThrottlerGuard)
   @HttpCode(HttpStatus.OK)
   @Throttle({ strict: { limit: 10, ttl: 60_000 } })
-  login(@Body() dto: LoginDto, @ReqMeta() meta: RequestMeta): Promise<AuthTokensDto> {
-    return this.authService.login(dto, meta);
+  async login(
+    @Body() dto: LoginDto,
+    @ReqMeta() meta: RequestMeta,
+    @Req() req: ExpressRequest,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<AuthTokensDto> {
+    return deliverTokens(req, res, await this.authService.login(dto, meta));
   }
 
   // POST /auth/google — exchange a Google ID token for our JWTs.
@@ -250,19 +259,29 @@ export class AuthController {
     return this.authService.appleSignIn(dto.identityToken, dto.firstName, dto.lastName, meta);
   }
 
-  // POST /auth/refresh  — requires valid refresh token in Authorization header
+  // POST /auth/refresh  — requires a valid refresh token: Authorization header
+  // (mobile) or the httpOnly cookie + X-Client header (web dashboard).
   @Post('refresh')
   @UseGuards(JwtRefreshGuard)
   @HttpCode(HttpStatus.OK)
-  refresh(@CurrentUser() user: User, @ReqMeta() meta: RequestMeta): Promise<AuthTokensDto> {
-    return this.authService.refresh(user, meta);
+  async refresh(
+    @CurrentUser() user: User,
+    @ReqMeta() meta: RequestMeta,
+    @Req() req: ExpressRequest,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<AuthTokensDto> {
+    return deliverTokens(req, res, await this.authService.refresh(user, meta));
   }
 
   // POST /auth/logout  — requires valid access token
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  logout(@CurrentUser() user: User): Promise<void> {
+  async logout(
+    @CurrentUser() user: User,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<void> {
+    clearRefreshCookie(res);
     return this.authService.logout(user.id);
   }
 

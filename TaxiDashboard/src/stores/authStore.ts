@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { authApi } from '../api/auth';
-import { STORAGE_KEYS } from '../api/client';
+import { refreshAccessToken, setAccessToken } from '../api/client';
 import type { AuthUser } from '../types/api';
 
 interface AuthState {
@@ -19,19 +19,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   isInitialized: false,
 
   initialize: async () => {
-    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-    if (!token) {
-      set({ isInitialized: true });
-      return;
-    }
+    // No token is stored in the browser. Ask the API for a fresh access token
+    // using the httpOnly refresh cookie; if there's no valid session, the
+    // user lands on the login page.
     try {
+      const token = await refreshAccessToken();
       const payload = parseJwtPayload(token);
-      if (payload) {
+      if (payload && (payload.role === 'super_admin' || payload.role === 'company')) {
         set({ user: { id: payload.sub, phone: payload.phone, role: payload.role } });
+      } else {
+        setAccessToken(null);
       }
     } catch {
-      localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-      localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+      setAccessToken(null);
     } finally {
       set({ isInitialized: true });
     }
@@ -49,8 +49,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         throw new Error('Access denied. This dashboard is for admins and company accounts only.');
       }
 
-      localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.accessToken);
-      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refreshToken);
+      // The refresh token was set by the API as an httpOnly cookie; the
+      // access token stays in memory only.
+      setAccessToken(data.accessToken);
 
       set({ user: { id: payload.sub, phone: payload.phone, role: payload.role } });
     } finally {
@@ -59,9 +60,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
+    // The API clears the refresh cookie and revokes the session.
     try { await authApi.logout(); } catch { /* best-effort */ }
-    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+    setAccessToken(null);
     set({ user: null });
   },
 }));
