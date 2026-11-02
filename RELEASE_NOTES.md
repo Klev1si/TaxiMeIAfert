@@ -1,5 +1,100 @@
 # Release Notes
 
+## 2.00 (Android versionCode 113 · iOS build auto-set in Codemagic)
+
+Taximeter and GPS accuracy, security hardening, and an admin-configurable
+first-ride offer.
+
+- **Taximeter:** the driver's meter now counts distance during the ride (it
+  stayed at 0.00 km before). The final fare uses the real ride time and the
+  server-recorded GPS route, ignoring GPS jitter, inaccurate fixes and fake
+  (mock) locations. The meter keeps its distance if the app is reopened
+  mid-ride.
+- **iOS background GPS:** location keeps updating while a taxi waits at a
+  light or the app is in the background; drivers are asked for "Always"
+  location when going online.
+- **First-ride offer:** set from the dashboard (free or N % off, max in-city
+  distance). Each phone/email/Google/Apple account gets it once, even after
+  deleting and re-creating the account. The passenger banner shows the
+  current offer.
+- **Security & money:** fares can't be edited after payment; accept /
+  complete / cancel can't run twice at once; Google/Apple sign-in only links
+  verified emails; whole-API rate limiting per real client IP; private,
+  expiring links for driver documents; secure OTP codes and share links;
+  dashboard login no longer stores tokens in the browser.
+
+### Store "What's New"
+
+#### English (en)
+
+**Google Play**
+
+> More accurate taximeter and GPS, improved security, and bug fixes.
+
+**App Store**
+
+> New in 2.00
+> • More accurate taximeter: distance and time are measured precisely during the ride.
+> • GPS keeps tracking reliably in the background and while waiting at lights.
+> • A gift on your first ride inside the city — applied automatically.
+> • Security improvements and bug fixes.
+
+#### Albanian (sq)
+
+**Google Play**
+
+> Taksimetër dhe GPS më të saktë, siguri më e mirë dhe rregullime gabimesh.
+
+**App Store**
+
+> E re në 2.00
+> • Taksimetër më i saktë: distanca dhe koha maten saktë gjatë udhëtimit.
+> • GPS-i vazhdon të gjurmojë me besueshmëri në sfond dhe gjatë pritjes në semafor.
+> • Dhuratë në udhëtimin e parë brenda qytetit — aplikohet automatikisht.
+> • Përmirësime sigurie dhe rregullime gabimesh.
+
+#### Spanish (es)
+
+**Google Play**
+
+> Taxímetro y GPS más precisos, mayor seguridad y corrección de errores.
+
+**App Store**
+
+> Novedades en la 2.00
+> • Taxímetro más preciso: la distancia y el tiempo se miden con exactitud durante el viaje.
+> • El GPS sigue funcionando de forma fiable en segundo plano y en los semáforos.
+> • Un regalo en tu primer viaje dentro de la ciudad — se aplica automáticamente.
+> • Mejoras de seguridad y corrección de errores.
+
+#### French (fr)
+
+**Google Play**
+
+> Taximètre et GPS plus précis, sécurité renforcée et corrections de bugs.
+
+**App Store**
+
+> Nouveautés de la 2.00
+> • Taximètre plus précis : la distance et le temps sont mesurés avec exactitude pendant la course.
+> • Le GPS continue de fonctionner de manière fiable en arrière-plan et aux feux rouges.
+> • Un cadeau pour votre première course en ville — appliqué automatiquement.
+> • Améliorations de sécurité et corrections de bugs.
+
+#### Turkish (tr)
+
+**Google Play**
+
+> Daha doğru taksimetre ve GPS, gelişmiş güvenlik ve hata düzeltmeleri.
+
+**App Store**
+
+> 2.00'da yenilikler
+> • Daha doğru taksimetre: yolculuk boyunca mesafe ve süre hassas şekilde ölçülür.
+> • GPS arka planda ve trafik ışıklarında beklerken güvenilir şekilde çalışmaya devam eder.
+> • Şehir içi ilk yolculuğunuza hediye — otomatik uygulanır.
+> • Güvenlik iyileştirmeleri ve hata düzeltmeleri.
+
 ## 1.99 (Android versionCode 112 · iOS build auto-set in Codemagic)
 
 Passengers who sign in with Google or Apple (or whose account has no verified
