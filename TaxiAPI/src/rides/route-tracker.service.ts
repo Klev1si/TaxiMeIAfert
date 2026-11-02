@@ -16,6 +16,11 @@ const BUFFER_TTL_S = 28_800;
 // ── Redis key helpers ─────────────────────────────────────────────────────────
 const activeRideKey  = (driverId: string) => `driver:active_ride:${driverId}`;
 const waypointBufKey = (rideId: string)   => `ride:wp:${rideId}`;
+const lastWpKey      = (rideId: string)   => `ride:wp:last:${rideId}`;
+
+/** Movement smaller than this (metres) from the last recorded waypoint is
+ *  treated as GPS jitter — e.g. the fix wandering while stopped at a light. */
+const MIN_MOVE_M = Number(process.env.ROUTE_MIN_MOVE_M ?? 10);
 
 // ── Haversine (km) ────────────────────────────────────────────────────────────
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -71,7 +76,22 @@ export class RouteTrackerService {
    * Push a new GPS fix into the Redis buffer.
    * Automatically flushes to DB every FLUSH_EVERY points to keep memory bounded.
    */
-  async recordWaypoint(rideId: string, lat: number, lng: number): Promise<void> {
+  async recordWaypoint(
+    rideId:   string,
+    lat:      number,
+    lng:      number,
+    accuracy: number | null = null,
+  ): Promise<void> {
+    // Jitter filter: only record when the car moved further than the larger of
+    // MIN_MOVE_M and the fix's own accuracy radius from the last waypoint.
+    const lastRaw = await this.redis.get(lastWpKey(rideId));
+    if (lastRaw) {
+      const last  = JSON.parse(lastRaw) as { lat: number; lng: number };
+      const moved = haversineKm(last.lat, last.lng, lat, lng) * 1000;
+      if (moved < Math.max(MIN_MOVE_M, accuracy ?? 0)) return;
+    }
+    await this.redis.setex(lastWpKey(rideId), BUFFER_TTL_S, JSON.stringify({ lat, lng }));
+
     const key = waypointBufKey(rideId);
     const len = await this.redis.rpush(key, serialise(lat, lng));
     await this.redis.expire(key, BUFFER_TTL_S);
@@ -91,6 +111,7 @@ export class RouteTrackerService {
    */
   async finalizeRoute(rideId: string): Promise<number | null> {
     await this.flushBuffer(rideId);
+    await this.redis.del(lastWpKey(rideId));
 
     const waypoints = await this.wpRepo.find({
       where: { rideId },

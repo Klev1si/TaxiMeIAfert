@@ -86,13 +86,19 @@ export default function Taximeter({
   useEffect(() => {
     if (!position) return;
     const last = lastPosRef.current;
-    if (last && startedAt) {
-      const d = haversineKm(last, position);
-      // Ignore tiny jitter (<5 m) and impossible jumps (>2 km in one update)
-      if (d >= 0.005 && d <= 2) {
-        distanceRef.current += d;
-        setDistanceKm(distanceRef.current);
-      }
+    if (!last || !startedAt) {
+      lastPosRef.current = position;
+      return;
+    }
+    const d = haversineKm(last, position);
+    // Same rule the server uses for billed distance: movement under 10 m
+    // from the last counted point is GPS jitter (e.g. waiting at a light),
+    // so keep the anchor and wait for real movement. Impossible jumps
+    // (>2 km in one update) are skipped and the anchor is reset.
+    if (d < 0.01) return;
+    if (d <= 2) {
+      distanceRef.current += d;
+      setDistanceKm(distanceRef.current);
     }
     lastPosRef.current = position;
   }, [position, startedAt]);

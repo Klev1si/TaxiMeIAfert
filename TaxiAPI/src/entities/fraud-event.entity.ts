@@ -8,6 +8,7 @@ import {
 export type FraudEventType =
   | 'concurrent_ride_attempt'
   | 'gps_spoof_detected'
+  | 'gps_mock_location'
   | 'otp_lockout'
   | 'promo_abuse';
 

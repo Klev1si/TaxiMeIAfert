@@ -161,6 +161,18 @@ export class FraudService {
     return false;
   }
 
+  /**
+   * The driver's phone reported the fix as coming from a mock-location app.
+   * Logged at most once per driver per hour so a spoofing session doesn't
+   * flood the fraud log.
+   */
+  async reportMockLocation(driverId: string, rideId: string | null): Promise<void> {
+    const first = await this.redis.set(`fraud:gps_mock:${driverId}`, '1', 'EX', 3600, 'NX');
+    if (first !== 'OK') return;
+    this.logger.warn(`Mock GPS location reported: driver=${driverId} ride=${rideId ?? '-'}`);
+    await this.log({ type: 'gps_mock_location', driverId, rideId });
+  }
+
   /** Clear last GPS snapshot when driver goes offline (prevents stale comparisons). */
   async clearGpsSnapshot(driverId: string): Promise<void> {
     await this.redis.del(gpsLastKey(driverId));

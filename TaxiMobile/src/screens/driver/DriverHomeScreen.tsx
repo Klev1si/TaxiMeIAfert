@@ -54,6 +54,10 @@ export default function DriverHomeScreen({ navigation }: Props) {
   const gpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const latRef = useRef<number | null>(null);
   const lngRef = useRef<number | null>(null);
+  // Accuracy (m) and mock-location flag of the latest fix — sent with each
+  // gps_update so the server can keep bad/fake fixes out of billed distance.
+  const accRef = useRef<number | null>(null);
+  const mockedRef = useRef(false);
 
   const [locationReady, setLocationReady] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
@@ -108,9 +112,11 @@ export default function DriverHomeScreen({ navigation }: Props) {
     if (permissionDenied) return;
     const id = Geolocation.watchPosition(
       (pos) => {
-        const { latitude, longitude } = pos.coords;
+        const { latitude, longitude, accuracy } = pos.coords;
         latRef.current = latitude;
         lngRef.current = longitude;
+        accRef.current = accuracy ?? null;
+        mockedRef.current = !!(pos as { mocked?: boolean }).mocked;
         setLocation(latitude, longitude);
         if (!locationReady) {
           setLocationReady(true);
@@ -121,7 +127,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
         }
         // Push to server immediately if online — don't wait up to 8s for the interval
         if (isOnline) {
-          socketService.sendGpsUpdate(latitude, longitude);
+          socketService.sendGpsUpdate(latitude, longitude, accRef.current, mockedRef.current);
         }
       },
       () => { /* silent */ },
@@ -179,6 +185,8 @@ export default function DriverHomeScreen({ navigation }: Props) {
       const { latitude, longitude } = coordinate;
       latRef.current = latitude;
       lngRef.current = longitude;
+      accRef.current = coordinate.accuracy ?? null;
+      mockedRef.current = !!(coordinate as { isFromMockProvider?: boolean }).isFromMockProvider;
       setLocation(latitude, longitude);
 
       if (!locationReady) {
@@ -200,11 +208,11 @@ export default function DriverHomeScreen({ navigation }: Props) {
   const startGps = useCallback(() => {
     if (gpsIntervalRef.current) { return; }
     if (latRef.current !== null && lngRef.current !== null) {
-      socketService.sendGpsUpdate(latRef.current, lngRef.current);
+      socketService.sendGpsUpdate(latRef.current, lngRef.current, accRef.current, mockedRef.current);
     }
     gpsIntervalRef.current = setInterval(() => {
       if (latRef.current !== null && lngRef.current !== null) {
-        socketService.sendGpsUpdate(latRef.current, lngRef.current);
+        socketService.sendGpsUpdate(latRef.current, lngRef.current, accRef.current, mockedRef.current);
       }
     }, GPS_INTERVAL_MS);
   }, []);

@@ -10,6 +10,9 @@ import { RouteTrackerService } from '../rides/route-tracker.service.js';
 /** Sorted-set key used for GEOSEARCH in Step 17 */
 export const DRIVERS_GEO_KEY = 'drivers:geo';
 
+/** GPS fixes less accurate than this (metres) are not used for billed distance. */
+const MAX_BILLABLE_ACCURACY_M = Number(process.env.GPS_MAX_BILLABLE_ACCURACY_M ?? 30);
+
 export interface DriverLocation {
   driverId: string;
   lat: number;
@@ -40,14 +43,27 @@ export class GpsService {
     driverId: string,
     lat: number,
     lng: number,
+    quality: { accuracy?: number | null; mocked?: boolean } = {},
   ): Promise<void> {
-    // 0a. Fraud: GPS spoof / teleport detection (fire-and-forget)
-    void this.fraudService.detectGpsSpoof(driverId, lat, lng);
-
-    // 0b. Route tracking: record waypoint if driver has an active ride (fire-and-forget)
-    void this.routeTracker.getActiveRideId(driverId).then(rideId => {
-      if (rideId) void this.routeTracker.recordWaypoint(rideId, lat, lng);
-    });
+    // 0. Route tracking: record a billable waypoint if the driver has an
+    //    active ride — but only for fixes we trust. Teleports (spoof
+    //    detector), mock-location fixes and low-accuracy fixes still update
+    //    the live map below, they just never add distance to the fare.
+    //    Fire-and-forget so the live position isn't delayed.
+    void (async () => {
+      try {
+        const spoofed = await this.fraudService.detectGpsSpoof(driverId, lat, lng);
+        const rideId  = await this.routeTracker.getActiveRideId(driverId);
+        if (quality.mocked) {
+          void this.fraudService.reportMockLocation(driverId, rideId);
+        }
+        if (!rideId || spoofed || quality.mocked) return;
+        if (quality.accuracy != null && quality.accuracy > MAX_BILLABLE_ACCURACY_M) return;
+        await this.routeTracker.recordWaypoint(rideId, lat, lng, quality.accuracy ?? null);
+      } catch (err) {
+        this.logger.warn(`Route tracking failed for driver ${driverId}: ${(err as Error).message}`);
+      }
+    })();
 
     // 1. Geospatial index — powers GEOSEARCH (Step 17)
     //    GEOADD key longitude latitude member
