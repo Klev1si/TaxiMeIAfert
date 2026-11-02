@@ -25,6 +25,26 @@ import Geolocation from '@react-native-community/geolocation';
  * Must be called AFTER ACCESS_FINE_LOCATION has already been granted.
  */
 export async function requestBackgroundLocation(): Promise<boolean> {
+  if (Platform.OS === 'ios') {
+    // Ask iOS to upgrade to "Always". iOS shows this upgrade prompt at most
+    // once, and may never call back if the user already decided — so this is
+    // fire-and-forget. Background tracking still works with "While Using":
+    // the app declares the `location` background mode and (via our
+    // patch-package patch) keeps updates running with the blue status-bar
+    // indicator, so we report success either way.
+    try {
+      Geolocation.setRNConfiguration({
+        skipPermissionRequests:          false,
+        authorizationLevel:              'always',
+        enableBackgroundLocationUpdates: true,
+        locationProvider:                'auto',
+      });
+      Geolocation.requestAuthorization(() => {}, () => {});
+    } catch {
+      /* non-fatal — foreground tracking keeps working */
+    }
+    return true;
+  }
   if (Platform.OS !== 'android') { return true; }
 
   // Android 10 (API 29)+ requires a separate background location grant
