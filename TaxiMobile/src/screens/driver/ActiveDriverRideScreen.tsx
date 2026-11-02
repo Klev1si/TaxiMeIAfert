@@ -494,6 +494,7 @@ export default function ActiveDriverRideScreen({ navigation, route }: Props) {
             ticking when the driver taps "Start ride" (status → in_progress). */}
       {(status === 'accepted' || status === 'driving_to_pickup' || status === 'in_progress') && (
         <Taximeter
+          rideId={ride.id}
           tariff={ride.tariffSnapshot ?? null}
           startedAt={status === 'in_progress' ? ride.startedAt : null}
           position={driverPos}
