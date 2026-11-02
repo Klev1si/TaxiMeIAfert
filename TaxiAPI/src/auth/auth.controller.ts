@@ -181,9 +181,8 @@ export class AuthController {
       firstName: client?.firstName ?? null,
       lastName:  client?.lastName  ?? null,
       rating:    client?.rating != null ? Number(client.rating) : null,
-      // totalRides is shown on the profile (the first-ride banner now uses
-      // GET /first-ride-offer, which also checks previous accounts) —
-      // 0 = banner visible, anything else = hidden.
+      // Number of completed rides. (The first-ride banner uses
+      // GET /first-ride-offer, which also checks previous accounts.)
       totalRides: client?.totalRides ?? 0,
     };
   }

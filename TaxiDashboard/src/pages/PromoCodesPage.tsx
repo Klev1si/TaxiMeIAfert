@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import apiClient from '../api/client';
 import StatusBadge from '../components/StatusBadge';
+import FirstRideOfferCard from '../components/FirstRideOfferCard';
 import { useAuthStore } from '../stores/authStore';
 
 type DiscountType = 'percent' | 'fixed';
@@ -213,6 +214,9 @@ export default function PromoCodesPage() {
           Percent codes reduce by a percentage (optionally capped), fixed codes deduct a flat amount.
         </div>
       </div>
+
+      {/* Automatic first-ride offer — platform-wide, super-admin only */}
+      {!isCompany && <FirstRideOfferCard />}
 
       {/* Table */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
