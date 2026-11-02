@@ -471,10 +471,10 @@ export default function RideDetailScreen({ route }: Props) {
                 : <Text style={styles.shareReceiptBtnText}>📤  {t('shared.rideDetail.shareReceipt')}</Text>}
             </TouchableOpacity>
 
-            {/* Edit Fare — only for the driver, on completed rides. Used when
-                the original completion saved a wrong/zero fare so the driver
-                doesn't lose earnings. */}
-            {isOwnRide && isCompleted && (
+            {/* Edit Fare — only for the driver, on completed rides that are
+                not paid yet. Used when the original completion saved a
+                wrong/zero fare so the driver doesn't lose earnings. */}
+            {isOwnRide && isCompleted && ride.paymentStatus !== 'paid' && ride.paymentStatus !== 'refunded' && (
               <TouchableOpacity
                 style={styles.editFareBtn}
                 onPress={openEditFare}

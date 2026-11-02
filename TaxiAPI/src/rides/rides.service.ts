@@ -1853,6 +1853,19 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    // Once the passenger has paid (or a card payment has been started for the
+    // current amount) the fare is locked: changing it would let the driver's
+    // wallet credit diverge from the money actually collected.
+    if (
+      ride.paymentStatus === PaymentStatus.PAID ||
+      ride.paymentStatus === PaymentStatus.REFUNDED ||
+      ride.stripePaymentIntentId != null
+    ) {
+      throw new ForbiddenException(
+        'This ride has already been paid (or a card payment is in progress) — the fare can no longer be changed.',
+      );
+    }
+
     const newFare = Math.round(dto.totalFare * 100) / 100;
     if (newFare < 0) throw new BadRequestException('Fare cannot be negative');
 
