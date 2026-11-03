@@ -373,6 +373,9 @@ export class AdminService {
       isApproved: c.isApproved,
       approvedAt: c.approvedAt,
       createdAt:  c.createdAt,
+      // Contract with the platform (subscription / commission %).
+      billingModel:          c.billingModel ?? 'unassigned',
+      platformCommissionPct: c.platformCommissionPct != null ? Number(c.platformCommissionPct) : null,
     };
   }
 
