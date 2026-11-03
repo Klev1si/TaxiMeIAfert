@@ -27,6 +27,7 @@ import { MailerService } from '../mailer/mailer.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
 import { FraudService } from '../fraud/fraud.service.js';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service.js';
+import { isWorkingAllowed } from '../common/subscription-state.js';
 import { IntercityRoutesService } from '../intercity-routes/intercity-routes.service.js';
 import { RouteTrackerService } from './route-tracker.service.js';
 import { NearestDriverDto } from './dto/nearest-driver.dto.js';
@@ -2343,9 +2344,22 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
     const driverMap = new Map(drivers.map((d) => [d.id, d]));
 
     // ── 3. Merge geo data with DB data ────────────────────────────────────────
-    const candidates = eligibleGeo
+    const merged = eligibleGeo
       .filter((r) => driverMap.has(r.driverId))
       .map((r)    => ({ geo: r, driver: driverMap.get(r.driverId)! }));
+
+    // ── 3b. Skip drivers who would be refused at "accept" ────────────────────
+    // (expired subscription, or a company without a contract) so passengers
+    // don't wait through requests that can never be accepted.
+    const allowed = await Promise.all(merged.map(async (c) => {
+      try {
+        const { state, contract } = await this.subscriptionsService.getDriverWorkingState(c.driver.id);
+        return contract !== 'unassigned' && isWorkingAllowed(state);
+      } catch {
+        return true; // never block dispatch on a lookup error — accept() re-checks
+      }
+    }));
+    const candidates = merged.filter((_, i) => allowed[i]);
 
     if (candidates.length === 0) return [];
 
