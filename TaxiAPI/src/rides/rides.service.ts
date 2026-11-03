@@ -1689,6 +1689,12 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
         company?.billingModel === 'commission' && company.platformCommissionPct != null
           ? Number(company.platformCommissionPct)
           : null;
+    } else {
+      // Solo driver on a commission contract.
+      ride.platformCommissionPct =
+        driver.billingModel === 'commission' && driver.platformCommissionPct != null
+          ? Number(driver.platformCommissionPct)
+          : null;
     }
 
     // ── Apply promo code discount (if the ride was booked with one) ──────────

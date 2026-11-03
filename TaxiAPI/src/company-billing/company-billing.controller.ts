@@ -54,7 +54,24 @@ export class CompanyBillingController {
   }
 }
 
-/** Super-admin: choose each company's contract and track commission payments. */
+/** Driver: GET /driver/billing — my contract and commission statement (solo drivers). */
+@Controller('driver/billing')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.DRIVER)
+export class DriverBillingController {
+  constructor(private readonly billing: CompanyBillingService) {}
+
+  @Get()
+  @HttpCode(HttpStatus.OK)
+  get(
+    @Request() req: { user: { id: string } },
+    @Query('period') period?: string,
+  ): Promise<CommissionStatementDto> {
+    return this.billing.driverStatementForUser(req.user.id, toPeriod(period));
+  }
+}
+
+/** Super-admin: choose each company's / solo driver's contract and track payments. */
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPER_ADMIN)
@@ -120,6 +137,55 @@ export class AdminCompanyBillingController {
       targetType: 'company',
       targetId:   companyId,
       metadata:   { amount: dto.amount, note: dto.note ?? null },
+    });
+    return result;
+  }
+
+  // ── Solo drivers ───────────────────────────────────────────────────────────
+
+  /** GET /admin/drivers/:id/billing */
+  @Get('drivers/:id/billing')
+  @HttpCode(HttpStatus.OK)
+  driverStatement(
+    @Param('id', ParseUUIDPipe) driverId: string,
+    @Query('period') period?: string,
+  ): Promise<CommissionStatementDto> {
+    return this.billing.driverStatement(driverId, toPeriod(period));
+  }
+
+  /** PUT /admin/drivers/:id/billing — solo driver: subscription or commission %. */
+  @Put('drivers/:id/billing')
+  @HttpCode(HttpStatus.OK)
+  async setDriverContract(
+    @Request() req: { user: { id: string; phone?: string | null } },
+    @Param('id', ParseUUIDPipe) driverId: string,
+    @Body() dto: SetContractDto,
+  ): Promise<CommissionStatementDto> {
+    const { before, after } = await this.billing.setDriverContract(driverId, dto.billingModel, dto.commissionPct);
+    void this.audit.log({
+      adminId: req.user.id, adminPhone: req.user.phone ?? null,
+      action: 'driver.contract.update', targetType: 'driver', targetId: driverId,
+      metadata: {
+        before: { billingModel: before.billingModel, commissionPct: before.commissionPct },
+        after:  { billingModel: after.billingModel,  commissionPct: after.commissionPct },
+      },
+    });
+    return this.billing.driverStatement(driverId, 'month');
+  }
+
+  /** POST /admin/drivers/:id/commission-payments — solo driver paid us. */
+  @Post('drivers/:id/commission-payments')
+  @HttpCode(HttpStatus.CREATED)
+  async recordDriverPayment(
+    @Request() req: { user: { id: string; phone?: string | null } },
+    @Param('id', ParseUUIDPipe) driverId: string,
+    @Body() dto: RecordPaymentDto,
+  ): Promise<CommissionStatementDto> {
+    const result = await this.billing.recordDriverPayment(driverId, dto.amount, dto.note ?? null, req.user.id);
+    void this.audit.log({
+      adminId: req.user.id, adminPhone: req.user.phone ?? null,
+      action: 'driver.commission.payment', targetType: 'driver', targetId: driverId,
+      metadata: { amount: dto.amount, note: dto.note ?? null },
     });
     return result;
   }

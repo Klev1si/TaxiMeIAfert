@@ -179,6 +179,9 @@ export class AdminService {
       totalDeclined:   d.totalDeclined,
       acceptanceRate:  offered > 0 ? Math.round((d.totalAccepted / offered) * 1000) / 10 : null,
       createdAt:       d.createdAt,
+      // Solo drivers' contract with the platform (company drivers follow their company).
+      billingModel:          d.billingModel ?? 'subscription',
+      platformCommissionPct: d.platformCommissionPct != null ? Number(d.platformCommissionPct) : null,
     };
   }
 

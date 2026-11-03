@@ -4,9 +4,16 @@ import { SubscriptionStatus } from '../common/enums';
 import { periodStart, validateContract } from './company-billing.service';
 
 /** SubscriptionsService with in-memory repos: one company driver. */
-function service(company: Record<string, unknown> | null, companySub: Record<string, unknown> | null = null) {
-  const repo = (value: unknown) => ({ findOne: async () => value });
-  const driver = { id: 'd1', companyId: company ? 'c1' : null, userId: 'u-driver' };
+function service(
+  company: Record<string, unknown> | null,
+  companySub: Record<string, unknown> | null = null,
+  soloDriver: Record<string, unknown> = {},
+) {
+  const repo = (value: unknown) => {
+    const qb: any = { leftJoinAndSelect: () => qb, where: () => qb, orderBy: () => qb, getOne: async () => value };
+    return { findOne: async () => value, createQueryBuilder: () => qb };
+  };
+  const driver = { id: 'd1', companyId: company ? 'c1' : null, userId: 'u-driver', ...soloDriver };
   return new SubscriptionsService(
     repo(null) as any,                           // plans
     repo(companySub) as any,                     // company subscriptions
@@ -60,5 +67,18 @@ describe('company contracts', () => {
       const svc = service({ billingModel });
       await expect(svc.subscribe('u-company', 'plan-1')).rejects.toThrow(ForbiddenException);
     }
+  });
+
+  it('solo drivers on commission work without a plan and cannot buy one', async () => {
+    const svc = service(null, null, { billingModel: 'commission', platformCommissionPct: 5 });
+    await expect(svc.assertDriverCanWork('d1')).resolves.toBeUndefined();
+    await expect(svc.driverSubscribe('u-driver', 'plan-1')).rejects.toThrow(ForbiddenException);
+    const view = await svc.getMyDriverSubscription('u-driver');
+    expect(view).toMatchObject({ driverContract: 'commission', companyContract: null });
+  });
+
+  it('solo drivers on subscription still need an active plan', async () => {
+    const svc = service(null, null, { billingModel: 'subscription' });
+    await expect(svc.assertDriverCanWork('d1')).rejects.toThrow(/subscription is inactive/);
   });
 });

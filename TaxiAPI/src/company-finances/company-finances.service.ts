@@ -4,6 +4,7 @@
  * we don't have to maintain a denormalised state.
  */
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { LEGACY_CARD_FEE_PCT, PlatformFeesService } from '../platform-fees/platform-fees.service.js';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Company, Driver, Expense, Ride } from '../entities';
@@ -13,9 +14,7 @@ import {
 } from '../entities/company-settlement.entity';
 import { RideStatus } from '../common/enums';
 
-const PLATFORM_CARD_COMMISSION_PCT = Number(
-  process.env.PLATFORM_CARD_COMMISSION_PCT ?? 10,
-);
+
 
 export type FinancePeriod = 'today' | 'week' | 'month' | 'all';
 
@@ -58,8 +57,17 @@ export interface DriverFinanceDto {
   driverEarning:   number;
   /** Company's total revenue from this driver (cash share + card share). */
   companyEarning:  number;
-  /** Platform fee taken from this driver's card rides (10% of card gross). */
+  /** Platform's total from this driver's rides (commission + card fee). */
   platformEarning: number;
+  /** Platform commission (commission contracts) on this driver's rides. */
+  platformCommission: number;
+  /** Card fee on this driver's card rides. */
+  cardFee:          number;
+  /** Company's share from cash rides / card rides (after platform fees). */
+  cashCompanyShare: number;
+  cardCompanyShare: number;
+  /** Driver's share of card rides. */
+  cardDriverShare:  number;
   /** Effective driver commission % used for this driver (override or default). */
   effectiveCommissionPct: number;
   /** True when a per-driver override is set (vs. company default). */
@@ -80,9 +88,11 @@ export interface CompanySummaryDto {
   // ── Card-payment breakdown (transparency on where the money goes) ───────
   /** Gross sum of card-paid ride fares (before any deductions). */
   cardGross:          number;
-  /** 10% (configurable) that the platform deducted from card rides. */
+  /** Card fee the platform kept on card rides (each ride at its own rate). */
   platformFee:        number;
-  /** Driver share of card rides (the 70% × 90% portion in 70/30 split). */
+  /** Platform commission owed on all rides (commission contracts). */
+  platformCommission: number;
+  /** Driver share of card rides (their agreed % of the full fare). */
   cardDriverShare:    number;
   /** Sum of driver-logged expenses (fuel, repairs, etc.) for the period. */
   driverExpenses:     number;
@@ -91,8 +101,38 @@ export interface CompanySummaryDto {
   companyCommissionPct: number;
   /** Driver's commission percentage (e.g. 70). */
   driverCommissionPct:  number;
-  /** Platform's commission percentage on card rides (e.g. 10). */
+  /** Current card fee % (applies to card rides of every contract). */
   platformCommissionPct: number;
+  /** The company's contract with the platform. */
+  contractType:          'unassigned' | 'subscription' | 'commission';
+  /** Platform commission % for commission contracts, else null. */
+  contractCommissionPct: number | null;
+}
+
+/** Split a driver's aggregated rides: the driver keeps `driverPct` of the
+ *  full fare, the platform takes commission + card fee, the company the rest. */
+function splitAggregate(
+  row: { gross_cash: string; gross_card: string; commission_cash: string; commission_card: string; card_fee: string },
+  driverPct: number,
+) {
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const grossCash = Number(row.gross_cash), grossCard = Number(row.gross_card);
+  const commCash  = Number(row.commission_cash), commCard = Number(row.commission_card);
+  const cardFee   = Number(row.card_fee);
+  const cashDriver = grossCash * driverPct / 100;
+  const cardDriver = grossCard * driverPct / 100;
+  const cashCompany = grossCash - cashDriver - commCash;
+  const cardCompany = grossCard - cardDriver - commCard - cardFee;
+  return {
+    driver:             r2(cashDriver + cardDriver),
+    company:            r2(cashCompany + cardCompany),
+    platform:           r2(commCash + commCard + cardFee),
+    platformCommission: r2(commCash + commCard),
+    cardFee:            r2(cardFee),
+    cashCompany:        r2(cashCompany),
+    cardCompany:        r2(cardCompany),
+    cardDriver:         r2(cardDriver),
+  };
 }
 
 @Injectable()
@@ -103,6 +143,7 @@ export class CompanyFinancesService {
     @InjectRepository(Ride)               private readonly rideRepo: Repository<Ride>,
     @InjectRepository(Expense)            private readonly expenseRepo: Repository<Expense>,
     @InjectRepository(CompanySettlement)  private readonly settleRepo: Repository<CompanySettlement>,
+    private readonly platformFees: PlatformFeesService,
   ) {}
 
   /** Resolve the company record for a user, throws if none. */
@@ -121,7 +162,6 @@ export class CompanyFinancesService {
     const company = await this.resolveCompany(userId);
     const since   = periodStart(period);
     const companyDefaultPct = Number(company.driverCommissionPct);
-    const platformPct       = PLATFORM_CARD_COMMISSION_PCT / 100;
 
     // Sum rides per driver, split by cash/card via driver_ledger.payment_method.
     // Also select the driver's commission_pct_override so per-driver splits are
@@ -133,8 +173,16 @@ export class CompanyFinancesService {
          d.last_name                AS "lastName",
          d.vehicle_plate            AS "vehiclePlate",
          d.commission_pct_override  AS "overridePct",
-         COALESCE(SUM(r.total_fare) FILTER (WHERE dl.payment_method = 'cash'), 0)::numeric AS cash_total,
-         COALESCE(SUM(r.total_fare) FILTER (WHERE dl.payment_method = 'card'), 0)::numeric AS card_total
+         COALESCE(SUM(CASE WHEN dl.payment_method = 'cash' THEN r.total_fare END), 0)::numeric AS cash_total,
+         COALESCE(SUM(CASE WHEN dl.payment_method = 'card' THEN r.total_fare END), 0)::numeric AS card_total,
+         -- Full ride price (passenger paid + platform-funded discount)
+         COALESCE(SUM(CASE WHEN dl.payment_method = 'cash' THEN r.total_fare + COALESCE(pc.amount, 0) END), 0)::numeric AS gross_cash,
+         COALESCE(SUM(CASE WHEN dl.payment_method = 'card' THEN r.total_fare + COALESCE(pc.amount, 0) END), 0)::numeric AS gross_card,
+         -- Platform commission (commission contracts), each ride at its own snapshotted rate
+         COALESCE(SUM(CASE WHEN dl.payment_method = 'cash' THEN ROUND(((r.total_fare + COALESCE(pc.amount, 0)) * COALESCE(r.platform_commission_pct, 0) / 100)::numeric, 2) END), 0)::numeric AS commission_cash,
+         COALESCE(SUM(CASE WHEN dl.payment_method = 'card' THEN ROUND(((r.total_fare + COALESCE(pc.amount, 0)) * COALESCE(r.platform_commission_pct, 0) / 100)::numeric, 2) END), 0)::numeric AS commission_card,
+         -- Card fee on what was charged, at the ride's snapshotted rate
+         COALESCE(SUM(CASE WHEN dl.payment_method = 'card' THEN ROUND((r.total_fare * COALESCE(r.card_fee_pct, ${LEGACY_CARD_FEE_PCT}) / 100)::numeric, 2) END), 0)::numeric AS card_fee
        FROM drivers d
        LEFT JOIN rides r
          ON r.driver_id = d.id
@@ -145,6 +193,7 @@ export class CompanyFinancesService {
          ON dl.ride_id = r.id
         AND dl.driver_id = d.id
         AND dl.type = 'credit'
+       LEFT JOIN platform_credits pc ON pc.ride_id = r.id
        WHERE d.company_id = $2
        GROUP BY d.id, d.first_name, d.last_name, d.vehicle_plate, d.commission_pct_override`,
       since ? [RideStatus.COMPLETED, company.id, since] : [RideStatus.COMPLETED, company.id],
@@ -152,6 +201,8 @@ export class CompanyFinancesService {
       driverId: string; firstName: string; lastName: string; vehiclePlate: string;
       overridePct: string | null;
       cash_total: string; card_total: string;
+      gross_cash: string; gross_card: string;
+      commission_cash: string; commission_card: string; card_fee: string;
     }>;
 
     // Pull settlements once for all drivers, group in JS — small dataset, no
@@ -194,13 +245,14 @@ export class CompanyFinancesService {
       const driverFrac  = effectivePct / 100;
       const companyFrac = 1 - driverFrac;
 
+      // The driver always gets their agreed % of the full fare; platform
+      // commission and card fee come out of the company's share.
+      const split = splitAggregate(row, effectivePct);
       const cashOwed  = cashTotal * companyFrac;                       // driver collected cash, owes company this
-      const cardAfter = cardTotal * (1 - platformPct);
-      const cardOwed  = cardAfter * driverFrac;                        // company owes driver this from card
-      // Earnings (gross, ignoring settlements):
-      const driverEarning   = cashTotal * driverFrac + cardAfter * driverFrac;
-      const companyEarning  = cashTotal * companyFrac + cardAfter * companyFrac;
-      const platformEarning = cardTotal * platformPct;
+      const cardOwed  = Number(row.gross_card) * driverFrac;           // company owes driver this from card
+      const driverEarning   = split.driver;
+      const companyEarning  = split.company;
+      const platformEarning = split.platform;
 
       return {
         driverId:          row.driverId,
@@ -215,6 +267,11 @@ export class CompanyFinancesService {
         driverEarning:     round(driverEarning),
         companyEarning:    round(companyEarning),
         platformEarning:   round(platformEarning),
+        platformCommission: split.platformCommission,
+        cardFee:            split.cardFee,
+        cashCompanyShare:   split.cashCompany,
+        cardCompanyShare:   split.cardCompany,
+        cardDriverShare:    split.cardDriver,
         effectiveCommissionPct: round(effectivePct),
         hasCommissionOverride:  hasOverride,
       };
@@ -251,28 +308,25 @@ export class CompanyFinancesService {
     const drivers = await this.getDrivers(userId, period);
     const company = await this.resolveCompany(userId);
     const companyDefaultDriverPct = Number(company.driverCommissionPct);
-    const platformPct = PLATFORM_CARD_COMMISSION_PCT / 100;
+    const fees = await this.platformFees.get();
 
     // Aggregate from the per-driver DTOs so per-driver commission overrides
-    // are reflected in the totals — sum the company/driver shares as we
-    // iterate rather than re-applying a single company-wide split.
+    // are reflected in the totals.
     let cashTotal = 0, cardTotal = 0, cashOwed = 0, cardOwed = 0, expenses = 0;
-    let cashRevenue = 0, cardRevenue = 0, cardDriverShare = 0;
+    let cashRevenue = 0, cardRevenue = 0, cardDriverShare = 0, cardFee = 0, platformCommission = 0;
     for (const d of drivers) {
       cashTotal += d.cashCollected;
       cardTotal += d.cardTotal;
       cashOwed  += d.cashOwedToCompany;
       cardOwed  += d.cardOwedToDriver;
       expenses  += d.expensesTotal;
-      const driverFrac  = d.effectiveCommissionPct / 100;
-      const companyFrac = 1 - driverFrac;
-      const dCardAfter  = d.cardTotal * (1 - platformPct);
-      cashRevenue     += d.cashCollected * companyFrac;
-      cardRevenue     += dCardAfter * companyFrac;
-      cardDriverShare += dCardAfter * driverFrac;
+      cashRevenue        += d.cashCompanyShare;
+      cardRevenue        += d.cardCompanyShare;
+      cardDriverShare    += d.cardDriverShare;
+      cardFee            += d.cardFee;
+      platformCommission += d.platformCommission;
     }
     const round = (n: number) => Math.round(n * 100) / 100;
-    const platformFee = cardTotal * platformPct;
     return {
       cashRevenue:           round(cashRevenue),
       cardRevenue:           round(cardRevenue),
@@ -280,12 +334,15 @@ export class CompanyFinancesService {
       cashOwedByDrivers:     round(cashOwed),
       cardOwedToDrivers:     round(cardOwed),
       cardGross:             round(cardTotal),
-      platformFee:           round(platformFee),
+      platformFee:           round(cardFee),
+      platformCommission:    round(platformCommission),
       cardDriverShare:       round(cardDriverShare),
       driverExpenses:        round(expenses),
       companyCommissionPct:  round(100 - companyDefaultDriverPct),
       driverCommissionPct:   round(companyDefaultDriverPct),
-      platformCommissionPct: round(platformPct * 100),
+      platformCommissionPct: round(fees.cardFeePct),
+      contractType:          company.billingModel ?? 'unassigned',
+      contractCommissionPct: company.platformCommissionPct != null ? Number(company.platformCommissionPct) : null,
     };
   }
 

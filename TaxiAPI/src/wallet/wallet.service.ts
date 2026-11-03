@@ -5,8 +5,11 @@ import {
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
+import { PlatformFeesService } from '../platform-fees/platform-fees.service.js';
+import { driverShareOfRide, splitRide } from './money-split.js';
+import { LEGACY_CARD_FEE_PCT } from '../platform-fees/platform-fees.service.js';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { Company, Driver, Ride } from '../entities';
 import { RideStatus } from '../common/enums';
 import { DriverLedger, LedgerEntryType, LedgerPaymentMethod } from '../entities/driver-ledger.entity';
@@ -14,13 +17,8 @@ import { DriverLedger, LedgerEntryType, LedgerPaymentMethod } from '../entities/
 /** Default driver commission when the driver has no company. */
 const DEFAULT_COMMISSION_PCT = Number(process.env.DRIVER_COMMISSION_PCT ?? 80);
 
-/**
- * Percentage the platform keeps from each CARD-paid ride. Cash rides are not
- * touched — the driver collected directly from the passenger, the platform
- * never handled the money. Covers Stripe processing fees + platform ops.
- * Default 10%. Set env `PLATFORM_CARD_COMMISSION_PCT=15` to override.
- */
-const PLATFORM_CARD_COMMISSION_PCT = Number(process.env.PLATFORM_CARD_COMMISSION_PCT ?? 10);
+/** Card fee and platform commission: see PlatformFeesService and money-split.ts. */
+
 
 export interface LedgerEntryDto {
   id:             string;
@@ -94,6 +92,7 @@ export class WalletService implements OnModuleInit {
     private readonly rideRepo: Repository<Ride>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly platformFees: PlatformFeesService,
   ) {}
 
   /**
@@ -245,13 +244,22 @@ export class WalletService implements OnModuleInit {
       // override first, then company default.
       const { pct } = await this.resolveDriverCommissionPct(driverId);
 
-      let commissionPct: number | null = null;
-      let driverShare = totalFare;
-
-      if (pct != null) {
-        commissionPct = pct;
-        driverShare = Math.round(totalFare * pct) / 100;
+      // Solo drivers on a commission contract: the platform's % (snapshotted
+      // on the ride at completion) comes off their earning.
+      let platformCommissionPct: number | null = null;
+      if (pct == null) {
+        const ride = await this.rideRepo.findOne({ where: { id: rideId }, select: ['id', 'platformCommissionPct'] });
+        platformCommissionPct = ride?.platformCommissionPct != null ? Number(ride.platformCommissionPct) : null;
       }
+
+      const commissionPct: number | null = pct;
+      const driverShare = driverShareOfRide({
+        gross:                 totalFare,
+        driverPct:             pct,
+        platformCommissionPct,
+        cardFeePct:            null,   // applied when the card payment is confirmed
+        cardCharged:           0,
+      });
 
       if (driverShare <= 0) return;
 
@@ -290,20 +298,39 @@ export class WalletService implements OnModuleInit {
     try {
       const patch: Partial<DriverLedger> = { paymentMethod: method };
 
-      if (method === 'card' && PLATFORM_CARD_COMMISSION_PCT > 0) {
+      if (method === 'card') {
         const entry = await this.ledgerRepo.findOne({
           where: { driverId, rideId, type: 'credit' },
         });
         // Skip if already marked card — re-running (duplicate webhook, retry)
-        // must not take the platform fee off a second time.
+        // must not take the card fee off a second time.
         if (entry && entry.paymentMethod !== 'card') {
-          const gross = Number(entry.amount);
-          const net = Math.round(gross * (1 - PLATFORM_CARD_COMMISSION_PCT / 100) * 100) / 100;
-          patch.amount = net;
-          this.logger.log(
-            `Ride ${rideId} card payment: driver share ${gross.toFixed(2)} → ${net.toFixed(2)} ` +
-            `(${PLATFORM_CARD_COMMISSION_PCT}% platform fee)`,
-          );
+          const ride = await this.rideRepo.findOne({
+            where: { id: rideId },
+            select: ['id', 'totalFare', 'cardFeePct'],
+          });
+          // Snapshot the card fee in force now on the ride.
+          const feePct = ride?.cardFeePct != null
+            ? Number(ride.cardFeePct)
+            : (await this.platformFees.get()).cardFeePct;
+          if (ride && ride.cardFeePct == null) {
+            await this.rideRepo.update({ id: rideId }, { cardFeePct: feePct });
+          }
+
+          // Company drivers always keep their agreed % — the card fee comes
+          // out of the company's share. Solo drivers carry it themselves.
+          const { hasCompany } = await this.resolveDriverCommissionPct(driverId);
+          if (!hasCompany && feePct > 0) {
+            const charged = ride?.totalFare != null ? Number(ride.totalFare) : Number(entry.grossFare ?? entry.amount);
+            const fee = Math.round(charged * feePct) / 100;
+            const before = Number(entry.amount);
+            const net = Math.round((before - fee) * 100) / 100;
+            patch.amount = net;
+            this.logger.log(
+              `Ride ${rideId} card payment: solo driver share ${before.toFixed(2)} → ${net.toFixed(2)} ` +
+              `(${feePct}% card fee)`,
+            );
+          }
         }
       }
 
@@ -496,8 +523,21 @@ export class WalletService implements OnModuleInit {
     return {
       driverId,
       ...totals,
-      entries: entries.map(this.toDto),
+      entries: await this.toDtos(entries),
     };
+  }
+
+  /** Map entries with each ride's own fee snapshots for the breakdown. */
+  private async toDtos(entries: DriverLedger[]): Promise<LedgerEntryDto[]> {
+    const rideIds = [...new Set(entries.map((e) => e.rideId).filter((id): id is string => !!id))];
+    const rides = rideIds.length
+      ? await this.rideRepo.find({
+          where: { id: In(rideIds) },
+          select: ['id', 'totalFare', 'cardFeePct', 'platformCommissionPct'],
+        })
+      : [];
+    const byId = new Map(rides.map((r) => [r.id, r]));
+    return entries.map((e) => this.toDto(e, e.rideId ? byId.get(e.rideId) : undefined));
   }
 
   /**
@@ -544,28 +584,31 @@ export class WalletService implements OnModuleInit {
     };
   }
 
-  private toDto = (entry: DriverLedger): LedgerEntryDto => {
+  private toDto = (
+    entry: DriverLedger,
+    ride?: Pick<Ride, 'totalFare' | 'cardFeePct' | 'platformCommissionPct'>,
+  ): LedgerEntryDto => {
     const amount       = Number(entry.amount);
     const commissionPct = entry.commissionPct != null ? Number(entry.commissionPct) : null;
     const grossFare    = entry.grossFare != null ? Number(entry.grossFare) : null;
 
-    // Compute the 3-way breakdown for credit entries when we have enough
-    // info. For payouts (or legacy entries without grossFare), leave them
-    // null and the UI will hide the breakdown.
+    // 3-way breakdown for credit entries (null for payouts / legacy entries
+    // without grossFare — the UI hides it). Uses the ride's own snapshots.
     let companyShare: number | null = null;
     let platformFee:  number | null = null;
     if (entry.type === 'credit' && grossFare != null) {
-      const isCard      = entry.paymentMethod === 'card';
-      platformFee       = isCard ? Math.round(grossFare * PLATFORM_CARD_COMMISSION_PCT) / 100 : 0;
-      const afterFee    = grossFare - platformFee;
-      // Solo: no company share → all of afterFee goes to driver (matches stored amount).
-      // Company: driver gets pct% of afterFee, company gets the rest.
-      if (commissionPct != null && commissionPct < 100) {
-        const companyPct = 100 - commissionPct;
-        companyShare = Math.round(afterFee * companyPct) / 100;
-      } else {
-        companyShare = 0;
-      }
+      const isCard = entry.paymentMethod === 'card';
+      const split = splitRide({
+        gross:                 grossFare,
+        driverPct:             commissionPct,
+        platformCommissionPct: ride?.platformCommissionPct != null ? Number(ride.platformCommissionPct) : null,
+        cardFeePct:            isCard
+          ? (ride?.cardFeePct != null ? Number(ride.cardFeePct) : LEGACY_CARD_FEE_PCT)
+          : null,
+        cardCharged:           isCard ? (ride?.totalFare != null ? Number(ride.totalFare) : grossFare) : 0,
+      });
+      platformFee  = split.platform;
+      companyShare = commissionPct != null ? split.company : 0;
     }
 
     return {

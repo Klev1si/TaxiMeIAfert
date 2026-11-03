@@ -15,6 +15,8 @@ import { Company } from './company.entity';
 import { Ride } from './ride.entity';
 import { Expense } from './expense.entity';
 
+export type DriverBillingModel = 'subscription' | 'commission';
+
 @Entity('drivers')
 export class Driver {
   @PrimaryGeneratedColumn('uuid')
@@ -34,6 +36,21 @@ export class Driver {
    */
   @Column({ type: 'decimal', name: 'commission_pct_override', precision: 5, scale: 2, nullable: true })
   commissionPctOverride: number | null;
+
+  /**
+   * Solo drivers' contract with the platform (company drivers follow their
+   * company's contract and ignore this):
+   *  - 'subscription' (default) — the driver pays a plan
+   *  - 'commission'   — the platform takes `platformCommissionPct` % of every ride
+   */
+  @Column({ type: 'varchar', name: 'billing_model', length: 16, default: 'subscription' })
+  billingModel: DriverBillingModel;
+
+  @Column({ type: 'decimal', name: 'platform_commission_pct', precision: 5, scale: 2, nullable: true })
+  platformCommissionPct: number | null;
+
+  @Column({ type: 'timestamptz', name: 'billing_model_set_at', nullable: true })
+  billingModelSetAt: Date | null;
 
   @Column({ type: 'varchar', name: 'first_name', length: 80 })
   firstName: string;

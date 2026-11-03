@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   Company,
-  CompanyCommissionPayment,
+  CommissionPayment,
   Driver,
   Ride,
   User,
@@ -32,7 +32,11 @@ import { NotificationsService } from '../notifications/notifications.service.js'
 export type BillingPeriod = 'today' | 'week' | 'month' | 'all';
 
 export interface CompanyBillingDto {
+  /** Who the contract is with. */
+  subject:       'company' | 'driver';
+  /** Company id, or driver id for solo drivers. */
   companyId:     string;
+  /** Company name, or the driver's full name. */
   companyName:   string;
   billingModel:  CompanyBillingModel;
   commissionPct: number | null;
@@ -48,8 +52,11 @@ export interface CommissionStatementDto extends CompanyBillingDto {
   };
   allTime: {
     commission: number;
+    /** Commission the platform already kept from card rides it collected
+     *  (solo drivers — withheld from their wallet). 0 for companies. */
+    withheld:   number;
     paid:       number;
-    /** commission − paid. Positive = the company owes the platform. */
+    /** commission − withheld − paid. Positive = they owe the platform. */
     balance:    number;
   };
   payments: Array<{ id: string; amount: number; note: string | null; createdAt: Date }>;
@@ -104,7 +111,7 @@ export function validateContract(
 export class CompanyBillingService {
   constructor(
     @InjectRepository(Company)                  private readonly companyRepo: Repository<Company>,
-    @InjectRepository(CompanyCommissionPayment) private readonly paymentRepo: Repository<CompanyCommissionPayment>,
+    @InjectRepository(CommissionPayment) private readonly paymentRepo: Repository<CommissionPayment>,
     @InjectRepository(Ride)                     private readonly rideRepo:    Repository<Ride>,
     @InjectRepository(Driver)                   private readonly driverRepo:  Repository<Driver>,
     @InjectRepository(User)                     private readonly userRepo:    Repository<User>,
@@ -127,6 +134,7 @@ export class CompanyBillingService {
 
   private toDto(c: Company): CompanyBillingDto {
     return {
+      subject:       'company',
       companyId:     c.id,
       companyName:   c.name,
       billingModel:  c.billingModel ?? 'unassigned',
@@ -175,49 +183,59 @@ export class CompanyBillingService {
    * Commission rides of a company: gross fare and commission per ride,
    * summed. `since` = null → all time.
    */
-  private async commissionTotals(companyId: string, since: Date | null): Promise<{
-    rides: number; grossFare: number; commission: number;
-  }> {
-    const params: unknown[] = [companyId, RideStatus.COMPLETED];
+  private async commissionTotals(
+    subject: { companyId: string } | { driverId: string },
+    since: Date | null,
+  ): Promise<{ rides: number; grossFare: number; commission: number; withheld: number }> {
+    const isDriver = 'driverId' in subject;
+    const params: unknown[] = [isDriver ? subject.driverId : subject.companyId, RideStatus.COMPLETED];
     if (since) params.push(since);
     const [row] = await this.rideRepo.query(
       `SELECT
          COUNT(*)::int AS rides,
          COALESCE(SUM(g.gross), 0)::numeric AS gross,
-         COALESCE(SUM(ROUND((g.gross * g.pct / 100)::numeric, 2)), 0)::numeric AS commission
+         COALESCE(SUM(ROUND((g.gross * g.pct / 100)::numeric, 2)), 0)::numeric AS commission,
+         COALESCE(SUM(CASE WHEN g.card THEN ROUND((g.gross * g.pct / 100)::numeric, 2) END), 0)::numeric AS withheld
        FROM (
          SELECT r.platform_commission_pct AS pct,
-                COALESCE(r.total_fare, 0) + COALESCE(pc.amount, 0) AS gross
+                COALESCE(r.total_fare, 0) + COALESCE(pc.amount, 0) AS gross,
+                (dl.payment_method = 'card') AS card
          FROM rides r
          LEFT JOIN platform_credits pc ON pc.ride_id = r.id
-         WHERE r.company_id = $1
+         LEFT JOIN driver_ledger dl ON dl.ride_id = r.id AND dl.driver_id = r.driver_id AND dl.type = 'credit'
+         WHERE ${isDriver ? 'r.driver_id' : 'r.company_id'} = $1
            AND r.status = $2
            AND r.platform_commission_pct IS NOT NULL
            ${since ? 'AND r.completed_at >= $3' : ''}
        ) g`,
       params,
-    ) as Array<{ rides: number; gross: string; commission: string }>;
+    ) as Array<{ rides: number; gross: string; commission: string; withheld: string }>;
     return {
       rides:      Number(row?.rides ?? 0),
       grossFare:  round2(Number(row?.gross ?? 0)),
       commission: round2(Number(row?.commission ?? 0)),
+      // Only solo drivers have commission withheld from card rides.
+      withheld:   isDriver ? round2(Number(row?.withheld ?? 0)) : 0,
     };
   }
 
-  private async paidTotal(companyId: string): Promise<number> {
+  private async paidTotal(subject: { companyId: string } | { driverId: string }): Promise<number> {
+    const isDriver = 'driverId' in subject;
     const [row] = await this.paymentRepo.query(
-      `SELECT COALESCE(SUM(amount), 0)::numeric AS paid FROM company_commission_payments WHERE company_id = $1`,
-      [companyId],
+      `SELECT COALESCE(SUM(amount), 0)::numeric AS paid FROM commission_payments
+       WHERE ${isDriver ? 'driver_id' : 'company_id'} = $1`,
+      [isDriver ? subject.driverId : subject.companyId],
     ) as Array<{ paid: string }>;
     return round2(Number(row?.paid ?? 0));
   }
 
   async statement(companyId: string, period: BillingPeriod): Promise<CommissionStatementDto> {
     const company = await this.companyById(companyId);
+    const subject = { companyId: company.id };
     const [inPeriod, allTime, paid, payments] = await Promise.all([
-      this.commissionTotals(company.id, periodStart(period)),
-      this.commissionTotals(company.id, null),
-      this.paidTotal(company.id),
+      this.commissionTotals(subject, periodStart(period)),
+      this.commissionTotals(subject, null),
+      this.paidTotal(subject),
       this.paymentRepo.find({
         where: { companyId: company.id },
         order: { createdAt: 'DESC' },
@@ -226,8 +244,8 @@ export class CompanyBillingService {
     ]);
     return {
       ...this.toDto(company),
-      period:  { name: period, ...inPeriod },
-      allTime: { commission: allTime.commission, paid, balance: round2(allTime.commission - paid) },
+      period:  { name: period, rides: inPeriod.rides, grossFare: inPeriod.grossFare, commission: inPeriod.commission },
+      allTime: { commission: allTime.commission, withheld: 0, paid, balance: round2(allTime.commission - paid) },
       payments: payments.map((p) => ({
         id: p.id, amount: Number(p.amount), note: p.note, createdAt: p.createdAt,
       })),
@@ -237,6 +255,102 @@ export class CompanyBillingService {
   async statementForUser(userId: string, period: BillingPeriod): Promise<CommissionStatementDto> {
     const company = await this.companyForUser(userId);
     return this.statement(company.id, period);
+  }
+
+  // ── Solo drivers ───────────────────────────────────────────────────────────
+
+  private async soloDriver(driverId: string): Promise<Driver> {
+    const driver = await this.driverRepo.findOne({ where: { id: driverId } });
+    if (!driver) throw new NotFoundException('Driver not found');
+    return driver;
+  }
+
+  private driverDto(d: Driver): CompanyBillingDto {
+    return {
+      subject:       'driver',
+      companyId:     d.id,
+      companyName:   `${d.firstName ?? ''} ${d.lastName ?? ''}`.trim() || 'Driver',
+      billingModel:  d.billingModel ?? 'subscription',
+      commissionPct: d.platformCommissionPct != null ? Number(d.platformCommissionPct) : null,
+      setAt:         d.billingModelSetAt ?? null,
+    };
+  }
+
+  /** Admin: set a SOLO driver's contract ('subscription' or 'commission'). */
+  async setDriverContract(
+    driverId: string,
+    model: CompanyBillingModel,
+    commissionPct?: number | null,
+  ): Promise<{ before: CompanyBillingDto; after: CompanyBillingDto }> {
+    const driver = await this.soloDriver(driverId);
+    if (driver.companyId) {
+      throw new BadRequestException('This driver works for a company — set the company’s contract instead.');
+    }
+    if (model === 'unassigned') {
+      throw new BadRequestException('Solo drivers are either on a subscription or a commission contract.');
+    }
+    const before = this.driverDto(driver);
+    const next   = validateContract(model, commissionPct);
+    driver.billingModel          = next.billingModel as Driver['billingModel'];
+    driver.platformCommissionPct = next.platformCommissionPct;
+    driver.billingModelSetAt     = new Date();
+    await this.driverRepo.save(driver);
+    const after = this.driverDto(driver);
+
+    const user = await this.userRepo.findOne({ where: { id: driver.userId }, select: ['id', 'fcmToken'] });
+    if (user?.fcmToken && (before.billingModel !== after.billingModel || before.commissionPct !== after.commissionPct)) {
+      void this.notifications.sendToToken(user.fcmToken, {
+        title: 'Kontrata me platformën u përditësua',
+        body: after.billingModel === 'commission'
+          ? `Kontrata juaj: ${after.commissionPct}% për udhëtim, pa abonim.`
+          : 'Kontrata juaj: abonim. Zgjidhni planin tuaj në aplikacion.',
+        data: { event: 'driver_contract_updated' },
+      });
+    }
+    return { before, after };
+  }
+
+  async driverStatement(driverId: string, period: BillingPeriod): Promise<CommissionStatementDto> {
+    const driver  = await this.soloDriver(driverId);
+    const subject = { driverId: driver.id };
+    const [inPeriod, allTime, paid, payments] = await Promise.all([
+      this.commissionTotals(subject, periodStart(period)),
+      this.commissionTotals(subject, null),
+      this.paidTotal(subject),
+      this.paymentRepo.find({ where: { driverId: driver.id }, order: { createdAt: 'DESC' }, take: 20 }),
+    ]);
+    return {
+      ...this.driverDto(driver),
+      period:  { name: period, rides: inPeriod.rides, grossFare: inPeriod.grossFare, commission: inPeriod.commission },
+      allTime: {
+        commission: allTime.commission,
+        withheld:   allTime.withheld,
+        paid,
+        balance:    round2(allTime.commission - allTime.withheld - paid),
+      },
+      payments: payments.map((p) => ({ id: p.id, amount: Number(p.amount), note: p.note, createdAt: p.createdAt })),
+    };
+  }
+
+  async driverStatementForUser(userId: string, period: BillingPeriod): Promise<CommissionStatementDto> {
+    const driver = await this.driverRepo.findOne({ where: { userId } });
+    if (!driver) throw new NotFoundException('Driver profile not found');
+    return this.driverStatement(driver.id, period);
+  }
+
+  async recordDriverPayment(
+    driverId: string,
+    amount: number,
+    note: string | null,
+    adminId: string,
+  ): Promise<CommissionStatementDto> {
+    await this.soloDriver(driverId);
+    const rounded = round2(amount);
+    if (!(rounded > 0)) throw new BadRequestException('Amount must be greater than 0');
+    await this.paymentRepo.save(this.paymentRepo.create({
+      driverId, companyId: null, amount: rounded, note: note?.trim() || null, recordedByAdminId: adminId,
+    }));
+    return this.driverStatement(driverId, 'month');
   }
 
   // ── Admin: payments & overview ─────────────────────────────────────────────
@@ -251,7 +365,7 @@ export class CompanyBillingService {
     const rounded = round2(amount);
     if (!(rounded > 0)) throw new BadRequestException('Amount must be greater than 0');
     await this.paymentRepo.save(this.paymentRepo.create({
-      companyId, amount: rounded, note: note?.trim() || null, recordedByAdminId: adminId,
+      companyId, driverId: null, amount: rounded, note: note?.trim() || null, recordedByAdminId: adminId,
     }));
     return this.statement(companyId, 'month');
   }
@@ -277,7 +391,7 @@ export class CompanyBillingService {
       ) as Promise<Array<{ id: string; owed: string }>>,
       this.paymentRepo.query(
         `SELECT company_id::text AS id, COALESCE(SUM(amount), 0)::numeric AS paid
-         FROM company_commission_payments WHERE company_id::text = ANY($1) GROUP BY company_id`,
+         FROM commission_payments WHERE company_id::text = ANY($1) GROUP BY company_id`,
         [ids],
       ) as Promise<Array<{ id: string; paid: string }>>,
     ]);
