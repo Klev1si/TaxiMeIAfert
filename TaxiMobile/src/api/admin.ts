@@ -88,6 +88,9 @@ export interface AdminCompany {
   isApproved: boolean;
   approvedAt: string | null;
   createdAt: string;
+  /** Contract with the platform. */
+  billingModel?: 'unassigned' | 'subscription' | 'commission';
+  platformCommissionPct?: number | null;
 }
 
 export interface AdminCompaniesResponse {

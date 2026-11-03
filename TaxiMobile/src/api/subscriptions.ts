@@ -58,6 +58,8 @@ export interface DriverSubscriptionView {
   state: SubscriptionState;
   coveredBy: 'driver' | 'company' | 'none';
   effectivePeriodEnd: string | null;
+  /** Company drivers: their company's contract with the platform. */
+  companyContract?: 'unassigned' | 'subscription' | 'commission' | null;
 }
 
 export interface CheckoutResponse {

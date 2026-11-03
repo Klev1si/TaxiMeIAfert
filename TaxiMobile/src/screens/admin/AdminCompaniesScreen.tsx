@@ -17,6 +17,7 @@ import type { ColorPalette } from '../../constants/colors';
 import { adminApi, type AdminCompany } from '../../api/admin';
 import { toAlertString } from '../../utils/errorMessage';
 import { useTranslation } from '../../i18n';
+import CompanyContractModal from '../../components/CompanyContractModal';
 
 type Filter = 'all' | 'pending' | 'approved';
 
@@ -38,11 +39,13 @@ function CompanyCard({
   company,
   onApprove,
   onReject,
+  onContract,
   actionLoading,
 }: {
   company: AdminCompany;
   onApprove: (id: string) => void;
   onReject: (id: string, name: string) => void;
+  onContract: (company: AdminCompany) => void;
   actionLoading: string | null;
 }) {
   const colors = useColors();
@@ -73,6 +76,29 @@ function CompanyCard({
       {company.isApproved && company.approvedAt ? (
         <Text style={card.meta}>✅ Approved {formatDate(company.approvedAt)}</Text>
       ) : null}
+
+      {/* Contract with the platform */}
+      <TouchableOpacity
+        style={card.contractRow}
+        onPress={() => onContract(company)}
+        accessibilityRole="button"
+        accessibilityLabel={`${t('contract.manage')} ${company.name}`}>
+        <View style={[
+          card.contractBadge,
+          company.billingModel === 'commission' ? card.contractCommission
+            : company.billingModel === 'subscription' ? card.contractSubscription
+              : card.contractNone,
+        ]}>
+          <Text style={card.contractBadgeText}>
+            {company.billingModel === 'commission'
+              ? t('contract.badgeCommission', { pct: Number(company.platformCommissionPct ?? 0) })
+              : company.billingModel === 'subscription'
+                ? t('contract.badgeSubscription')
+                : t('contract.badgeNone')}
+          </Text>
+        </View>
+        <Text style={card.contractLink}>{t('contract.manage')} ›</Text>
+      </TouchableOpacity>
 
       {/* Actions — only for pending */}
       {!company.isApproved && (
@@ -123,6 +149,14 @@ function getCardStyles(c: ColorPalette) {
     name:    { fontSize: 17, fontWeight: '700', color: c.text, marginBottom: 4 },
     meta:    { fontSize: 13, color: c.textSecondary, marginBottom: 2 },
     metaDim: { opacity: 0.5 },
+
+    contractRow:          { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+    contractBadge:        { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+    contractCommission:   { backgroundColor: c.infoLight },
+    contractSubscription: { backgroundColor: c.successLight },
+    contractNone:         { backgroundColor: c.warningLight },
+    contractBadgeText:    { fontSize: 12, fontWeight: '700', color: c.text },
+    contractLink:         { fontSize: 13, fontWeight: '700', color: c.info },
 
     actions:      { flexDirection: 'row', gap: 10, marginTop: 12 },
     approveBtn:   { flex: 1, backgroundColor: c.success, borderRadius: 10, padding: 10, alignItems: 'center' },
@@ -180,6 +214,8 @@ export default function AdminCompaniesScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
+  const [contractFor, setContractFor] = useState<AdminCompany | null>(null);
+
   const handleApprove = async (companyId: string) => {
     setActionLoading(companyId);
     try {
@@ -190,6 +226,9 @@ export default function AdminCompaniesScreen() {
           : c,
         ),
       );
+      // Next step after approval: agree the contract (subscription or %).
+      const approved = companies.find(c => c.id === companyId);
+      if (approved) setContractFor(approved);
     } catch (err: any) {
       Alert.alert(t('common.error'), toAlertString(err?.response?.data?.message, t('admin.companies.approveError')));
     } finally {
@@ -264,6 +303,7 @@ export default function AdminCompaniesScreen() {
               company={item}
               onApprove={handleApprove}
               onReject={handleReject}
+              onContract={setContractFor}
               actionLoading={actionLoading}
             />
           )}
@@ -291,6 +331,18 @@ export default function AdminCompaniesScreen() {
           }
         />
       )}
+
+      <CompanyContractModal
+        companyId={contractFor?.id ?? null}
+        companyName={contractFor?.name ?? ''}
+        onClose={() => setContractFor(null)}
+        onSaved={(billingModel, commissionPct) => {
+          const id = contractFor?.id;
+          setCompanies(prev => prev.map(c => c.id === id
+            ? { ...c, billingModel, platformCommissionPct: commissionPct }
+            : c));
+        }}
+      />
     </SafeAreaView>
   );
 }
