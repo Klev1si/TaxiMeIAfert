@@ -16,6 +16,9 @@ export interface AdminDriver {
   id: string;
   userId: string;
   companyId: string | null;
+  /** Solo drivers' contract with the platform (company drivers follow their company). */
+  billingModel?: 'subscription' | 'commission';
+  platformCommissionPct?: number | null;
   phone: string | null;
   firstName: string;
   lastName: string;

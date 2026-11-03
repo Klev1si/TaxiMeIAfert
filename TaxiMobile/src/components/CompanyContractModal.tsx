@@ -22,7 +22,7 @@ import type { ColorPalette } from '../constants/colors';
 import { useTranslation } from '../i18n';
 import { toAlertString } from '../utils/errorMessage';
 import {
-  companyBillingApi,
+  adminContractApi,
   type CommissionStatement,
   type CompanyBillingModel,
 } from '../api/company-billing';
@@ -30,6 +30,9 @@ import {
 const eur = (n: number) => `€${n.toFixed(2)}`;
 
 interface Props {
+  /** 'company' (default) or a solo 'driver'. */
+  subject?:    'company' | 'driver';
+  /** Company id, or driver id when subject = 'driver'. Null hides the sheet. */
   companyId:   string | null;
   companyName: string;
   onClose:     () => void;
@@ -37,7 +40,9 @@ interface Props {
   onSaved:     (model: CompanyBillingModel, commissionPct: number | null) => void;
 }
 
-export default function CompanyContractModal({ companyId, companyName, onClose, onSaved }: Props) {
+export default function CompanyContractModal({ subject = 'company', companyId, companyName, onClose, onSaved }: Props) {
+  const isDriver = subject === 'driver';
+  const api = useMemo(() => (companyId ? adminContractApi(subject, companyId) : null), [subject, companyId]);
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
@@ -56,9 +61,9 @@ export default function CompanyContractModal({ companyId, companyName, onClose, 
   };
 
   useEffect(() => {
-    if (!companyId) return;
+    if (!api) return;
     let cancelled = false;
-    companyBillingApi.adminGet(companyId)
+    api.get()
       .then(({ data }) => { if (!cancelled) apply(data); })
       .catch(() => {
         if (cancelled) return;
@@ -67,17 +72,17 @@ export default function CompanyContractModal({ companyId, companyName, onClose, 
       });
     return () => { cancelled = true; setSt(null); setPayAmount(''); setPayNote(''); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId]);
+  }, [api]);
 
   const pctNum   = Number(pct.replace(',', '.'));
   const pctValid = model !== 'commission' || (pct.trim() !== '' && pctNum > 0 && pctNum <= 50);
   const dirty    = !!st && (model !== st.billingModel || (model === 'commission' && pctNum !== st.commissionPct));
 
   const doSave = async () => {
-    if (!companyId) return;
+    if (!api) return;
     setSaving(true);
     try {
-      const { data } = await companyBillingApi.adminSet(companyId, model, model === 'commission' ? pctNum : undefined);
+      const { data } = await api.set(model, model === 'commission' ? pctNum : undefined);
       apply(data);
       onSaved(data.billingModel, data.commissionPct);
       Alert.alert(t('contract.saved'));
@@ -91,7 +96,7 @@ export default function CompanyContractModal({ companyId, companyName, onClose, 
   const save = () => {
     if (!pctValid || !dirty) return;
     const msg = model === 'commission'
-      ? t('contract.confirmCommission', { pct: pctNum, name: companyName })
+      ? t(isDriver ? 'contract.confirmCommissionDriver' : 'contract.confirmCommission', { pct: pctNum, name: companyName })
       : model === 'subscription'
         ? t('contract.confirmSubscription', { name: companyName })
         : t('contract.confirmNone', { name: companyName });
@@ -103,15 +108,15 @@ export default function CompanyContractModal({ companyId, companyName, onClose, 
 
   const recordPayment = () => {
     const amount = Number(payAmount.replace(',', '.'));
-    if (!companyId || !(amount > 0)) return;
-    Alert.alert(t('contract.recordPayment'), t('contract.confirmPayment', { amount: eur(amount), name: companyName }), [
+    if (!api || !(amount > 0)) return;
+    Alert.alert(t(isDriver ? 'contract.recordPaymentDriver' : 'contract.recordPayment'), t('contract.confirmPayment', { amount: eur(amount), name: companyName }), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('contract.record'),
         onPress: async () => {
           setPaying(true);
           try {
-            const { data } = await companyBillingApi.adminRecordPayment(companyId, amount, payNote.trim() || undefined);
+            const { data } = await api.recordPayment(amount, payNote.trim() || undefined);
             apply(data);
             setPayAmount(''); setPayNote('');
             Alert.alert(t('contract.paymentRecorded'));
@@ -157,9 +162,9 @@ export default function CompanyContractModal({ companyId, companyName, onClose, 
             <ActivityIndicator color={colors.primary} style={{ marginVertical: 40 }} />
           ) : (
             <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-              {option('subscription', t('contract.typeSubscription'), t('contract.typeSubscriptionHint'))}
-              {option('commission', t('contract.typeCommission'), t('contract.typeCommissionHint'))}
-              {option('unassigned', t('contract.typeNone'), t('contract.typeNoneHint'))}
+              {option('subscription', t('contract.typeSubscription'), t(isDriver ? 'contract.typeSubscriptionHintDriver' : 'contract.typeSubscriptionHint'))}
+              {option('commission', t('contract.typeCommission'), t(isDriver ? 'contract.typeCommissionHintDriver' : 'contract.typeCommissionHint'))}
+              {!isDriver && option('unassigned', t('contract.typeNone'), t('contract.typeNoneHint'))}
 
               {model === 'commission' && (
                 <View style={styles.field}>
@@ -203,7 +208,10 @@ export default function CompanyContractModal({ companyId, companyName, onClose, 
                     </View>
                   </View>
 
-                  <Text style={styles.label}>{t('contract.recordPayment')}</Text>
+                  {st.allTime.withheld > 0 && (
+                    <Text style={styles.hint}>{t('contract.withheld', { amount: eur(st.allTime.withheld) })}</Text>
+                  )}
+                  <Text style={styles.label}>{t(isDriver ? 'contract.recordPaymentDriver' : 'contract.recordPayment')}</Text>
                   <View style={styles.payRow}>
                     <TextInput
                       style={[styles.input, styles.amountInput]}
