@@ -75,6 +75,14 @@ export class Ride {
   @Column({ type: 'decimal', name: 'duration_minutes', precision: 8, scale: 2, nullable: true })
   durationMinutes: number | null;
 
+  /**
+   * Platform commission (%) owed on this ride's gross fare, snapshotted at
+   * completion when the driver's company is on a commission contract. Null
+   * for subscription companies and solo drivers.
+   */
+  @Column({ type: 'decimal', name: 'platform_commission_pct', precision: 5, scale: 2, nullable: true })
+  platformCommissionPct: number | null;
+
   @Column({ type: 'decimal', name: 'base_fare', precision: 10, scale: 2, nullable: true })
   baseFare: number | null;
 

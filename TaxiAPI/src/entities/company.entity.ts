@@ -14,6 +14,8 @@ import { Tariff } from './tariff.entity';
 import { Ride } from './ride.entity';
 import { CompanySubscription } from './company-subscription.entity';
 
+export type CompanyBillingModel = 'unassigned' | 'subscription' | 'commission';
+
 @Entity('companies')
 export class Company {
   @PrimaryGeneratedColumn('uuid')
@@ -46,6 +48,24 @@ export class Company {
 
   @Column({ type: 'timestamptz', name: 'approved_at', nullable: true })
   approvedAt: Date | null;
+
+  /**
+   * How the company pays the platform — agreed per company by the admin:
+   *  - 'unassigned'   no deal yet: plans are hidden and drivers can't take rides
+   *  - 'subscription' the company pays a monthly / 3-month / yearly plan
+   *  - 'commission'   the platform takes `platformCommissionPct` % of the
+   *                   gross fare of every ride by the company's drivers
+   */
+  @Column({ type: 'varchar', name: 'billing_model', length: 16, default: 'unassigned' })
+  billingModel: CompanyBillingModel;
+
+  /** Platform's share (%) of gross ride fares — only for 'commission'. */
+  @Column({ type: 'decimal', name: 'platform_commission_pct', precision: 5, scale: 2, nullable: true })
+  platformCommissionPct: number | null;
+
+  /** When the admin last changed the contract. */
+  @Column({ type: 'timestamptz', name: 'billing_model_set_at', nullable: true })
+  billingModelSetAt: Date | null;
 
   @Column({ type: 'varchar', name: 'stripe_customer_id', nullable: true, length: 100 })
   stripeCustomerId: string | null;

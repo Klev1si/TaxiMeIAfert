@@ -1676,6 +1676,20 @@ export class RidesService implements OnModuleInit, OnModuleDestroy {
       ride.totalFare = Math.round(fareInput.totalFare * 100) / 100;
     }
 
+    // ── Platform commission (company on a commission contract) ──────────────
+    // Snapshot the rate in force now, so a later change of the deal never
+    // rewrites what past rides owe.
+    if (driver.companyId) {
+      const company = await this.companyRepo.findOne({
+        where: { id: driver.companyId },
+        select: ['id', 'billingModel', 'platformCommissionPct'],
+      });
+      ride.platformCommissionPct =
+        company?.billingModel === 'commission' && company.platformCommissionPct != null
+          ? Number(company.platformCommissionPct)
+          : null;
+    }
+
     // ── Apply promo code discount (if the ride was booked with one) ──────────
     // We track:
     //   - `ride.totalFare`        = what the PASSENGER pays after the discount.

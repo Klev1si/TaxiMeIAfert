@@ -29,3 +29,4 @@ export * from './engagement-notification.entity';
 export * from './login-event.entity';
 export * from './platform-setting.entity';
 export * from './promo-fingerprint.entity';
+export * from './company-commission-payment.entity';
