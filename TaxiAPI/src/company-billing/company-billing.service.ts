@@ -184,7 +184,7 @@ export class CompanyBillingService {
       `SELECT
          COUNT(*)::int AS rides,
          COALESCE(SUM(g.gross), 0)::numeric AS gross,
-         COALESCE(SUM(ROUND(g.gross * g.pct / 100, 2)), 0)::numeric AS commission
+         COALESCE(SUM(ROUND((g.gross * g.pct / 100)::numeric, 2)), 0)::numeric AS commission
        FROM (
          SELECT r.platform_commission_pct AS pct,
                 COALESCE(r.total_fare, 0) + COALESCE(pc.amount, 0) AS gross
@@ -269,7 +269,7 @@ export class CompanyBillingService {
       ) as Promise<Array<{ id: string; n: number }>>,
       this.rideRepo.query(
         `SELECT r.company_id::text AS id,
-                COALESCE(SUM(ROUND((COALESCE(r.total_fare, 0) + COALESCE(pc.amount, 0)) * r.platform_commission_pct / 100, 2)), 0)::numeric AS owed
+                COALESCE(SUM(ROUND(((COALESCE(r.total_fare, 0) + COALESCE(pc.amount, 0)) * r.platform_commission_pct / 100)::numeric, 2)), 0)::numeric AS owed
          FROM rides r LEFT JOIN platform_credits pc ON pc.ride_id = r.id
          WHERE r.company_id::text = ANY($1) AND r.status = $2 AND r.platform_commission_pct IS NOT NULL
          GROUP BY r.company_id`,

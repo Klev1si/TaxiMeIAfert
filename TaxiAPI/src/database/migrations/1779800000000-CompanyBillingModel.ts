@@ -17,9 +17,9 @@ export class CompanyBillingModel1779800000000 implements MigrationInterface {
         ADD COLUMN IF NOT EXISTS billing_model_set_at TIMESTAMPTZ NULL
     `);
     await runner.query(`
-      UPDATE companies c SET billing_model = 'subscription'
+      UPDATE companies SET billing_model = 'subscription'
       WHERE billing_model = 'unassigned'
-        AND EXISTS (SELECT 1 FROM company_subscriptions s WHERE s.company_id::text = c.id::text)
+        AND id::text IN (SELECT company_id::text FROM company_subscriptions)
     `);
     await runner.query(`
       ALTER TABLE rides ADD COLUMN IF NOT EXISTS platform_commission_pct NUMERIC(5,2) NULL
