@@ -5,6 +5,9 @@ import type { BillingModel, CommissionStatement } from '../types/contract';
 const eur = (n: number) => `€${n.toFixed(2)}`;
 
 interface Props {
+  /** 'company' (default) or a solo 'driver'. */
+  subject?:    'company' | 'driver';
+  /** Company id, or driver id when subject = 'driver'. */
   companyId:   string;
   companyName: string;
   onClose:     () => void;
@@ -17,7 +20,9 @@ interface Props {
  * percentage of ride revenue) and, for commission contracts, follow what the
  * company owes and record its payments.
  */
-export default function CompanyContractModal({ companyId, companyName, onClose, onSaved }: Props) {
+export default function CompanyContractModal({ subject = 'company', companyId, companyName, onClose, onSaved }: Props) {
+  const base = subject === 'driver' ? `/admin/drivers/${companyId}` : `/admin/companies/${companyId}`;
+  const who  = subject === 'driver' ? 'driver' : 'company';
   const [st, setSt]           = useState<CommissionStatement | null>(null);
   const [model, setModel]     = useState<BillingModel>('unassigned');
   const [pct, setPct]         = useState('');
@@ -34,10 +39,10 @@ export default function CompanyContractModal({ companyId, companyName, onClose, 
   };
 
   useEffect(() => {
-    apiClient.get<CommissionStatement>(`/admin/companies/${companyId}/billing`, { params: { period: 'month' } })
+    apiClient.get<CommissionStatement>(`${base}/billing`, { params: { period: 'month' } })
       .then(({ data }) => apply(data))
       .catch(() => setError('Could not load the contract.'));
-  }, [companyId]);
+  }, [base]);
 
   const pctNum   = Number(pct);
   const pctValid = model !== 'commission' || (pct.trim() !== '' && pctNum > 0 && pctNum <= 50);
@@ -46,14 +51,14 @@ export default function CompanyContractModal({ companyId, companyName, onClose, 
   const save = async () => {
     if (!pctValid) return;
     const msg = model === 'commission'
-      ? `Set ${companyName} to a ${pctNum}% commission contract? Their drivers can take rides without a subscription, and ${pctNum}% of every ride is owed to the platform from now on.`
+      ? `Set ${companyName} to a ${pctNum}% commission contract? ${subject === 'driver' ? 'They' : 'Their drivers'} can take rides without a subscription, and ${pctNum}% of every ride is owed to the platform from now on.`
       : model === 'subscription'
         ? `Set ${companyName} to a subscription contract? They will choose and pay a plan.`
         : `Remove ${companyName}'s contract? Their drivers will not be able to take rides until a contract is set.`;
     if (!confirm(msg)) return;
     setSaving(true); setError('');
     try {
-      const { data } = await apiClient.put<CommissionStatement>(`/admin/companies/${companyId}/billing`, {
+      const { data } = await apiClient.put<CommissionStatement>(`${base}/billing`, {
         billingModel: model,
         ...(model === 'commission' ? { commissionPct: pctNum } : {}),
       });
@@ -73,7 +78,7 @@ export default function CompanyContractModal({ companyId, companyName, onClose, 
     setPaying(true); setError('');
     try {
       const { data } = await apiClient.post<CommissionStatement>(
-        `/admin/companies/${companyId}/commission-payments`,
+        `${base}/commission-payments`,
         { amount, note: payNote.trim() || undefined },
       );
       apply(data);
@@ -114,9 +119,11 @@ export default function CompanyContractModal({ companyId, companyName, onClose, 
         ) : (
           <div className="p-5 space-y-5">
             <div className="space-y-2">
-              {option('subscription', 'Subscription', 'The company pays a monthly, 3-month or yearly plan.')}
-              {option('commission', 'Commission (% of rides)', 'The platform takes a percentage of the gross fare of every ride by the company’s drivers.')}
-              {option('unassigned', 'No contract yet', 'Plans are hidden and the company’s drivers can’t take rides.')}
+              {option('subscription', 'Subscription', `The ${who} pays a monthly, 3-month or yearly plan.`)}
+              {option('commission', 'Commission (% of rides)', subject === 'driver'
+                ? 'The platform takes a percentage of the full fare of every ride. Withheld automatically on card rides; cash rides are settled with the platform.'
+                : 'The platform takes a percentage of the full fare of every ride by the company’s drivers, out of the company’s share — drivers keep their agreed %.')}
+              {subject === 'company' && option('unassigned', 'No contract yet', 'Plans are hidden and the company’s drivers can’t take rides.')}
             </div>
 
             {model === 'commission' && (
@@ -157,12 +164,16 @@ export default function CompanyContractModal({ companyId, companyName, onClose, 
                   <div className={`rounded-lg p-3 ${st.allTime.balance > 0 ? 'bg-amber-50' : 'bg-green-50'}`}>
                     <p className="text-xs text-gray-500">Balance (all time)</p>
                     <p className="font-semibold text-gray-900">{eur(st.allTime.balance)}</p>
-                    <p className="text-xs text-gray-600">Owed {eur(st.allTime.commission)} · Paid {eur(st.allTime.paid)}</p>
+                    <p className="text-xs text-gray-600">
+                      Owed {eur(st.allTime.commission)}
+                      {st.allTime.withheld > 0 && <> · Withheld from card {eur(st.allTime.withheld)}</>}
+                      {' '}· Paid {eur(st.allTime.paid)}
+                    </p>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-gray-900">Record a payment from the company</p>
+                  <p className="text-sm font-semibold text-gray-900">Record a payment from the {who}</p>
                   <div className="flex gap-2">
                     <input
                       type="number" min={0.01} step={0.01} placeholder="Amount €"

@@ -3,6 +3,7 @@ import apiClient from '../api/client';
 import { useAuthStore } from '../stores/authStore';
 import Pagination from '../components/Pagination';
 import StatusBadge from '../components/StatusBadge';
+import CompanyContractModal from '../components/CompanyContractModal';
 
 type DocumentStatus = 'pending' | 'approved' | 'rejected';
 type DocumentType   = 'license' | 'vehicle_registration' | 'insurance' | 'other';
@@ -47,6 +48,9 @@ interface Driver {
   totalDeclined: number;
   acceptanceRate: number | null;
   createdAt: string;
+  /** Solo drivers' contract with the platform (admin list only). */
+  billingModel?: 'subscription' | 'commission';
+  platformCommissionPct?: number | null;
 }
 
 const LIMIT = 20;
@@ -72,6 +76,7 @@ export default function DriversPage() {
   const [search,       setSearch]       = useState('');
   const [searchInput,  setSearchInput]  = useState('');
   const [drivers,      setDrivers]      = useState<Driver[]>([]);
+  const [contractFor,  setContractFor]  = useState<Driver | null>(null);
   const [total,        setTotal]        = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [page,         setPage]         = useState(1);
@@ -339,6 +344,7 @@ export default function DriversPage() {
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Status</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Rating</th>
                   {!detail && <th className="text-left px-4 py-3 font-semibold text-gray-600">Rides</th>}
+                  {isAdmin && <th className="text-left px-4 py-3 font-semibold text-gray-600">Contract</th>}
                   {isAdmin && <th className="text-left px-4 py-3 font-semibold text-gray-600">Actions</th>}
                 </tr>
               </thead>
@@ -375,6 +381,23 @@ export default function DriversPage() {
                     {!detail && <td className="px-4 py-3 text-gray-700">{d.totalRides}</td>}
                     {isAdmin && (
                       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                        {d.companyId ? (
+                          <span className="text-xs text-gray-400" title="Follows the company's contract">Company</span>
+                        ) : (
+                          <button onClick={() => setContractFor(d)} className="flex items-center gap-2 group" title="Manage contract">
+                            <StatusBadge
+                              label={d.billingModel === 'commission'
+                                ? `${Number(d.platformCommissionPct ?? 0)}% commission`
+                                : 'Subscription'}
+                              variant={d.billingModel === 'commission' ? 'blue' : 'green'}
+                            />
+                            <span className="text-xs text-indigo-600 group-hover:underline">Manage</span>
+                          </button>
+                        )}
+                      </td>
+                    )}
+                    {isAdmin && (
+                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                         <div className="flex gap-2">
                           {!d.isApproved && (
                             <button
@@ -404,6 +427,15 @@ export default function DriversPage() {
         </div>
 
         <Pagination page={page} total={total} limit={LIMIT} onChange={p => { setPage(p); fetchDrivers(p); }} />
+      {contractFor && (
+        <CompanyContractModal
+          subject="driver"
+          companyId={contractFor.id}
+          companyName={`${contractFor.firstName} ${contractFor.lastName}`}
+          onClose={() => setContractFor(null)}
+          onSaved={() => fetchDrivers(page)}
+        />
+      )}
       </div>
 
       {/* ── Right: Driver Detail Panel — side panel on desktop, modal on mobile ── */}
