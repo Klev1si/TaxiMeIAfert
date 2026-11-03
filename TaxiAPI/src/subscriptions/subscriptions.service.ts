@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -19,6 +20,7 @@ import {
   SubscriptionStatus,
 } from '../common/enums/index.js';
 import type { PlanAudience } from '../entities/subscription-plan.entity.js';
+import type { CompanyBillingModel } from '../entities/company.entity.js';
 import { PayseraService } from '../paysera/paysera.service.js';
 import {
   computeSubscriptionState,
@@ -72,10 +74,28 @@ export class SubscriptionsService {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
+  /** Plans are only available to companies whose contract is 'subscription'. */
+  private assertCompanyOnSubscription(company: Company): void {
+    if ((company.billingModel ?? 'unassigned') !== 'subscription') {
+      throw new ForbiddenException(
+        company.billingModel === 'commission'
+          ? 'Your company works on a commission contract — no subscription is needed.'
+          : 'Your contract with the platform is not set up yet. We will contact you.',
+      );
+    }
+  }
+
   private async resolveCompany(userId: string): Promise<Company> {
     const company = await this.companyRepo.findOne({ where: { userId } });
     if (!company) throw new NotFoundException('Company profile not found');
     return company;
+  }
+
+  /** Solo drivers on a commission contract don't buy plans. */
+  private assertDriverOnSubscription(driver: Driver): void {
+    if (!driver.companyId && driver.billingModel === 'commission') {
+      throw new ForbiddenException('You work on a commission contract — no subscription is needed.');
+    }
   }
 
   private async resolveDriver(userId: string): Promise<Driver> {
@@ -109,6 +129,7 @@ export class SubscriptionsService {
 
   async subscribe(userId: string, planId: string): Promise<CompanySubscription> {
     const company = await this.resolveCompany(userId);
+    this.assertCompanyOnSubscription(company);
 
     const plan = await this.planRepo.findOne({
       where: { id: planId, isActive: true, targetAudience: 'company' },
@@ -199,11 +220,17 @@ export class SubscriptionsService {
       state:               working.state,
       coveredBy:           working.coveredBy,
       effectivePeriodEnd:  working.periodEnd,
+      /** Company drivers: the company's contract ('subscription' |
+       *  'commission' | 'unassigned'). Null for solo drivers. */
+      companyContract:     working.coveredBy === 'company' ? working.contract ?? null : null,
+      /** Solo drivers: their own contract ('subscription' | 'commission'). */
+      driverContract:      working.coveredBy === 'driver' ? working.contract ?? 'subscription' : null,
     };
   }
 
   async driverSubscribe(userId: string, planId: string): Promise<DriverSubscription> {
     const driver = await this.resolveDriver(userId);
+    this.assertDriverOnSubscription(driver);
 
     const plan = await this.planRepo.findOne({
       where: { id: planId, isActive: true, targetAudience: 'driver' },
@@ -430,14 +457,31 @@ export class SubscriptionsService {
     state: SubscriptionState;
     coveredBy: 'company' | 'driver' | 'none';
     periodEnd: Date | null;
+    /** The company's contract type (company drivers only). */
+    contract?: CompanyBillingModel;
   }> {
     const driver = await this.driverRepo.findOne({
       where: { id: driverId },
-      select: ['id', 'companyId'],
+      select: ['id', 'companyId', 'billingModel'],
     });
     if (!driver) return { state: 'inactive', coveredBy: 'none', periodEnd: null };
 
     if (driver.companyId) {
+      // The company's contract decides how its drivers are covered:
+      //  - commission  → always allowed; the platform takes its % per ride
+      //  - unassigned  → no deal with the platform yet → not allowed
+      //  - subscription → the company's plan, exactly as before
+      const company = await this.companyRepo.findOne({
+        where: { id: driver.companyId },
+        select: ['id', 'billingModel'],
+      });
+      const contract = company?.billingModel ?? 'unassigned';
+      if (contract === 'commission') {
+        return { state: 'active', coveredBy: 'company', periodEnd: null, contract };
+      }
+      if (contract === 'unassigned') {
+        return { state: 'inactive', coveredBy: 'company', periodEnd: null, contract };
+      }
       const sub = await this.companySubRepo.findOne({
         where: { companyId: driver.companyId },
         order: { createdAt: 'DESC' },
@@ -446,7 +490,13 @@ export class SubscriptionsService {
         state:     computeSubscriptionState(sub),
         coveredBy: 'company',
         periodEnd: sub?.currentPeriodEnd ?? null,
+        contract,
       };
+    }
+
+    // Solo driver on a commission contract: no subscription needed.
+    if (driver.billingModel === 'commission') {
+      return { state: 'active', coveredBy: 'driver', periodEnd: null, contract: 'commission' };
     }
 
     const sub = await this.driverSubRepo.findOne({
@@ -457,12 +507,18 @@ export class SubscriptionsService {
       state:     computeSubscriptionState(sub),
       coveredBy: 'driver',
       periodEnd: sub?.currentPeriodEnd ?? null,
+      contract:  'subscription',
     };
   }
 
   /** Throws ForbiddenException when the driver's subscription is blocked. */
   async assertDriverCanWork(driverId: string): Promise<void> {
-    const { state, coveredBy } = await this.getDriverWorkingState(driverId);
+    const { state, coveredBy, contract } = await this.getDriverWorkingState(driverId);
+    if (contract === 'unassigned') {
+      throw new BadRequestException(
+        'Your company’s contract with the platform is not set up yet. Please contact your company.',
+      );
+    }
     if (!isWorkingAllowed(state)) {
       const who = coveredBy === 'company' ? 'Your company’s' : 'Your';
       throw new BadRequestException(
@@ -821,6 +877,8 @@ export class SubscriptionsService {
     paymentMethod: PaymentMethod = PaymentMethod.CARD,
   ): Promise<string> {
     const driver = await this.resolveDriver(userId);
+    // Covers both card checkout and cash requests for drivers.
+    this.assertDriverOnSubscription(driver);
     const existing = await this.driverSubRepo.findOne({
       where: { driverId: driver.id },
       order: { createdAt: 'DESC' },
@@ -860,6 +918,8 @@ export class SubscriptionsService {
     paymentMethod: PaymentMethod = PaymentMethod.CARD,
   ): Promise<string> {
     const company = await this.resolveCompany(userId);
+    // Covers both card checkout and cash requests for companies.
+    this.assertCompanyOnSubscription(company);
     const existing = await this.companySubRepo.findOne({
       where: { companyId: company.id },
       order: { createdAt: 'DESC' },

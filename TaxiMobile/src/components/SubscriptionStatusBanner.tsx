@@ -4,6 +4,8 @@ import {
   subscriptionsApi,
   type SubscriptionState,
 } from '../api/subscriptions';
+import { companyBillingApi, type CompanyBillingModel } from '../api/company-billing';
+import { useTranslation } from '../i18n';
 
 type Audience = 'driver' | 'company';
 
@@ -24,6 +26,10 @@ export default function SubscriptionStatusBanner({ audience, onRenewPress }: Pro
   const [state, setState]         = useState<SubscriptionState>('inactive');
   const [coveredBy, setCoveredBy] = useState<'driver' | 'company' | 'none'>('none');
   const [loaded, setLoaded]       = useState(false);
+  // Company contract: commission companies need no subscription (no banner);
+  // companies without a contract get an informational banner instead.
+  const [contract, setContract]   = useState<CompanyBillingModel | null>(null);
+  const { t } = useTranslation();
 
   const load = useCallback(async () => {
     try {
@@ -31,10 +37,17 @@ export default function SubscriptionStatusBanner({ audience, onRenewPress }: Pro
         const res = await subscriptionsApi.getDriverMy();
         setState(res.data.state);
         setCoveredBy(res.data.coveredBy);
+        setContract(res.data.companyContract ?? null);
       } else {
-        const res = await subscriptionsApi.getMy();
-        setState(res.data?.state ?? 'inactive');
+        const billing = await companyBillingApi.getMine();
+        setContract(billing.data.billingModel);
         setCoveredBy('company');
+        if (billing.data.billingModel === 'subscription') {
+          const res = await subscriptionsApi.getMy();
+          setState(res.data?.state ?? 'inactive');
+        } else {
+          setState(billing.data.billingModel === 'commission' ? 'active' : 'inactive');
+        }
       }
     } catch {
       // Silent — banner just stays hidden if we can't fetch
@@ -45,14 +58,28 @@ export default function SubscriptionStatusBanner({ audience, onRenewPress }: Pro
 
   useEffect(() => { load(); }, [load]);
 
-  const isGrace = state === 'grace';
-  const styles  = useMemo(() => getStyles(isGrace), [isGrace]);
+  const isGrace   = state === 'grace';
+  const isPending = contract === 'unassigned';
+  const styles    = useMemo(() => getStyles(isGrace, isPending), [isGrace, isPending]);
 
   // Only render when there's something the user needs to act on.
   // NOTE: this early return must stay below every hook call — bailing out
   // before a hook changes the hook count between renders and crashes React
   // ("Rendered more hooks than during the previous render.").
-  if (!loaded || state === 'active' || state === 'inactive') return null;
+  if (!loaded) return null;
+
+  // No contract with the platform yet — explain why rides are unavailable.
+  if (isPending) {
+    return (
+      <View style={styles.wrap}>
+        <Text style={styles.message}>
+          🤝 {audience === 'driver' ? t('contract.driverPending') : t('contract.companyPendingBanner')}
+        </Text>
+      </View>
+    );
+  }
+
+  if (contract === 'commission' || state === 'active' || state === 'inactive') return null;
 
   const whose = coveredBy === 'company' ? "Your company's" : 'Your';
   const message = isGrace
@@ -75,10 +102,10 @@ export default function SubscriptionStatusBanner({ audience, onRenewPress }: Pro
   );
 }
 
-function getStyles(isGrace: boolean) {
-  const bg          = isGrace ? '#fef3c7' : '#fee2e2';
-  const border      = isGrace ? '#f59e0b' : '#ef4444';
-  const textColor   = isGrace ? '#92400e' : '#991b1b';
+function getStyles(isGrace: boolean, isPending = false) {
+  const bg          = isPending ? '#dbeafe' : isGrace ? '#fef3c7' : '#fee2e2';
+  const border      = isPending ? '#3b82f6' : isGrace ? '#f59e0b' : '#ef4444';
+  const textColor   = isPending ? '#1e40af' : isGrace ? '#92400e' : '#991b1b';
   return StyleSheet.create({
     wrap: {
       backgroundColor: bg,

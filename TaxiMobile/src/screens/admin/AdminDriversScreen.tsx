@@ -20,6 +20,7 @@ import { adminApi, type AdminDriver } from '../../api/admin';
 import { toAlertString } from '../../utils/errorMessage';
 import type { AdminDriverStackScreenProps } from '../../navigation/types';
 import { useTranslation } from '../../i18n';
+import CompanyContractModal from '../../components/CompanyContractModal';
 
 type Filter = 'all' | 'pending' | 'approved';
 
@@ -118,12 +119,14 @@ function DriverCard({
   onApprove,
   onReject,
   onViewDocs,
+  onContract,
   actionLoading,
 }: {
   driver: AdminDriver;
   onApprove: (id: string) => void;
   onReject: (driver: AdminDriver) => void;
   onViewDocs: (driver: AdminDriver) => void;
+  onContract: (driver: AdminDriver) => void;
   actionLoading: string | null;
 }) {
   const colors = useColors();
@@ -165,6 +168,26 @@ function DriverCard({
         {driver.acceptanceRate != null ? `  ·  ${driver.acceptanceRate}% accept` : ''}
       </Text>
       <Text style={card.meta}>📅 Joined {new Date(driver.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
+
+      {/* Contract with the platform — solo drivers only */}
+      {driver.companyId ? (
+        <Text style={card.meta}>🤝 {t('contract.badgeCompany')}</Text>
+      ) : (
+        <TouchableOpacity
+          style={card.contractRow}
+          onPress={() => onContract(driver)}
+          accessibilityRole="button"
+          accessibilityLabel={`${t('contract.manage')} ${driver.firstName} ${driver.lastName}`}>
+          <View style={[card.contractBadge, driver.billingModel === 'commission' ? card.contractCommission : card.contractSubscription]}>
+            <Text style={card.contractBadgeText}>
+              {driver.billingModel === 'commission'
+                ? t('contract.badgeCommission', { pct: Number(driver.platformCommissionPct ?? 0) })
+                : t('contract.badgeSubscription')}
+            </Text>
+          </View>
+          <Text style={card.contractLink}>{t('contract.manage')} ›</Text>
+        </TouchableOpacity>
+      )}
 
       {/* View documents button */}
       <TouchableOpacity
@@ -228,6 +251,13 @@ function getCardStyles(c: ColorPalette) {
     meta:       { fontSize: 13, color: c.textSecondary, marginBottom: 2 },
     metaDim:    { opacity: 0.5 },
 
+    contractRow:          { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+    contractBadge:        { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+    contractCommission:   { backgroundColor: c.infoLight },
+    contractSubscription: { backgroundColor: c.successLight },
+    contractBadgeText:    { fontSize: 12, fontWeight: '700', color: c.text },
+    contractLink:         { fontSize: 13, fontWeight: '700', color: c.info },
+
     docsBtn: {
       marginTop: 10,
       borderWidth: 1,
@@ -256,6 +286,7 @@ export default function AdminDriversScreen({ navigation }: Props) {
   const { t } = useTranslation();
 
   const [drivers, setDrivers]       = useState<AdminDriver[]>([]);
+  const [contractFor, setContractFor] = useState<AdminDriver | null>(null);
   const [total, setTotal]           = useState(0);
   const [filter, setFilter]         = useState<Filter>('pending');
   const [search, setSearch]         = useState('');
@@ -397,6 +428,7 @@ export default function AdminDriversScreen({ navigation }: Props) {
                 driverId:   d.id,
                 driverName: `${d.firstName} ${d.lastName}`,
               })}
+              onContract={setContractFor}
               actionLoading={actionLoading}
             />
           )}
@@ -431,6 +463,18 @@ export default function AdminDriversScreen({ navigation }: Props) {
         driverName={rejectTarget ? `${rejectTarget.firstName} ${rejectTarget.lastName}` : ''}
         onConfirm={handleRejectConfirm}
         onCancel={() => setRejectTarget(null)}
+      />
+      <CompanyContractModal
+        subject="driver"
+        companyId={contractFor?.id ?? null}
+        companyName={contractFor ? `${contractFor.firstName} ${contractFor.lastName}` : ''}
+        onClose={() => setContractFor(null)}
+        onSaved={(billingModel, commissionPct) => {
+          const id = contractFor?.id;
+          setDrivers(prev => prev.map(d => d.id === id
+            ? { ...d, billingModel: billingModel as AdminDriver['billingModel'], platformCommissionPct: commissionPct }
+            : d));
+        }}
       />
     </SafeAreaView>
   );

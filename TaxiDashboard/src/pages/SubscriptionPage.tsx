@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import apiClient from '../api/client';
+import type { CommissionStatement } from '../types/contract';
 
 type BillingPeriod = 'monthly' | 'quarterly' | 'yearly';
 type SubStatus     = 'active' | 'pending' | 'trialing' | 'past_due' | 'cancelled';
@@ -138,7 +139,7 @@ function PlanCard({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function SubscriptionPage() {
+function SubscriptionPlans() {
   const [plans,   setPlans]   = useState<Plan[]>([]);
   const [sub,     setSub]     = useState<CompanySubscription | null>(null);
   const [loading, setLoading] = useState(true);
@@ -307,6 +308,118 @@ export default function SubscriptionPage() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// ── Contract-aware page ──────────────────────────────────────────────────────
+// The platform agrees a contract with each company: a subscription plan, or a
+// percentage of ride revenue. Plans are only shown on a subscription contract.
+
+const eur = (n: number) => `€${n.toFixed(2)}`;
+type Period = 'month' | 'all';
+
+function CommissionView({ st, period, onPeriod }: {
+  st: CommissionStatement; period: Period; onPeriod: (p: Period) => void;
+}) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">Contract</h2>
+        <p className="text-sm text-gray-500 mt-0.5">
+          Commission contract — the platform receives <strong>{st.commissionPct}%</strong> of the gross fare of every
+          ride completed by your drivers. No subscription is needed.
+        </p>
+      </div>
+
+      <div className="flex gap-2">
+        {(['month', 'all'] as Period[]).map((p) => (
+          <button
+            key={p}
+            onClick={() => onPeriod(p)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${period === p ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200'}`}
+          >
+            {p === 'month' ? 'This month' : 'All time'}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <p className="text-xs text-gray-500">Rides</p>
+          <p className="text-2xl font-bold text-gray-900">{st.period.rides}</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <p className="text-xs text-gray-500">Gross fares</p>
+          <p className="text-2xl font-bold text-gray-900">{eur(st.period.grossFare)}</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <p className="text-xs text-gray-500">Platform commission ({st.commissionPct}%)</p>
+          <p className="text-2xl font-bold text-gray-900">{eur(st.period.commission)}</p>
+        </div>
+      </div>
+
+      <div className={`rounded-xl border px-5 py-4 ${st.allTime.balance > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}`}>
+        <p className="text-sm text-gray-700">
+          Balance with the platform: <strong>{eur(st.allTime.balance)}</strong>
+          {st.allTime.balance > 0 ? ' to pay' : st.allTime.balance < 0 ? ' paid in advance' : ' — all settled'}
+        </p>
+        <p className="text-xs text-gray-500 mt-1">
+          Total commission {eur(st.allTime.commission)} · Paid {eur(st.allTime.paid)}
+        </p>
+      </div>
+
+      {st.payments.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <p className="text-sm font-semibold text-gray-900 mb-2">Payments received by the platform</p>
+          <ul className="divide-y divide-gray-100 text-sm">
+            {st.payments.map((p) => (
+              <li key={p.id} className="py-1.5 flex justify-between gap-3">
+                <span className="text-gray-600 truncate">
+                  {new Date(p.createdAt).toLocaleDateString()}{p.note ? ` — ${p.note}` : ''}
+                </span>
+                <span className="font-medium text-gray-900">{eur(p.amount)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function SubscriptionPage() {
+  const [st, setSt]         = useState<CommissionStatement | null>(null);
+  const [period, setPeriod] = useState<Period>('month');
+  const [error, setError]   = useState('');
+
+  useEffect(() => {
+    apiClient.get<CommissionStatement>('/company/billing', { params: { period } })
+      .then(({ data }) => { setSt(data); setError(''); })
+      .catch(() => setError('Could not load your contract.'));
+  }, [period]);
+
+  if (error) return <div className="text-sm text-red-600">{error}</div>;
+  if (!st) {
+    return (
+      <div className="flex items-center justify-center h-40">
+        <div className="w-7 h-7 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (st.billingModel === 'subscription') return <SubscriptionPlans />;
+  if (st.billingModel === 'commission') return <CommissionView st={st} period={period} onPeriod={setPeriod} />;
+  return (
+    <div className="max-w-xl space-y-3">
+      <h2 className="text-xl font-bold text-gray-900">Contract</h2>
+      <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-5 py-4 text-sm text-indigo-800">
+        🤝 Your contract with TaxiMeIAfert is being set up. We will contact you to agree on the terms
+        (a subscription plan or a percentage of ride revenue). Your drivers can start taking rides
+        as soon as the contract is in place.
+      </div>
+      <p className="text-sm text-gray-500">
+        Questions? Write to us from the <a href="/dashboard/support" className="text-indigo-600 hover:underline">Support</a> page.
+      </p>
     </div>
   );
 }

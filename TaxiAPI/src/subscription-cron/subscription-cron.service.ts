@@ -197,9 +197,11 @@ export class SubscriptionCronService {
   private async lookupCompanyUser(companyId: string): Promise<User | null> {
     const company = await this.companyRepo.findOne({
       where:  { id: companyId },
-      select: ['id', 'userId'],
+      select: ['id', 'userId', 'billingModel'],
     });
-    if (!company) return null;
+    // Only companies on a subscription contract get renewal reminders — a
+    // commission company may still have an old plan row, but no longer pays it.
+    if (!company || company.billingModel !== 'subscription') return null;
     return this.userRepo.findOne({
       where:  { id: company.userId },
       select: ['id', 'email', 'phone', 'fcmToken'],

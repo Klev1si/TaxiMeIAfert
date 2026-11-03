@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import apiClient from '../api/client';
 import Pagination from '../components/Pagination';
 import StatusBadge from '../components/StatusBadge';
+import CompanyContractModal from '../components/CompanyContractModal';
+import { CONTRACT_LABEL, type BillingModel } from '../types/contract';
 
 type FilterTab = 'all' | 'pending' | 'approved';
 
@@ -13,6 +15,8 @@ interface Company {
   isApproved: boolean;
   approvedAt: string | null;
   createdAt: string;
+  billingModel?: BillingModel;
+  platformCommissionPct?: number | string | null;
 }
 
 const LIMIT = 20;
@@ -24,6 +28,7 @@ export default function CompaniesPage() {
   const [page, setPage]         = useState(1);
   const [loading, setLoading]   = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [contractFor, setContractFor] = useState<Company | null>(null);
 
   const fetchCompanies = useCallback(async (p: number) => {
     setLoading(true);
@@ -47,6 +52,9 @@ export default function CompaniesPage() {
     try {
       await apiClient.patch(`/admin/companies/${id}/approve`);
       fetchCompanies(page);
+      // Next step after approval: agree the contract (subscription or %).
+      const approved = companies.find(c => c.id === id);
+      if (approved) setContractFor(approved);
     } finally {
       setActionId(null);
     }
@@ -113,6 +121,7 @@ export default function CompaniesPage() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Company</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Location</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Status</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Contract</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Applied</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Approved</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Actions</th>
@@ -137,6 +146,27 @@ export default function CompaniesPage() {
                       label={c.isApproved ? 'Approved' : 'Pending'}
                       variant={c.isApproved ? 'green' : 'yellow'}
                     />
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => setContractFor(c)}
+                      className="flex items-center gap-2 group"
+                      title="Manage contract"
+                    >
+                      <StatusBadge
+                        label={
+                          c.billingModel === 'commission' && c.platformCommissionPct != null
+                            ? `${Number(c.platformCommissionPct)}% commission`
+                            : CONTRACT_LABEL[c.billingModel ?? 'unassigned']
+                        }
+                        variant={
+                          c.billingModel === 'commission' ? 'blue'
+                            : c.billingModel === 'subscription' ? 'green'
+                              : 'yellow'
+                        }
+                      />
+                      <span className="text-xs text-indigo-600 group-hover:underline">Manage</span>
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
                     {new Date(c.createdAt).toLocaleDateString()}
@@ -173,6 +203,15 @@ export default function CompaniesPage() {
       </div>
 
       <Pagination page={page} total={total} limit={LIMIT} onChange={p => { setPage(p); fetchCompanies(p); }} />
+
+      {contractFor && (
+        <CompanyContractModal
+          companyId={contractFor.id}
+          companyName={contractFor.name}
+          onClose={() => setContractFor(null)}
+          onSaved={() => fetchCompanies(page)}
+        />
+      )}
     </div>
   );
 }

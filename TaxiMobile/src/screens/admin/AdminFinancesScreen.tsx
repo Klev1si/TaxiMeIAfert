@@ -28,6 +28,7 @@ import {
 import { useColors } from '../../stores/themeStore';
 import type { ColorPalette } from '../../constants/colors';
 import { t as tr, useTranslation } from '../../i18n';
+import CardFeeSetting from '../../components/CardFeeSetting';
 
 // label is the suffix of the i18n key company.finances.period<Label>
 const PERIODS: { value: FinancePeriod; label: string }[] = [
@@ -158,6 +159,8 @@ export default function AdminFinancesScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+
+            <CardFeeSetting />
 
             {/* Totals card */}
             <View style={styles.summaryCard}>

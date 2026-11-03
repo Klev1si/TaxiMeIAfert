@@ -36,6 +36,8 @@ import { CompanyMessagesModule } from './company-messages/company-messages.modul
 import { SubscriptionCronModule } from './subscription-cron/subscription-cron.module';
 import { EngagementNotificationsModule } from './engagement-notifications/engagement-notifications.module';
 import { FirstRideOfferModule } from './first-ride-offer/first-ride-offer.module';
+import { CompanyBillingModule } from './company-billing/company-billing.module';
+import { PlatformFeesModule } from './platform-fees/platform-fees.module';
 import {
   User,
   Company,
@@ -67,6 +69,7 @@ import {
   EngagementNotification,
   PlatformSetting,
   PromoFingerprint,
+  CommissionPayment,
 } from './entities';
 
 /**
@@ -192,6 +195,7 @@ const isLoopback = (ctx: ExecutionContext): boolean => {
           EngagementNotification,
           PlatformSetting,
           PromoFingerprint,
+          CommissionPayment,
         ],
         // Safety net: also register every entity passed to forFeature() by a
         // feature module, so a class missing from the list above can't cause
@@ -232,6 +236,8 @@ const isLoopback = (ctx: ExecutionContext): boolean => {
     SubscriptionCronModule,
     EngagementNotificationsModule,
     FirstRideOfferModule,
+    CompanyBillingModule,
+    PlatformFeesModule,
     HealthModule,
     FraudModule,
     ScheduleModule.forRoot(),

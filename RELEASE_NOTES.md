@@ -22,6 +22,13 @@ first-ride offer.
   verified emails; whole-API rate limiting per real client IP; private,
   expiring links for driver documents; secure OTP codes and share links;
   dashboard login no longer stores tokens in the browser.
+- **Contracts with the platform:** the admin chooses per company (and per solo
+  driver) a subscription or a commission % of every ride. New companies start
+  without a contract until it is agreed. Company drivers always get their
+  agreed % of the fare; the platform's commission and the card fee come out of
+  the company's share. The card fee (default 10 %) is editable by the admin
+  and applies to every contract. Commission balances and payments are tracked
+  in the dashboard and the app.
 
 ### Store "What's New"
 

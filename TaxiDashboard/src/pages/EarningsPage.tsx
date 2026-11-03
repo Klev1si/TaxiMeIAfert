@@ -30,6 +30,10 @@ interface CompanySummary {
   cardOwedToDrivers:     number;
   cardGross:             number;
   platformFee:           number;
+  /** Platform commission (commission contracts). */
+  platformCommission?:   number;
+  contractType?:          'unassigned' | 'subscription' | 'commission';
+  contractCommissionPct?: number | null;
   cardDriverShare:       number;
   driverExpenses:        number;
   companyCommissionPct:  number;
@@ -171,7 +175,7 @@ export default function EarningsPage() {
             <SummaryCard
               label="💳 Card revenue"
               value={fmt(summary.cardRevenue)}
-              sub={`after ${summary.platformCommissionPct}% platform fee`}
+              sub="your share after platform fees"
               color="yellow"
             />
             <SummaryCard
@@ -190,18 +194,25 @@ export default function EarningsPage() {
               </p>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>🌐 Platform fee ({summary.platformCommissionPct}%)</span>
+                  <span>🚗 Drivers ({summary.driverCommissionPct}% of the fare)</span>
+                  <span className="font-bold text-yellow-700">+{fmt(summary.cardDriverShare)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>💳 Platform card fee (currently {summary.platformCommissionPct}%)</span>
                   <span className="font-bold text-gray-500">−{fmt(summary.platformFee)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>🏢 You ({summary.companyCommissionPct}% of remainder)</span>
+                  <span>🏢 You (the rest)</span>
                   <span className="font-bold text-indigo-700">+{fmt(summary.cardRevenue)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>🚗 Drivers ({summary.driverCommissionPct}% of remainder)</span>
-                  <span className="font-bold text-yellow-700">+{fmt(summary.cardDriverShare)}</span>
-                </div>
               </div>
+            </div>
+          )}
+
+          {summary.contractType === 'commission' && (
+            <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-5 py-3 text-sm text-indigo-800">
+              Commission contract: the platform receives <strong>{summary.contractCommissionPct}%</strong> of every fare
+              ({fmt(summary.platformCommission ?? 0)} in this period). It is already taken out of the revenue above.
             </div>
           )}
 
@@ -454,7 +465,8 @@ function PerDriverCommissionModal({
           <span className="text-gray-500 font-bold text-sm">%</span>
         </div>
         <p className="text-xs text-gray-400 mb-4">
-          The remainder goes to you. Platform fee (10%) is taken from card rides before this split.
+          The driver gets this % of every fare. The rest is yours, minus the platform’s fees (card fee on card
+          rides, and the commission if your contract is a commission contract).
         </p>
 
         {err && <p className="text-sm text-red-600 mb-3">{err}</p>}

@@ -369,33 +369,42 @@ export class CompanyController {
   ) {
     const company = await this.resolveCompany(user.id);
 
-    // ── Subscription plan driver-limit check ──────────────────────────────────
-    // Find the company's active/trialing subscription and its plan's maxDrivers.
-    // If the company has no subscription or the plan limit is reached, block the add.
-    const subscription = await this.subRepo
-      .createQueryBuilder('sub')
-      .leftJoinAndSelect('sub.plan', 'plan')
-      .where('sub.companyId = :companyId', { companyId: company.id })
-      .andWhere('sub.status IN (:...statuses)', { statuses: ['active', 'trialing'] })
-      .orderBy('sub.createdAt', 'DESC')
-      .getOne();
-
-    if (!subscription) {
+    // ── Contract check ────────────────────────────────────────────────────────
+    // Commission contracts have no driver limit. Subscription contracts are
+    // limited by the plan's maxDrivers. Without a contract, drivers can't be
+    // added yet.
+    const contract = company.billingModel ?? 'unassigned';
+    if (contract === 'unassigned') {
       throw new ForbiddenException(
-        'No active subscription. Please subscribe to a plan before adding drivers.',
+        'Your contract with the platform is not set up yet. We will contact you to agree on it.',
       );
     }
+    if (contract === 'subscription') {
+      const subscription = await this.subRepo
+        .createQueryBuilder('sub')
+        .leftJoinAndSelect('sub.plan', 'plan')
+        .where('sub.companyId = :companyId', { companyId: company.id })
+        .andWhere('sub.status IN (:...statuses)', { statuses: ['active', 'trialing'] })
+        .orderBy('sub.createdAt', 'DESC')
+        .getOne();
 
-    const currentDriverCount = await this.driverRepo.count({
-      where: { companyId: company.id },
-    });
+      if (!subscription) {
+        throw new ForbiddenException(
+          'No active subscription. Please subscribe to a plan before adding drivers.',
+        );
+      }
 
-    if (currentDriverCount >= subscription.plan.maxDrivers) {
-      throw new ForbiddenException(
-        `Driver limit reached. Your "${subscription.plan.name}" plan allows up to ` +
-        `${subscription.plan.maxDrivers} driver(s). ` +
-        `Upgrade your plan to add more drivers.`,
-      );
+      const currentDriverCount = await this.driverRepo.count({
+        where: { companyId: company.id },
+      });
+
+      if (currentDriverCount >= subscription.plan.maxDrivers) {
+        throw new ForbiddenException(
+          `Driver limit reached. Your "${subscription.plan.name}" plan allows up to ` +
+          `${subscription.plan.maxDrivers} driver(s). ` +
+          `Upgrade your plan to add more drivers.`,
+        );
+      }
     }
     // ─────────────────────────────────────────────────────────────────────────
 

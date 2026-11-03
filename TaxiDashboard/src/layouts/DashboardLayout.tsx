@@ -20,7 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/dashboard/rides',     label: 'Rides',        icon: '📍' },
   { to: '/dashboard/tariffs',   label: 'Tariffs',      icon: '💰' },
   { to: '/dashboard/earnings',     label: 'Earnings',     icon: '💵', companyOnly: true },
-  { to: '/dashboard/subscription', label: 'Subscription', icon: '💳', companyOnly: true },
+  { to: '/dashboard/subscription', label: 'Contract', icon: '💳', companyOnly: true },
   { to: '/dashboard/messages',     label: 'Messages',     icon: '💬', companyOnly: true },
   // Profile is visible to BOTH roles. Company users see the full company-info
   // editor + change-password card; super-admin sees only the change-password

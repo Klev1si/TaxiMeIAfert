@@ -24,6 +24,12 @@ import {
   type SubscriptionStatus,
 } from '../../api/subscriptions';
 import { useTranslation } from '../../i18n';
+import CommissionStatementView from '../../components/CommissionStatementView';
+import {
+  companyBillingApi,
+  type BillingStatementPeriod,
+  type CommissionStatement,
+} from '../../api/company-billing';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -259,7 +265,7 @@ function getPlanStyles(c: ColorPalette) {
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
-export default function DriverSubscriptionScreen() {
+function DriverSubscriptionPlans() {
   const colors = useColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { t } = useTranslation();
@@ -501,4 +507,55 @@ function getStyles(c: ColorPalette) {
     infoBanner:        { backgroundColor: '#eff6ff', borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#3b82f6' },
     infoBannerText:    { fontSize: 13, color: '#1d4ed8', lineHeight: 20 },
   });
+}
+
+// ── Contract-aware wrapper ───────────────────────────────────────────────────
+// Solo drivers on a commission contract don't buy plans: show their
+// commission statement instead. Everyone else sees the plans as before.
+
+function DriverCommissionView() {
+  const colors = useColors();
+  const styles = useMemo(() => getStyles(colors), [colors]);
+  const { t } = useTranslation();
+  const [st, setSt]         = useState<CommissionStatement | null>(null);
+  const [period, setPeriod] = useState<BillingStatementPeriod>('month');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async (p: BillingStatementPeriod, isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    try {
+      const { data } = await companyBillingApi.getMineDriver(p);
+      setSt(data);
+    } catch {
+      Alert.alert(t('common.error'), t('contract.loadError'));
+    } finally {
+      setRefreshing(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => { void load(period); }, [load, period]);
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(period, true)} />}>
+        {st
+          ? <CommissionStatementView st={st} period={period} onPeriod={setPeriod} />
+          : <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+export default function DriverSubscriptionScreen() {
+  const [contract, setContract] = useState<'subscription' | 'commission' | null | undefined>(undefined);
+  useEffect(() => {
+    subscriptionsApi.getDriverMy()
+      .then(({ data }) => setContract(data.driverContract ?? null))
+      .catch(() => setContract(null));
+  }, []);
+  if (contract === undefined) return null;
+  return contract === 'commission' ? <DriverCommissionView /> : <DriverSubscriptionPlans />;
 }

@@ -1,3 +1,4 @@
+import { PlatformFeesModule } from '../platform-fees/platform-fees.module.js';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Company, Driver, Ride } from '../entities';
@@ -6,7 +7,7 @@ import { WalletService } from './wallet.service';
 import { WalletController } from './wallet.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([DriverLedger, Driver, Company, Ride])],
+  imports: [TypeOrmModule.forFeature([DriverLedger, Driver, Company, Ride]), PlatformFeesModule],
   controllers: [WalletController],
   providers: [WalletService],
   exports: [WalletService],

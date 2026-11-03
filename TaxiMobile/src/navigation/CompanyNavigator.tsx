@@ -10,7 +10,7 @@ import CompanyDashboardScreen     from '../screens/company/CompanyDashboardScree
 import CompanyDriversScreen       from '../screens/company/CompanyDriversScreen';
 import CompanyFinancesScreen      from '../screens/company/CompanyFinancesScreen';
 import CompanyTariffsScreen       from '../screens/company/CompanyTariffsScreen';
-import CompanySubscriptionScreen  from '../screens/company/CompanySubscriptionScreen';
+import CompanyContractScreen      from '../screens/company/CompanyContractScreen';
 import CompanyProfileScreen       from '../screens/company/CompanyProfileScreen';
 import IntercityRoutesScreen      from '../screens/shared/IntercityRoutesScreen';
 
@@ -52,14 +52,14 @@ export default function CompanyNavigator() {
           route.name === 'CompanyDrivers'      ? t('nav.drivers')      :
           route.name === 'CompanyFinances'     ? t('nav.finances')     :
           route.name === 'CompanyTariffs'      ? t('nav.tariffs')      :
-          route.name === 'CompanySubscription' ? t('nav.subscription') :
+          route.name === 'CompanySubscription' ? t('nav.contract') :
                                                  t('nav.profile'),
       })}>
       <Tab.Screen name="CompanyDashboard"    component={CompanyDashboardScreen}    />
       <Tab.Screen name="CompanyDrivers"      component={CompanyDriversScreen}      />
       <Tab.Screen name="CompanyFinances"     component={CompanyFinancesScreen}     />
       <Tab.Screen name="CompanyTariffs"      component={CompanyTariffsScreen}      />
-      <Tab.Screen name="CompanySubscription" component={CompanySubscriptionScreen} />
+      <Tab.Screen name="CompanySubscription" component={CompanyContractScreen} />
       <Tab.Screen name="CompanyProfile"      component={CompanyProfileStack}       />
     </Tab.Navigator>
   );

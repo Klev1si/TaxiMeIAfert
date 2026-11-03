@@ -179,6 +179,9 @@ export class AdminService {
       totalDeclined:   d.totalDeclined,
       acceptanceRate:  offered > 0 ? Math.round((d.totalAccepted / offered) * 1000) / 10 : null,
       createdAt:       d.createdAt,
+      // Solo drivers' contract with the platform (company drivers follow their company).
+      billingModel:          d.billingModel ?? 'subscription',
+      platformCommissionPct: d.platformCommissionPct != null ? Number(d.platformCommissionPct) : null,
     };
   }
 
@@ -373,6 +376,9 @@ export class AdminService {
       isApproved: c.isApproved,
       approvedAt: c.approvedAt,
       createdAt:  c.createdAt,
+      // Contract with the platform (subscription / commission %).
+      billingModel:          c.billingModel ?? 'unassigned',
+      platformCommissionPct: c.platformCommissionPct != null ? Number(c.platformCommissionPct) : null,
     };
   }
 

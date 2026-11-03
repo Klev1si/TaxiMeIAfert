@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import apiClient from '../api/client';
+import CardFeeCard from '../components/CardFeeCard';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -162,6 +163,8 @@ export default function PlatformFinancesPage() {
         </div>
       ) : (
         <>
+          <CardFeeCard />
+
           {/* Summary cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-5">
@@ -170,7 +173,7 @@ export default function PlatformFinancesPage() {
               </p>
               <p className="text-2xl font-extrabold text-indigo-900">{fmt(totals.platform)}</p>
               <p className="text-xs text-indigo-500 mt-1">
-                10% of all card revenue
+                commissions + card fees
               </p>
             </div>
             <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-5">
