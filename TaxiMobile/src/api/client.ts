@@ -80,34 +80,55 @@ apiClient.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const refreshToken = await tokenStorage.getRefreshToken();
-      if (!refreshToken) throw new Error('No refresh token');
-
-      // JwtRefreshStrategy reads from Authorization header, NOT request body
-      const { data } = await axios.post(
-        `${Config.API_BASE_URL}/auth/refresh`,
-        {},
-        { headers: { Authorization: `Bearer ${refreshToken}`, 'X-Client-Platform': CLIENT_PLATFORM } },
-      );
-      const newAccess: string  = data.accessToken;
-      const newRefresh: string = data.refreshToken;
-
-      await tokenStorage.set(newAccess, newRefresh);
-
-      apiClient.defaults.headers.common.Authorization = `Bearer ${newAccess}`;
+      const newAccess = await refreshAccessToken();
       drainQueue(newAccess);
-
       original.headers.Authorization = `Bearer ${newAccess}`;
       return apiClient(original);
     } catch (refreshErr) {
       drainQueue(null, refreshErr);
-      // Clear tokens — force re-login
-      await tokenStorage.clear();
       return Promise.reject(refreshErr);
     } finally {
       isRefreshing = false;
     }
   },
 );
+
+// ── Shared token refresh (single-flight) ──────────────────────────────────────
+// Used by the 401 interceptor above AND by the WebSocket, whose handshake is
+// rejected once the 15-minute access token expires. Concurrent callers share
+// one in-flight refresh so the refresh token is never rotated twice at once.
+let refreshInFlight: Promise<string> | null = null;
+
+export function refreshAccessToken(): Promise<string> {
+  if (refreshInFlight) { return refreshInFlight; }
+  refreshInFlight = (async () => {
+    const refreshToken = await tokenStorage.getRefreshToken();
+    if (!refreshToken) throw new Error('No refresh token');
+
+    // JwtRefreshStrategy reads from Authorization header, NOT request body
+    let data: { accessToken: string; refreshToken: string };
+    try {
+      ({ data } = await axios.post(
+        `${Config.API_BASE_URL}/auth/refresh`,
+        {},
+        { headers: { Authorization: `Bearer ${refreshToken}`, 'X-Client-Platform': CLIENT_PLATFORM } },
+      ));
+    } catch (err) {
+      // Only a definitive auth rejection means the session is over. A network
+      // blip must not log the user out.
+      const status = (err as AxiosError)?.response?.status;
+      if (status === 401 || status === 403) {
+        await tokenStorage.clear();
+      }
+      throw err;
+    }
+
+    await tokenStorage.set(data.accessToken, data.refreshToken);
+    apiClient.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`;
+    return data.accessToken;
+  })();
+  refreshInFlight.finally(() => { refreshInFlight = null; }).catch(() => {});
+  return refreshInFlight;
+}
 
 export default apiClient;

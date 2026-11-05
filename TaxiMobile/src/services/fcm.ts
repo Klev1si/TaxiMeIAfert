@@ -15,6 +15,7 @@ import { Platform } from 'react-native';
 import apiClient from '../api/client';
 import { notificationNavigate } from '../navigation/navigationRef';
 import { useSnackbarStore } from '../stores/snackbarStore';
+import { socketService } from './socket';
 
 // Lazily resolve the messaging module so a missing native build never
 // crashes the JS bundle at import time.
@@ -171,6 +172,14 @@ export async function setupFcm(): Promise<() => void> {
         const body: string =
           remoteMessage?.notification?.body ?? 'You have a new notification.';
         const tap = extractTapPayload(remoteMessage);
+
+        // A push means the server changed something (ride completed, payment
+        // confirmed…). If the socket missed that event, the open screen would
+        // keep showing a stale status — make every screen re-fetch now.
+        if (tap) {
+          socketService.ensureConnected();
+          socketService.resync();
+        }
 
         useSnackbarStore.getState().show({
           title,

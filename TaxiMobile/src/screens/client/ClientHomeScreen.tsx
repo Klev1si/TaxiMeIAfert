@@ -15,7 +15,7 @@ import Geolocation from '@react-native-community/geolocation';
 import MapView, { Marker, Region, UserLocationChangeEvent } from 'react-native-maps';
 import { MAP_PROVIDER } from '../../utils/mapProvider';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/authStore';
 import { useRideStore } from '../../stores/rideStore';
 import { ridesApi } from '../../api/rides';
@@ -99,11 +99,18 @@ export default function ClientHomeScreen({ navigation }: Props) {
   );
 
   // ── Redirect if there is already an active ride (in-memory store) ───────────
+  // Only while this screen is actually on top. Home stays mounted underneath
+  // RideRequest / ActiveRide / PayCash, and without the focus guard every
+  // setActiveRide() from those screens made this hidden Home replace ITSELF
+  // with a second ActiveRide. That orphan copy never navigated on — after the
+  // driver finished and confirmed payment, the client was left looking at
+  // "Udhëtimi u krye" with the SOS button. Finished rides never redirect.
+  const isFocused = useIsFocused();
   useEffect(() => {
-    if (activeRide) {
-      navigation.replace('ActiveRide', { rideId: activeRide.id });
-    }
-  }, [activeRide, navigation]);
+    if (!isFocused || !activeRide) { return; }
+    if (activeRide.status === 'completed' || activeRide.status === 'cancelled') { return; }
+    navigation.replace('ActiveRide', { rideId: activeRide.id });
+  }, [activeRide, navigation, isFocused]);
 
   // ── On first mount: check server for an active ride (handles app-restart) ────
   useEffect(() => {

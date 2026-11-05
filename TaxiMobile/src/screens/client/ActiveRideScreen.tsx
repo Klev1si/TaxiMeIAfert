@@ -152,45 +152,57 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
   const [unreadCount, setUnreadCount] = useState(0);
   const chatScrollRef = useRef<ScrollView>(null);
 
-  // ── Reconcile with authoritative server state on mount ──────────────────────
-  // The store's activeRide can be stale (it's cached at request time, so its
-  // status is 'requested' even after a driver accepts). Fetch the live ride and
-  // merge it so the status badge is correct even if the acceptance WS event was
-  // missed or the app was reopened mid-ride. Never regress a status the live
-  // socket has already advanced past.
-  useEffect(() => {
-    let cancelled = false;
-    ridesApi.getActiveRide()
-      .then(({ data }) => {
-        if (cancelled || !data || data.id !== rideId) { return; }
-        setRide(prev => {
-          if (!prev) { return data as Ride; }
-          const merged = { ...prev, ...data } as Ride;
-          if (STATUS_RANK[data.status as RideStatus] < STATUS_RANK[prev.status as RideStatus]) {
-            merged.status = prev.status;
-          }
-          return merged;
-        });
-      })
-      .catch(() => { /* non-fatal — live socket events still drive updates */ });
-    return () => { cancelled = true; };
-  }, [rideId]);
+  // ── Leave the screen once the ride is finished (single, guarded exit) ──────
+  // Every path that learns the ride ended — the live socket event, a resync
+  // after reconnect/foreground/push, the periodic poll, or a ride that was
+  // already finished when this screen mounted — funnels through here, so the
+  // client can never be left on "Udhëtimi u krye" with nowhere to go.
+  const leftRef = useRef(false);
+  const leaveIfFinished = (r: Ride | null, cancelReason?: string | null) => {
+    if (!r || leftRef.current) { return; }
+    if (r.status === 'completed') {
+      leftRef.current = true;
+      setActiveRide(r);
+      navigation.replace('PayCash', { rideId });
+    } else if (r.status === 'cancelled') {
+      leftRef.current = true;
+      clearAll();
+      Alert.alert(
+        t('client.activeRide.rideCancelledTitle'),
+        cancelReason
+          ? t('client.activeRide.rideCancelledReason', { reason: cancelReason })
+          : t('client.activeRide.rideCancelledByDriver'),
+        [{ text: t('common.ok'), onPress: () => navigation.replace('ClientHomeMain') }],
+      );
+    }
+  };
+  const leaveIfFinishedRef = useRef(leaveIfFinished);
+  leaveIfFinishedRef.current = leaveIfFinished;
 
-  // ── Re-sync authoritative ride state on reconnect / app-foreground ──────────
-  // socket.io does NOT replay events missed while the socket was down (very
-  // common on Android under Doze). Without this, if the client misses
-  // `ride_accepted`/`ride_completed` it stays stuck on "searching for driver"
-  // until an app restart. On every reconnect and every foreground we re-fetch
-  // the live ride and reconcile — advancing the status, or leaving the screen
-  // if the ride already finished while we were disconnected.
+  // Safety net for any state change that lands on a terminal status.
   useEffect(() => {
-    // Guard so AppState + onReconnect (which can both fire together) can't
-    // trigger the terminal navigation twice.
-    let navigated = false;
+    if (ride?.status === 'completed' || ride?.status === 'cancelled') {
+      leaveIfFinishedRef.current(ride);
+    }
+  }, [ride]);
+
+  // ── Re-sync authoritative ride state ────────────────────────────────────────
+  // socket.io does NOT replay events missed while the socket was down (very
+  // common on mobile: backgrounding, Doze, network switches). We re-fetch the
+  // live ride and reconcile on mount, on every reconnect, on every foreground,
+  // when a push arrives, and on a slow poll while the screen is open — so a
+  // missed ride_started / ride_completed can only delay the client briefly.
+  // Never regress a status the live socket has already advanced past.
+  useEffect(() => {
+    let alive = true;
+    let inFlight = false;
 
     const resync = () => {
+      if (inFlight || leftRef.current) { return; }
+      inFlight = true;
       ridesApi.getActiveRide()
-        .then(({ data }) => {
+        .then(async ({ data }) => {
+          if (!alive) { return; }
           if (data && data.id === rideId) {
             setRide(prev => {
               if (!prev) { return data as Ride; }
@@ -202,42 +214,32 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
             });
             return;
           }
-          // getActiveRide no longer returns this ride → it ended while we were
-          // away (getActiveRide excludes completed/cancelled). Fetch the ride
-          // by id to find out how it ended and move the client accordingly.
-          if (navigated) { return; }
-          ridesApi.getRideById(rideId)
-            .then(({ data: r }) => {
-              if (navigated || !r) { return; }
-              if (r.status === 'completed') {
-                navigated = true;
-                setActiveRide(r);
-                navigation.replace('PayCash', { rideId });
-              } else if (r.status === 'cancelled') {
-                navigated = true;
-                clearAll();
-                Alert.alert(
-                  t('client.activeRide.rideCancelledTitle'),
-                  t('client.activeRide.rideCancelledByDriver'),
-                  [{ text: t('common.ok'), onPress: () => navigation.replace('ClientHomeMain') }],
-                );
-              }
-            })
-            .catch(() => { /* non-fatal */ });
+          // getActiveRide no longer returns this ride → it ended (the endpoint
+          // excludes completed/cancelled). Fetch it by id to see how it ended.
+          const { data: r } = await ridesApi.getRideById(rideId);
+          if (alive && r) { leaveIfFinishedRef.current(r, r.cancelReason ?? null); }
         })
-        .catch(() => { /* non-fatal */ });
+        .catch(() => { /* non-fatal — next trigger retries */ })
+        .finally(() => { inFlight = false; });
     };
 
+    resync();
     const unsubReconnect = socketService.onReconnect(resync);
     const appStateSub = AppState.addEventListener('change', (state) => {
       if (state === 'active') { resync(); }
     });
+    // Slow fallback poll — covers a socket that looks connected but is not
+    // delivering (half-open TCP on cellular). Cheap: one small GET.
+    const poll = setInterval(() => {
+      if (AppState.currentState === 'active') { resync(); }
+    }, 15_000);
 
     return () => {
+      alive = false;
       unsubReconnect();
       appStateSub.remove();
+      clearInterval(poll);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rideId]);
 
   // ── Pickup → Dropoff route (fetched once when ride loads) ───────────────────
@@ -304,14 +306,10 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
           ...(e.driverId       !== undefined ? { driverId:       e.driverId       } : {}),
         };
         update(farePatch);
-        // Also push the finalized ride into the shared store. PayCash reads the
-        // fare from the store's activeRide (not this screen's local state), and
-        // the server's getActiveRide excludes completed rides — so without this
-        // the client would be stuck on "fare not finalized yet" even though the
-        // driver already sees the total.
+        // Push the finalized ride into the shared store (PayCash reads the fare
+        // from there) and move on — via the guarded exit so it happens once.
         const latest = rideRef.current ?? useRideStore.getState().activeRide;
-        if (latest) { setActiveRide({ ...latest, ...farePatch } as Ride); }
-        navigation.replace('PayCash', { rideId });
+        leaveIfFinishedRef.current({ ...(latest ?? {}), ...farePatch, id: rideId } as Ride);
       },
     );
 
@@ -320,13 +318,10 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
       (e) => {
         if (e.rideId !== rideId) { return; }
         update({ status: 'cancelled', cancelledAt: new Date().toISOString(), cancelledBy: e.cancelledBy });
-        clearAll();
-        Alert.alert(
-          t('client.activeRide.rideCancelledTitle'),
-          e.reason
-            ? t('client.activeRide.rideCancelledReason', { reason: e.reason })
-            : t('client.activeRide.rideCancelledByDriver'),
-          [{ text: t('common.ok'), onPress: () => navigation.replace('ClientHomeMain') }],
+        const latest = rideRef.current;
+        leaveIfFinishedRef.current(
+          { ...(latest ?? {}), id: rideId, status: 'cancelled' } as Ride,
+          e.reason,
         );
       },
     );
@@ -424,6 +419,7 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
             setCancelling(true);
             try {
               await ridesApi.reportNoShow(rideId);
+              leftRef.current = true;
               clearAll();
               navigation.replace('ClientHomeMain');
             } catch (err: any) {
@@ -442,6 +438,7 @@ export default function ActiveRideScreen({ navigation, route }: Props) {
     setCancelling(true);
     try {
       await ridesApi.cancelRide(rideId, { reason });
+      leftRef.current = true;
       setCancelModalVisible(false);
       clearAll();
       navigation.replace('ClientHomeMain');

@@ -10,6 +10,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   Alert,
   Share,
   Platform,
@@ -86,7 +87,9 @@ export default function PayCashScreen({ navigation, route }: Props) {
   useEffect(() => {
     // Skip the fetch only if the snapshot already has a totalFare
     if (rideSnapshotRef.current?.totalFare != null) return;
-    ridesApi.getActiveRide()
+    // getRideById, NOT getActiveRide — /rides/active excludes completed rides,
+    // so it can never return the ride being paid for here.
+    ridesApi.getRideById(rideId)
       .then(({ data }) => { if (data && data.id === rideId) setFetchedRide(data); })
       .catch(() => { /* non-fatal — UI will gracefully show "Fare not finalized yet…" */ });
   }, [rideId]);
@@ -116,18 +119,27 @@ export default function PayCashScreen({ navigation, route }: Props) {
       .finally(() => setLoadingCards(false));
   }, []);
 
+  // ── Payment confirmed (socket event OR server re-check) ─────────────────────
+  // Guarded so the socket event and the fallback re-check can't both navigate.
+  const paidHandledRef = useRef(false);
+  const onPaymentConfirmed = useCallback((paymentMethod: 'cash' | 'card') => {
+    if (paidHandledRef.current) return;
+    paidHandledRef.current = true;
+    // Use paymentMethod from the SERVER — not local state
+    setMethod(paymentMethod as PayMethod);
+    track.paymentConfirmed(rideId, paymentMethod);
+    setConfirmed(true);
+    setCardState('success');
+    setTimeout(() => {
+      navigation.replace('RateRide', { rideId, rateTarget: 'driver', driverId: rideSnapshotRef.current?.driverId ?? undefined });
+    }, 1500);
+  }, [rideId, navigation]);
+
   // ── WebSocket: payment confirmed / failed ────────────────────────────────────
   useEffect(() => {
     const unsubOk = socketService.on<WsPaymentConfirmed>('payment_confirmed', (e) => {
       if (e.rideId !== rideId) return;
-      // Use paymentMethod from the SERVER event — not local state
-      setMethod(e.paymentMethod as PayMethod);
-      track.paymentConfirmed(rideId, e.paymentMethod);
-      setConfirmed(true);
-      setCardState('success');
-      setTimeout(() => {
-        navigation.replace('RateRide', { rideId, rateTarget: 'driver', driverId: activeRide?.driverId ?? undefined });
-      }, 1500);
+      onPaymentConfirmed(e.paymentMethod);
     });
 
     const unsubFail = socketService.on<{ rideId: string; reason: string }>(
@@ -140,7 +152,40 @@ export default function PayCashScreen({ navigation, route }: Props) {
     );
 
     return () => { unsubOk(); unsubFail(); };
-  }, [rideId, navigation]);
+  }, [rideId, onPaymentConfirmed]);
+
+  // ── Fallback: re-check payment status with the server ───────────────────────
+  // When the driver confirms cash while our socket is down, the
+  // payment_confirmed event is lost and this screen would wait forever. Re-check
+  // on reconnect, on foreground, when a push arrives, and on a slow poll.
+  useEffect(() => {
+    let alive = true;
+    const check = () => {
+      if (paidHandledRef.current) return;
+      ridesApi.getRideById(rideId)
+        .then(({ data }) => {
+          if (!alive || !data) return;
+          if (data.paymentStatus === 'paid') {
+            onPaymentConfirmed(data.paymentMethod ?? 'cash');
+          }
+        })
+        .catch(() => { /* non-fatal — next trigger retries */ });
+    };
+    check();
+    const unsubReconnect = socketService.onReconnect(check);
+    const appStateSub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') check();
+    });
+    const poll = setInterval(() => {
+      if (AppState.currentState === 'active') check();
+    }, 10_000);
+    return () => {
+      alive = false;
+      unsubReconnect();
+      appStateSub.remove();
+      clearInterval(poll);
+    };
+  }, [rideId, onPaymentConfirmed]);
 
   // ── Saved card: auto-charge ──────────────────────────────────────────────────
   const handleSavedCardPay = useCallback(async () => {
